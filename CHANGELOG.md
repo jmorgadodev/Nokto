@@ -2,6 +2,25 @@
 
 Este documento registra de manera cronológica y detallada cada avance, fase del roadmap, archivos modificados y resultados de compilación del proyecto Nokto.
 
+## [Corrección de Arranque Portable: Instancia Única por Named Pipe y Resiliencia en Minimizaciones] - 2026-10-01 19:30:00
+- **Fase del roadmap:** Post-Fase 5 (Estabilidad de Ejecución y Empaquetado Portable)
+- **Archivos creados o modificados:**
+  - `src/Nokto.UI/Program.cs`
+  - `src/Nokto.UI/App.axaml.cs`
+  - `src/Nokto.LanServer/LanHttpServer.cs`
+  - `artifacts/Nokto-Portable-x64/Nokto.exe`
+  - `artifacts/Nokto-v1.0.0-Portable-x64.zip`
+- **Diagnóstico de causa raíz:**
+  1. **Conflicto de puerto LAN en arranques secundarios:** Al cerrar la ventana principal mediante el botón `[X]`, la aplicación continuaba en ejecución en segundo plano (minimizada en el área de notificación/bandeja del sistema). Al pulsar `Nokto.exe` por segunda vez, se intentaba vincular `LanHttpServer` nuevamente al puerto 4884, arrojando una excepción no controlada (`HttpListenerException 183`) que terminaba el proceso abruptamente antes de desplegar la ventana.
+  2. **Detección de instancia previa oculta en bandeja:** Cuando una aplicación gráfica de Avalonia/WPF se oculta mediante `Hide()`, Windows reporta `Process.MainWindowHandle = 0`. Cualquier intento tradicional de restaurar la ventana mediante P/Invoke sobre dicho handle nulo era ignorado y el segundo proceso se cerraba en silencio.
+  3. **Persistencia de EventWaitHandle en el kernel de Windows:** El uso previo de eventos con nombre sin recolección de basura determinista provocaba estados huérfanos que marcaban falsos positivos en arranques limpios.
+- **Solución implementada:**
+  1. **Canal IPC Asíncrono de Instancia Única (`NamedPipeServerStream`):** El proceso principal hospeda un pipe con nombre (`Nokto_Desktop_IPC_Pipe`). Si se lanza una segunda instancia de `Nokto.exe`, ésta detecta el proceso existente, le envía un byte de señalización por el pipe y sale limpiamente (ExitCode: 0).
+  2. **Restauración al Frente y Foco:** Al recibir la señal, el proceso en ejecución invoca `ShowMainWindow()` en el hilo de UI, garantizando `IsVisible = true`, restaurando el estado a `WindowState.Normal`, forzando el z-order al frente (`Topmost = true/false`) y asignando foco a la ventana.
+  3. **Tolerancia a Fallos en el Servidor LAN:** Protección con bloque `try/catch` defensivo en el inicio de `HttpListener`, permitiendo que la interfaz gráfica inicie sin trabas aunque el puerto esté ocupado o requiera elevación.
+  4. **Captura Global de Excepciones:** Registro automático de errores críticos a `crash.log` mediante `AppDomain.UnhandledException` y `TaskScheduler.UnobservedTaskException`.
+- **Resultado:** Ejecutable portable autónomo y determinista con 0 advertencias, 0 errores, verificado con doble ejecución concurrente y empaquetado final en `artifacts/Nokto-v1.0.0-Portable-x64.zip`.
+
 ## [Refactorización UI: Configuración Manual por Pestañas y Limpieza de Barra de Estado] - 2026-10-01 19:06:00
 - **Fase del roadmap:** Post-Fase 5 (Refinamiento UI/UX y Flexibilidad Operativa)
 - **Archivos creados o modificados:**
