@@ -4,6 +4,46 @@ Este documento registra de manera cronológica y detallada cada avance, fase del
 
 ---
 
+## [Fase 3: Motor de Flujos Encadenados y Persistencia] - 2026-10-01 18:38:00
+- **Fase del roadmap:** Fase 3 (Pipeline & Presets, State Machine, Triggers & Persistence)
+- **Archivos creados o modificados:**
+  - `src/Nokto.Core/Engine/IWorkflowEngine.cs`
+  - `src/Nokto.Core/Engine/WorkflowEngine.cs`
+  - `src/Nokto.Core/Persistence/StorageResolver.cs`
+  - `src/Nokto.Core/Persistence/PersistenceService.cs`
+  - `src/Nokto.Core/Serialization/NoktoJsonContext.cs`
+  - `src/Nokto.UI/App.axaml.cs`
+  - `src/Nokto.UI/ViewModels/MainViewModel.cs`
+  - `tests/Nokto.ConsoleTest/Program.cs`
+  - `CHANGELOG.md`
+- **Resumen técnico del cambio:**
+  1. **Máquina de Estados Reactiva ([`WorkflowEngine`](file:///c:/Users/jorge/Proyectos/Nokto/src/Nokto.Core/Engine/WorkflowEngine.cs)):**
+     - Orquestador desacoplado de ciclo de vida con estados formales: `Idle`, `WaitingTrigger`, `ExecutingActions`, `GracePeriod`, `Paused`, `Completed`, `Failed`.
+     - Cero busy-waiting en todas las operaciones asíncronas utilizando `System.Threading.PeriodicTimer`.
+  2. **Evaluación Asíncrona de Disparadores (Triggers):**
+     - `Countdown`: Temporizador decreciente por segundo con porcentaje de progreso exacto.
+     - `ProcessExit`: Monitoreo pasivo de procesos por nombre (`Process.GetProcessesByName`) con periodo de confirmación continua (Debounce) para evitar falsos positivos ante reinicios de subprocesos.
+     - `SustainedLoad`: Muestreo continuo mediante ventana deslizante pasiva de CPU (<8% durante 90s).
+     - `NetworkThroughput`: Evaluación combinada de velocidad de descarga y subida con umbral en KB/s.
+     - `UserIdle`: Detección de inactividad de periféricos por hardware mediante `GetLastInputInfo`.
+  3. **Ejecutor Secuencial de Acciones Intermedias:**
+     - `CaptureScreenshot`: Captura de pantalla multi-monitor a través de GDI nativo con almacenamiento automático en `data/snapshots/` con sellado de fecha/hora.
+     - `AudioFadeOut`: Atenuación perceptual WASAPI progresiva.
+     - `MuteAudio` y `TurnOffMonitors`: Control inmediato de salidas de audio y vídeo.
+     - `ExecuteCommand`: Ejecución de scripts (`.cmd`, `.bat`, `.ps1`, `.exe`) con validación de código de salida `expectedExitCode == 0`. Si un script falla y `IgnoreFailure = false`, interrumpe inmediatamente el flujo, aborta la acción terminal y escribe el error en `audit.jsonl`.
+  4. **Persistencia Determinista y Modo Portable:**
+     - [`StorageResolver`](file:///c:/Users/jorge/Proyectos/Nokto/src/Nokto.Core/Persistence/StorageResolver.cs): Detección automática de `portable.lock` o `config.json` para desviar almacenamiento a `./data/` o `%APPDATA%\Nokto\`.
+     - [`PersistenceService`](file:///c:/Users/jorge/Proyectos/Nokto/src/Nokto.Core/Persistence/PersistenceService.cs): Carga y guardado de `config.json` y `presets.json` mediante contexto `NoktoJsonContext` sin reflexión.
+     - Contexto especializado [`NoktoCompactJsonContext`](file:///c:/Users/jorge/Proyectos/Nokto/src/Nokto.Core/Serialization/NoktoJsonContext.cs) (`WriteIndented = false`) para registro append-only de auditoría en `audit.jsonl` bajo formato estricto JSON Lines (1 línea por evento).
+  5. **Integración con Modo Studio y Consola de Verificación:**
+     - Conexión de `WorkflowEngine` y `PersistenceService` con `MainViewModel` para ejecución de presets desde la interfaz gráfica.
+     - Inclusión de pruebas automatizadas en `Nokto.ConsoleTest` para validar captura de pantalla, persistencia, resolución de rutas y aborto determinista ante scripts fallidos.
+- **Resultado de la compilación:**
+  - `dotnet build Nokto.sln`: 0 Advertencias, 0 Errores.
+  - Verificación automatizada con `dotnet run --project tests/Nokto.ConsoleTest -- --verify`: 8 de 8 pruebas exitosas.
+
+---
+
 ## [Fase 2: Interfaz de Escritorio Avalonia y Bandeja del Sistema] - 2026-10-01 18:32:00
 - **Fase del roadmap:** Fase 2 (Desktop UI & System Tray)
 - **Archivos creados o modificados:**

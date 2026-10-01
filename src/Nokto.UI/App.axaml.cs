@@ -3,6 +3,8 @@ using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
 using Nokto.Core.Abstractions;
+using Nokto.Core.Engine;
+using Nokto.Core.Persistence;
 using Nokto.Platform.Windows;
 using Nokto.UI.Tray;
 using Nokto.UI.ViewModels;
@@ -26,10 +28,10 @@ public partial class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            DetectStorageMode();
-
+            var persistence = new PersistenceService();
             _systemAdapter = new WindowsSystemAdapter();
-            _mainViewModel = new MainViewModel(_systemAdapter);
+            var engine = new WorkflowEngine(_systemAdapter, persistence);
+            _mainViewModel = new MainViewModel(_systemAdapter, engine, persistence);
 
             _mainWindow = new MainWindow();
             _mainWindow.InitializeWithViewModel(_mainViewModel);
@@ -41,21 +43,7 @@ public partial class App : Application
         base.OnFrameworkInitializationCompleted();
     }
 
-    private static void DetectStorageMode()
-    {
-        string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-        bool isPortable = File.Exists(Path.Combine(baseDir, "portable.lock")) ||
-                          File.Exists(Path.Combine(baseDir, "config.json"));
 
-        string dataDir = isPortable
-            ? Path.Combine(baseDir, "data")
-            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Nokto");
-
-        if (!Directory.Exists(dataDir))
-        {
-            Directory.CreateDirectory(dataDir);
-        }
-    }
 
     private void ConfigureTrayIcon(IClassicDesktopStyleApplicationLifetime desktop)
     {

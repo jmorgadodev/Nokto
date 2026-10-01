@@ -1,9 +1,12 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Text.Json;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Nokto.Core.Abstractions;
+using Nokto.Core.Engine;
 using Nokto.Core.Models;
+using Nokto.Core.Persistence;
 using Nokto.UI.Tray;
 
 namespace Nokto.UI.ViewModels;
@@ -11,17 +14,12 @@ namespace Nokto.UI.ViewModels;
 public partial class MainViewModel : ObservableObject, IDisposable
 {
     private readonly ISystemAdapter _systemAdapter;
+    private readonly IWorkflowEngine _workflowEngine;
+    private readonly PersistenceService _persistence;
     private readonly CancellationTokenSource _disposalCts = new();
 
     private CancellationTokenSource? _keepAliveCts;
-    private CancellationTokenSource? _activeTaskCts;
     private PeriodicTimer? _metricsTimer;
-    private PeriodicTimer? _countdownTimer;
-
-    private DateTimeOffset _taskEndTime = DateTimeOffset.MinValue;
-    private TimeSpan _totalTaskDuration = TimeSpan.Zero;
-    private bool _isAudioFadeStarted;
-    private bool _isDisplayPowerOffSent;
     private float _pulsePhase = 0f;
 
     public event Action<TrayIconVisualState, double, int, float>? RequestTrayIconUpdate;
@@ -76,46 +74,99 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private int _quickMinutesInput = 30;
 
+    [ObservableProperty]
+    private PresetDefinition? _selectedPreset;
+
     public ObservableCollection<string> AvailableProcesses { get; } = [];
     public ObservableCollection<PresetDefinition> Presets { get; } = [];
 
-    public MainViewModel(ISystemAdapter systemAdapter)
+    public MainViewModel(ISystemAdapter systemAdapter, IWorkflowEngine? engine = null, PersistenceService? persistence = null)
     {
         _systemAdapter = systemAdapter;
+        _persistence = persistence ?? new PersistenceService();
+        _workflowEngine = engine ?? new WorkflowEngine(systemAdapter, _persistence);
 
-        LoadInitialPresets();
+        LoadPresetsFromStorage();
         RefreshAvailableProcesses();
+        SubscribeToEngineEvents();
         StartMetricsMonitoring();
     }
 
-    private void LoadInitialPresets()
+    private void SubscribeToEngineEvents()
     {
-        Presets.Add(new PresetDefinition
-        {
-            Id = "preset_blender",
-            Name = "Render Nocturno Blender",
-            Description = "Supervisa blender.exe, toma captura y apaga con 60s de gracia.",
-            IsFavorite = true,
-            Icon = "Movie"
-        });
+        _workflowEngine.StatusChanged += HandleEngineStatusChanged;
+        _workflowEngine.GracePeriodTick += HandleGracePeriodTick;
+        _workflowEngine.LogMessageReceived += HandleEngineLog;
+    }
 
-        Presets.Add(new PresetDefinition
+    private void HandleEngineStatusChanged(SystemStatusState state)
+    {
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
         {
-            Id = "preset_workday",
-            Name = "Jornada Laboral Anti-Ausente",
-            Description = "Mantiene activo Teams y bloquea la estación a las 18:00.",
-            IsFavorite = true,
-            Icon = "Sun"
-        });
+            IsTaskRunning = state.EngineState != EngineState.Idle &&
+                            state.EngineState != EngineState.Completed &&
+                            state.EngineState != EngineState.Failed;
 
-        Presets.Add(new PresetDefinition
-        {
-            Id = "preset_download",
-            Name = "Descarga de Medios 4K",
-            Description = "Espera a que la red caiga bajo 50 KB/s durante 2 minutos y suspende el equipo.",
-            IsFavorite = false,
-            Icon = "Download"
+            CurrentStatusText = state.EngineState switch
+            {
+                EngineState.Idle => "Listo",
+                EngineState.WaitingTrigger => $"Esperando disparador ({state.ActivePresetName ?? "Tarea"})...",
+                EngineState.ExecutingActions => "Ejecutando acciones intermedias...",
+                EngineState.GracePeriod => $"¡Gracia activa! Apagado en {state.GracePeriodRemainingSeconds}s",
+                EngineState.Paused => "Flujo en pausa",
+                EngineState.Completed => "Flujo completado con éxito",
+                EngineState.Failed => "Flujo abortado por error en paso",
+                _ => "Listo"
+            };
+
+            if (IsTaskRunning)
+            {
+                ActiveTaskTitle = state.ActivePresetName ?? "Flujo Activo";
+                SecondsRemaining = state.TimeRemainingSeconds;
+                TimeRemainingText = TimeSpan.FromSeconds(state.TimeRemainingSeconds).ToString(@"hh\:mm\:ss");
+                ProgressPercentage = state.ProgressPercentage;
+            }
+            else
+            {
+                ActiveTaskTitle = "Ninguna tarea en curso";
+                TimeRemainingText = "--:--:--";
+                ProgressPercentage = 0;
+                SecondsRemaining = 0;
+                RequestGraceOverlay?.Invoke(false, 0);
+            }
         });
+    }
+
+    private void HandleGracePeriodTick(int secondsRemaining)
+    {
+        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+        {
+            SecondsRemaining = secondsRemaining;
+            TimeRemainingText = $"00:00:{secondsRemaining:D2}";
+            ProgressPercentage = 100.0;
+            CurrentStatusText = $"¡Apagado inminente en {secondsRemaining}s! Presione Esc para cancelar.";
+            RequestGraceOverlay?.Invoke(true, secondsRemaining);
+        });
+    }
+
+    private void HandleEngineLog(string message)
+    {
+        Debug.WriteLine(message);
+    }
+
+    private void LoadPresetsFromStorage()
+    {
+        Presets.Clear();
+        var presetsFile = _persistence.LoadPresets();
+        foreach (var p in presetsFile.Presets)
+        {
+            Presets.Add(p);
+        }
+
+        if (Presets.Count > 0)
+        {
+            SelectedPreset = Presets[0];
+        }
     }
 
     public void RefreshAvailableProcesses()
@@ -142,7 +193,6 @@ public partial class MainViewModel : ObservableObject, IDisposable
         }
         catch
         {
-            // Fallback
             if (AvailableProcesses.Count == 0)
             {
                 AvailableProcesses.Add("blender.exe");
@@ -168,7 +218,6 @@ public partial class MainViewModel : ObservableObject, IDisposable
                     RamText = $"{metrics.RamUsedMb:F0} / {metrics.RamTotalMb:F0} MB";
                     NetText = $"{metrics.NetworkDownKBs:F1} / {metrics.NetworkUpKBs:F1} KB/s";
 
-                    // Actualizar tray icon pulse
                     _pulsePhase = (float)(Math.Sin(DateTime.UtcNow.TimeOfDay.TotalSeconds * Math.PI) * 0.5 + 0.5);
 
                     if (IsTaskRunning)
@@ -258,172 +307,184 @@ public partial class MainViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
-    public void StartSleepMode()
+    public async Task StartSleepMode()
     {
-        // 45 minutos de reposo progresivo
-        StartCountdownTask("Modo Dormir (45m)", TimeSpan.FromMinutes(45), isSleepMode: true);
+        var sleepPreset = new PresetDefinition
+        {
+            Id = "preset_quick_sleep",
+            Name = "Modo Dormir (45 min)",
+            Description = "Cuenta regresiva con atenuación de volumen y suspensión.",
+            Trigger = new TriggerDefinition
+            {
+                Type = TriggerType.Countdown,
+                Parameters = new Dictionary<string, JsonElement>
+                {
+                    ["durationSeconds"] = JsonSerializer.SerializeToElement(45 * 60)
+                }
+            },
+            Pipeline =
+            [
+                new PipelineStepDefinition
+                {
+                    StepOrder = 1,
+                    ActionType = ActionType.AudioFadeOut,
+                    Parameters = new Dictionary<string, JsonElement>
+                    {
+                        ["durationSeconds"] = JsonSerializer.SerializeToElement(15),
+                        ["targetVolumePercentage"] = JsonSerializer.SerializeToElement(0)
+                    },
+                    IgnoreFailure = true
+                },
+                new PipelineStepDefinition
+                {
+                    StepOrder = 2,
+                    ActionType = ActionType.TurnOffMonitors,
+                    IgnoreFailure = true
+                }
+            ],
+            TerminalAction = new TerminalActionDefinition
+            {
+                Type = TerminalActionType.Sleep,
+                Parameters = new Dictionary<string, JsonElement>
+                {
+                    ["gracePeriodSeconds"] = JsonSerializer.SerializeToElement(30)
+                }
+            }
+        };
+
+        await _workflowEngine.StartPresetAsync(sleepPreset);
     }
 
     [RelayCommand]
-    public void StartQuickShutdown(string minutesStr)
+    public async Task StartQuickShutdown(string minutesStr)
     {
-        if (int.TryParse(minutesStr, out int minutes) && minutes > 0)
-        {
-            StartCountdownTask($"Apagado Rápido ({minutes}m)", TimeSpan.FromMinutes(minutes), isSleepMode: false);
-        }
-        else
-        {
-            StartCountdownTask($"Apagado Rápido ({QuickMinutesInput}m)", TimeSpan.FromMinutes(QuickMinutesInput), isSleepMode: false);
-        }
+        int minutes = int.TryParse(minutesStr, out int m) && m > 0 ? m : QuickMinutesInput;
+        await _workflowEngine.StartQuickCountdownAsync(
+            $"Apagado Rápido ({minutes}m)",
+            TimeSpan.FromMinutes(minutes),
+            TerminalActionType.Shutdown);
     }
 
     [RelayCommand]
-    public void StartProcessWatch()
+    public async Task StartProcessWatch()
     {
         if (string.IsNullOrWhiteSpace(SelectedProcessName)) return;
 
-        _activeTaskCts?.Cancel();
-        _activeTaskCts = new CancellationTokenSource();
-
-        IsTaskRunning = true;
-        ActiveTaskTitle = $"Monitoreando {SelectedProcessName}";
-        CurrentStatusText = $"Esperando cierre de {SelectedProcessName}...";
-        ProgressPercentage = 0;
-        TimeRemainingText = "Vigilando proceso";
-
-        var ct = _activeTaskCts.Token;
-
-        Task.Run(async () =>
+        var procPreset = new PresetDefinition
         {
-            string targetName = SelectedProcessName.Replace(".exe", "", StringComparison.OrdinalIgnoreCase);
-            using var procTimer = new PeriodicTimer(TimeSpan.FromSeconds(2));
-
-            bool processDetectedOnce = false;
-
-            while (!ct.IsCancellationRequested)
+            Id = "preset_watch_" + SelectedProcessName,
+            Name = $"Vigilar {SelectedProcessName}",
+            Description = $"Supervisa {SelectedProcessName}, toma captura y apaga con 60s de gracia.",
+            Trigger = new TriggerDefinition
             {
-                await procTimer.WaitForNextTickAsync(ct);
-
-                bool isRunning = Process.GetProcessesByName(targetName).Length > 0;
-                if (isRunning)
+                Type = TriggerType.ProcessExit,
+                Parameters = new Dictionary<string, JsonElement>
                 {
-                    processDetectedOnce = true;
-                    CurrentStatusText = $"Proceso {targetName} en ejecución...";
+                    ["processName"] = JsonSerializer.SerializeToElement(SelectedProcessName),
+                    ["debounceSeconds"] = JsonSerializer.SerializeToElement(5)
                 }
-                else if (processDetectedOnce)
+            },
+            Pipeline =
+            [
+                new PipelineStepDefinition
                 {
-                    // El proceso ha cerrado: Entrar en cuenta regresiva de gracia
-                    CurrentStatusText = $"Proceso {targetName} terminado. Iniciando gracia...";
-                    await TriggerGraceAndTerminalActionAsync(TerminalActionType.Shutdown, ct);
-                    break;
+                    StepOrder = 1,
+                    ActionType = ActionType.CaptureScreenshot,
+                    IgnoreFailure = true
+                },
+                new PipelineStepDefinition
+                {
+                    StepOrder = 2,
+                    ActionType = ActionType.AudioFadeOut,
+                    Parameters = new Dictionary<string, JsonElement>
+                    {
+                        ["durationSeconds"] = JsonSerializer.SerializeToElement(10),
+                        ["targetVolumePercentage"] = JsonSerializer.SerializeToElement(0)
+                    },
+                    IgnoreFailure = true
+                }
+            ],
+            TerminalAction = new TerminalActionDefinition
+            {
+                Type = TerminalActionType.Shutdown,
+                Parameters = new Dictionary<string, JsonElement>
+                {
+                    ["gracePeriodSeconds"] = JsonSerializer.SerializeToElement(60),
+                    ["forced"] = JsonSerializer.SerializeToElement(false)
                 }
             }
-        }, ct);
+        };
+
+        await _workflowEngine.StartPresetAsync(procPreset);
     }
 
-    private void StartCountdownTask(string title, TimeSpan duration, bool isSleepMode)
+    [RelayCommand]
+    public async Task ExecuteSelectedPreset()
     {
-        _activeTaskCts?.Cancel();
-        _activeTaskCts = new CancellationTokenSource();
-
-        IsTaskRunning = true;
-        ActiveTaskTitle = title;
-        _totalTaskDuration = duration;
-        _taskEndTime = DateTimeOffset.UtcNow.Add(duration);
-        _isAudioFadeStarted = false;
-        _isDisplayPowerOffSent = false;
-
-        var ct = _activeTaskCts.Token;
-
-        Task.Run(async () =>
+        if (SelectedPreset != null)
         {
-            _countdownTimer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+            await _workflowEngine.StartPresetAsync(SelectedPreset);
+        }
+    }
 
-            while (!ct.IsCancellationRequested)
+    [RelayCommand]
+    public void SaveCurrentPresets()
+    {
+        var file = new PresetsFile
+        {
+            Version = 1,
+            Presets = [.. Presets]
+        };
+        _persistence.SavePresets(file);
+        CurrentStatusText = "Presets guardados en presets.json.";
+    }
+
+    [RelayCommand]
+    public void AddNewPreset()
+    {
+        var newPreset = new PresetDefinition
+        {
+            Id = "preset_" + Guid.NewGuid().ToString("N")[..8],
+            Name = "Nuevo Flujo Personalizado",
+            Description = "Descripción del nuevo flujo automatizado.",
+            IsFavorite = false,
+            Icon = "Sparkles",
+            Trigger = new TriggerDefinition
             {
-                await _countdownTimer.WaitForNextTickAsync(ct);
-
-                var remaining = _taskEndTime - DateTimeOffset.UtcNow;
-                if (remaining <= TimeSpan.Zero)
+                Type = TriggerType.Countdown,
+                Parameters = new Dictionary<string, JsonElement>
                 {
-                    // Tiempo cumplido: disparar acción terminal
-                    var terminalAction = isSleepMode ? TerminalActionType.Sleep : TerminalActionType.Shutdown;
-                    await TriggerGraceAndTerminalActionAsync(terminalAction, ct);
-                    break;
+                    ["durationSeconds"] = JsonSerializer.SerializeToElement(300)
                 }
-
-                SecondsRemaining = (int)remaining.TotalSeconds;
-                TimeRemainingText = remaining.ToString(@"hh\:mm\:ss");
-                double elapsed = (_totalTaskDuration - remaining).TotalSeconds;
-                ProgressPercentage = Math.Clamp((elapsed / _totalTaskDuration.TotalSeconds) * 100.0, 0, 100);
-                CurrentStatusText = $"Ejecutando: {title}";
-
-                // Lógica de Modo Dormir: fade de audio en los últimos 10 min (600s)
-                if (isSleepMode && remaining <= TimeSpan.FromMinutes(10) && !_isAudioFadeStarted)
+            },
+            Pipeline =
+            [
+                new PipelineStepDefinition
                 {
-                    _isAudioFadeStarted = true;
-                    _ = _systemAdapter.SetMasterVolumeFadeAsync(0f, TimeSpan.FromMinutes(10), ct);
+                    StepOrder = 1,
+                    ActionType = ActionType.TurnOffMonitors,
+                    IgnoreFailure = true
                 }
-
-                // Apagado de pantallas en los últimos 5 min (300s)
-                if (isSleepMode && remaining <= TimeSpan.FromMinutes(5) && !_isDisplayPowerOffSent)
+            ],
+            TerminalAction = new TerminalActionDefinition
+            {
+                Type = TerminalActionType.Shutdown,
+                Parameters = new Dictionary<string, JsonElement>
                 {
-                    _isDisplayPowerOffSent = true;
-                    _ = _systemAdapter.SetDisplayPowerAsync(false, ct);
-                }
-
-                // Desplegar GraceOverlayWindow si restan <= 60 segundos
-                if (remaining <= TimeSpan.FromSeconds(60))
-                {
-                    RequestGraceOverlay?.Invoke(true, SecondsRemaining);
+                    ["gracePeriodSeconds"] = JsonSerializer.SerializeToElement(60)
                 }
             }
-        }, ct);
-    }
+        };
 
-    private async Task TriggerGraceAndTerminalActionAsync(TerminalActionType action, CancellationToken ct)
-    {
-        // Periodo de gracia final de 60 segundos
-        const int graceSeconds = 60;
-        RequestGraceOverlay?.Invoke(true, graceSeconds);
-
-        using var graceTimer = new PeriodicTimer(TimeSpan.FromSeconds(1));
-        for (int i = graceSeconds; i > 0; i--)
-        {
-            SecondsRemaining = i;
-            TimeRemainingText = $"00:00:{i:D2}";
-            ProgressPercentage = 100.0;
-            CurrentStatusText = $"¡Apagado inminente en {i}s! Presione Esc para cancelar.";
-            RequestGraceOverlay?.Invoke(true, i);
-
-            await graceTimer.WaitForNextTickAsync(ct);
-        }
-
-        // Ejecutar acción terminal
-        RequestGraceOverlay?.Invoke(false, 0);
-        RequestTrayIconUpdate?.Invoke(TrayIconVisualState.Completed, 100, 0, 1.0f);
-
-        switch (action)
-        {
-            case TerminalActionType.Shutdown:
-                await _systemAdapter.SetPowerStateAsync(PowerAction.Shutdown, force: false, ct);
-                break;
-            case TerminalActionType.Sleep:
-                await _systemAdapter.SetPowerStateAsync(PowerAction.Sleep, force: false, ct);
-                break;
-            case TerminalActionType.LockStation:
-                await _systemAdapter.SetPowerStateAsync(PowerAction.LockStation, force: false, ct);
-                break;
-        }
-
-        AbortTask();
+        Presets.Add(newPreset);
+        SelectedPreset = newPreset;
+        SaveCurrentPresets();
     }
 
     [RelayCommand]
     public void AbortTask()
     {
-        _activeTaskCts?.Cancel();
-        _activeTaskCts = null;
+        _workflowEngine.Abort();
 
         IsTaskRunning = false;
         ActiveTaskTitle = "Ninguna tarea en curso";
@@ -440,13 +501,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
     public void PostponeTask(string minutesStr)
     {
         int minutes = int.TryParse(minutesStr, out int m) ? m : 10;
-        if (IsTaskRunning)
-        {
-            _taskEndTime = _taskEndTime.AddMinutes(minutes);
-            _totalTaskDuration += TimeSpan.FromMinutes(minutes);
-            RequestGraceOverlay?.Invoke(false, 0);
-            CurrentStatusText = $"Pospuesto +{minutes} min.";
-        }
+        _workflowEngine.Postpone(TimeSpan.FromMinutes(minutes));
+        RequestGraceOverlay?.Invoke(false, 0);
+        CurrentStatusText = $"Pospuesto +{minutes} min.";
     }
 
     [RelayCommand]
@@ -483,9 +540,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         _disposalCts.Dispose();
         _keepAliveCts?.Cancel();
         _keepAliveCts?.Dispose();
-        _activeTaskCts?.Cancel();
-        _activeTaskCts?.Dispose();
         _metricsTimer?.Dispose();
-        _countdownTimer?.Dispose();
+        _workflowEngine.Dispose();
     }
 }

@@ -18,3 +18,14 @@ namespace Nokto.Core.Serialization;
 public partial class NoktoJsonContext : JsonSerializerContext
 {
 }
+
+[JsonSourceGenerationOptions(
+    WriteIndented = false,
+    PropertyNamingPolicy = JsonKnownNamingPolicy.CamelCase,
+    DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+)]
+[JsonSerializable(typeof(AuditLogEntry))]
+[JsonSerializable(typeof(SystemStatusState))]
+public partial class NoktoCompactJsonContext : JsonSerializerContext
+{
+}

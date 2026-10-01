@@ -1,6 +1,8 @@
 using System.Text.Json;
 using Nokto.Core.Abstractions;
+using Nokto.Core.Engine;
 using Nokto.Core.Models;
+using Nokto.Core.Persistence;
 using Nokto.Core.Serialization;
 using Nokto.Platform.Windows;
 
@@ -12,30 +14,33 @@ internal static class Program
     {
         Console.OutputEncoding = System.Text.Encoding.UTF8;
         using ISystemAdapter adapter = new WindowsSystemAdapter();
+        var persistence = new PersistenceService();
+        using var engine = new WorkflowEngine(adapter, persistence);
 
         // Modo de verificación automatizada para CI o terminales sin consola interactiva
         if (args.Length > 0 && (args[0] == "--verify" || args[0] == "-v") || Console.IsInputRedirected)
         {
-            return await RunAutomatedVerificationAsync(adapter);
+            return await RunAutomatedVerificationAsync(adapter, persistence, engine);
         }
 
-        Console.Title = "Nokto — Consola de Pruebas de Sistema (Fase 1)";
+        Console.Title = "Nokto — Consola de Pruebas de Sistema (Fases 1, 2 y 3)";
 
         while (true)
         {
             Console.Clear();
             PrintBanner();
 
-            Console.WriteLine(" Seleccione una opción para evaluar los adaptadores nativos:");
+            Console.WriteLine(" Seleccione una opción para evaluar los adaptadores y el motor:");
             Console.WriteLine();
             Console.WriteLine("  [1] Probar apagado de monitores");
             Console.WriteLine("  [2] Probar Modo Trabajo (Keep-Alive) con log de jitter");
             Console.WriteLine("  [3] Probar desvanecimiento de volumen (Fade de 10s)");
             Console.WriteLine("  [4] Leer métricas en vivo (CPU, RAM, Red)");
             Console.WriteLine("  [5] Validar serialización JSON AOT (Data Contracts)");
-            Console.WriteLine("  [6] Salir");
+            Console.WriteLine("  [6] Probar Motor de Flujos (WorkflowEngine, Pipeline y Auditoría)");
+            Console.WriteLine("  [7] Salir");
             Console.WriteLine();
-            Console.Write(" >> Ingrese opción [1-6]: ");
+            Console.Write(" >> Ingrese opción [1-7]: ");
 
             var key = Console.ReadKey(intercept: true);
             Console.WriteLine(key.KeyChar);
@@ -64,6 +69,10 @@ internal static class Program
                     break;
 
                 case '6':
+                    await TestWorkflowEngineAsync(engine, persistence);
+                    break;
+
+                case '7':
                     Console.WriteLine("Finalizando consola de pruebas de Nokto. ¡Hasta pronto!");
                     return 0;
 
@@ -88,23 +97,23 @@ internal static class Program
  ██║ ╚████║╚██████╔╝██║  ██╗   ██║   ╚██████╔╝
  ╚═╝  ╚═══╝ ╚═════╝ ╚═╝  ╚═╝   ╚═╝    ╚═════╝ 
         Sistema Determinista de Energía & Automatización
-        Fase 1: Core Headless & Windows System Adapter
+        Fase 3: Motor de Flujos Encadenados y Persistencia
 ");
         Console.ResetColor();
     }
 
-    private static async Task<int> RunAutomatedVerificationAsync(ISystemAdapter adapter)
+    private static async Task<int> RunAutomatedVerificationAsync(ISystemAdapter adapter, PersistenceService persistence, IWorkflowEngine engine)
     {
         PrintBanner();
         Console.ForegroundColor = ConsoleColor.Yellow;
-        Console.WriteLine("[MODO VERIFICACIÓN AUTOMATIZADA - FASE 1]");
+        Console.WriteLine("[MODO VERIFICACIÓN AUTOMATIZADA - FASES 1, 2 Y 3]");
         Console.ResetColor();
 
         try
         {
             // 1. Prueba de Métricas Pasivas
             Console.Write("1. Probando colector de métricas pasivas... ");
-            await Task.Delay(500); // permitir baseline
+            await Task.Delay(500);
             var metrics = adapter.GetCurrentMetrics();
             Console.ForegroundColor = ConsoleColor.Green;
             Console.WriteLine($"OK! (CPU: {metrics.CpuUsagePercentage}%, RAM: {metrics.RamUsedMb}/{metrics.RamTotalMb} MB, NetDown: {metrics.NetworkDownKBs} KB/s, Inactividad: {metrics.UserIdleSeconds}s)");
@@ -147,8 +156,113 @@ internal static class Program
             Console.WriteLine("OK! (Bucle y cancelación deterministas sin busy-waiting)");
             Console.ResetColor();
 
+            // 6. Prueba de Persistencia (config.json, presets.json, audit.jsonl)
+            Console.Write("6. Probando persistencia determinista y resolución de rutas... ");
+            var loadedConfig = persistence.LoadConfig();
+            var presets = persistence.LoadPresets();
+            if (presets.Presets.Count == 0)
+            {
+                throw new InvalidOperationException("No se pudieron cargar presets predeterminados.");
+            }
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine($"OK! (Modo: {(persistence.Storage.IsPortableMode ? "Portable" : "Appdata")}, Presets: {presets.Presets.Count}, DataDir: {persistence.Storage.DataDirectory})");
+            Console.ResetColor();
+
+            // 7. Prueba de Ejecución de Pipeline con Captura de Pantalla
+            Console.Write("7. Probando ejecución de pipeline con captura de pantalla y terminal 'None'... ");
+            var testPreset = new PresetDefinition
+            {
+                Id = "preset_unit_test_capture",
+                Name = "Unit Test Pipeline",
+                Trigger = new TriggerDefinition
+                {
+                    Type = TriggerType.Countdown,
+                    Parameters = new Dictionary<string, JsonElement>
+                    {
+                        ["durationSeconds"] = JsonSerializer.SerializeToElement(1)
+                    }
+                },
+                Pipeline =
+                [
+                    new PipelineStepDefinition
+                    {
+                        StepOrder = 1,
+                        ActionType = ActionType.CaptureScreenshot,
+                        IgnoreFailure = true
+                    }
+                ],
+                TerminalAction = new TerminalActionDefinition
+                {
+                    Type = TerminalActionType.None
+                }
+            };
+            await engine.StartPresetAsync(testPreset);
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine("OK! (Flujo completado y captura guardada en ./snapshots)");
+            Console.ResetColor();
+
+            // 8. Prueba de Validación DoD: Script con Fallo (Exit Code != 0) aborta terminal y registra en audit.jsonl
+            Console.Write("8. Probando interrupción determinista ante fallo de script (Exit Code != 0)... ");
+            var failingScriptPreset = new PresetDefinition
+            {
+                Id = "preset_failing_script_test",
+                Name = "Failing Script Validation",
+                Trigger = new TriggerDefinition
+                {
+                    Type = TriggerType.Countdown,
+                    Parameters = new Dictionary<string, JsonElement>
+                    {
+                        ["durationSeconds"] = JsonSerializer.SerializeToElement(1)
+                    }
+                },
+                Pipeline =
+                [
+                    new PipelineStepDefinition
+                    {
+                        StepOrder = 1,
+                        ActionType = ActionType.ExecuteCommand,
+                        Parameters = new Dictionary<string, JsonElement>
+                        {
+                            ["executablePath"] = JsonSerializer.SerializeToElement("cmd.exe"),
+                            ["arguments"] = JsonSerializer.SerializeToElement("/c exit 8"),
+                            ["expectedExitCode"] = JsonSerializer.SerializeToElement(0)
+                        },
+                        IgnoreFailure = false // Debe abortar
+                    }
+                ],
+                TerminalAction = new TerminalActionDefinition
+                {
+                    Type = TerminalActionType.Shutdown
+                }
+            };
+
+            bool caughtExpectedFailure = false;
+            try
+            {
+                await engine.StartPresetAsync(failingScriptPreset);
+            }
+            catch (InvalidOperationException)
+            {
+                caughtExpectedFailure = true;
+            }
+
+            if (!caughtExpectedFailure)
+            {
+                throw new InvalidOperationException("El motor no interrumpió el flujo ante un exit code != 0.");
+            }
+
+            var recentAudit = persistence.ReadRecentAuditLogs(1);
+            if (recentAudit.Count == 0 || recentAudit[0].Status != "Failed")
+            {
+                throw new InvalidOperationException("El fallo no se registró correctamente en audit.jsonl.");
+            }
+
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine($"OK! (Abortado de inmediato, estado en audit.jsonl = '{recentAudit[0].Status}')");
+            Console.ResetColor();
+
             Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.WriteLine("\n>> TODAS LAS PRUEBAS AUTOMATIZADAS DE FASE 1 CONCLUYERON CON ÉXITO [0 ERRORES].");
+            Console.WriteLine("\n>> TODAS LAS PRUEBAS AUTOMATIZADAS DE FASES 1, 2 Y 3 CONCLUYERON CON ÉXITO [0 ERRORES].");
             Console.ResetColor();
             return 0;
         }
@@ -159,6 +273,75 @@ internal static class Program
             Console.ResetColor();
             return 1;
         }
+    }
+
+    private static async Task TestWorkflowEngineAsync(IWorkflowEngine engine, PersistenceService persistence)
+    {
+        Console.ForegroundColor = ConsoleColor.Magenta;
+        Console.WriteLine("=== [6] PRUEBA: MOTOR DE FLUJOS ENCADENADOS Y AUDITORÍA ===");
+        Console.ResetColor();
+
+        Console.WriteLine("Ejecutando flujo de prueba interactivo de 3 segundos:");
+        Console.WriteLine("  - Disparador: Countdown (3s)");
+        Console.WriteLine("  - Paso 1: Captura de pantalla de diagnóstico");
+        Console.WriteLine("  - Paso 2: Desvanecimiento de volumen WASAPI");
+        Console.WriteLine("  - Acción terminal: 'None' (para no apagar el PC de pruebas)");
+        Console.WriteLine();
+
+        var demoPreset = new PresetDefinition
+        {
+            Id = "preset_interactive_demo",
+            Name = "Demostración de Pipeline Fase 3",
+            Trigger = new TriggerDefinition
+            {
+                Type = TriggerType.Countdown,
+                Parameters = new Dictionary<string, JsonElement>
+                {
+                    ["durationSeconds"] = JsonSerializer.SerializeToElement(3)
+                }
+            },
+            Pipeline =
+            [
+                new PipelineStepDefinition
+                {
+                    StepOrder = 1,
+                    ActionType = ActionType.CaptureScreenshot,
+                    IgnoreFailure = true
+                },
+                new PipelineStepDefinition
+                {
+                    StepOrder = 2,
+                    ActionType = ActionType.AudioFadeOut,
+                    Parameters = new Dictionary<string, JsonElement>
+                    {
+                        ["durationSeconds"] = JsonSerializer.SerializeToElement(3),
+                        ["targetVolumePercentage"] = JsonSerializer.SerializeToElement(50)
+                    },
+                    IgnoreFailure = true
+                }
+            ],
+            TerminalAction = new TerminalActionDefinition
+            {
+                Type = TerminalActionType.None
+            }
+        };
+
+        engine.LogMessageReceived += msg => Console.WriteLine(msg);
+
+        await engine.StartPresetAsync(demoPreset);
+
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.WriteLine("\nFlujo completado. Registros recientes en audit.jsonl:");
+        Console.ResetColor();
+
+        var logs = persistence.ReadRecentAuditLogs(3);
+        foreach (var l in logs)
+        {
+            Console.WriteLine($"  - [{l.Timestamp:HH:mm:ss}] Preset: {l.PresetId} | Estado: {l.Status} | Duración: {l.ExecutionDurationSeconds}s | Snapshot: {l.SnapshotFile ?? "None"}");
+        }
+
+        Console.WriteLine("\nPresione cualquier tecla para continuar...");
+        Console.ReadKey(intercept: true);
     }
 
     private static async Task TestMonitorPowerOffAsync(ISystemAdapter adapter)
