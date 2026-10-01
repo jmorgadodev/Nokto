@@ -1,0 +1,29 @@
+## .NET Build Artifacts
+[Bb]in/
+[Oo]bj/
+[Pp]ublish/
+artifacts/
+TestResults/
+
+## Visual Studio & JetBrains IDE
+.vs/
+.idea/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+## Avalonia & UI Generated
+Generated/
+
+## Nokto Runtime / Local State
+data/snapshots/*
+!data/snapshots/.gitkeep
+data/audit.jsonl
+portable.lock
+
+## OS Generated
+Thumbs.db
+ehthumbs.db
+[Dd]esktop.ini
+.DS_Store
