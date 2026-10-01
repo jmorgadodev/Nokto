@@ -2,7 +2,53 @@
 
 Este documento registra de manera cronológica y detallada cada avance, fase del roadmap, archivos modificados y resultados de compilación del proyecto Nokto.
 
-## [Corrección de Icono en Barra de Título y Rediseño Ergonómico de Entradas Numéricas en Versión Portable] - 2026-10-01 20:18:00
+## [Modo Studio 100% Interactivo, Control LAN Bajo Demanda, Ciclo de Vida Nativo e IPC, Flags de Inicio y Distribución Portable Limpia] - 2026-10-01 20:45:00
+- **Fase del roadmap:** Post-Fase 6 (Modo Studio Avanzado, Resiliencia de Red, Ciclo de Vida y Distribución)
+- **Archivos creados o modificados:**
+  - `Directory.Build.props` *(Nuevo)*: Supresión global de símbolos de depuración (.pdb) y debug en configuración Release para todos los proyectos.
+  - `src/Nokto.UI/ViewModels/StudioStepItem.cs` *(Nuevo)*: Modelo de vista interactivo para los pasos intermedios de la tubería determinista con serialización bidireccional (`FromDefinition` / `ToDefinition`).
+  - `src/Nokto.Core/Abstractions/ISystemAdapter.cs`: Añadido contrato `SendMediaControl(bool pauseOnly = true)` para el control nativo de reproducción/pausa multimedia.
+  - `src/Nokto.Platform.Windows/Interop/NativeConstants.cs`: Añadidos códigos de tecla virtual `VK_MEDIA_PLAY_PAUSE` (0xB3) y `VK_MEDIA_STOP` (0xB2).
+  - `src/Nokto.Platform.Windows/WindowsSystemAdapter.cs`: Implementada llamada nativa `SendMediaControl` mediante `SendInput` con `KEYBDINPUT`.
+  - `src/Nokto.Platform.MacOs/MacOsSystemAdapter.cs`: Implementado stub para `SendMediaControl`.
+  - `src/Nokto.Core/Engine/WorkflowEngine.cs`: Soporte para ejecución del paso intermedio `ActionType.MediaControl`.
+  - `src/Nokto.LanServer/LanHttpServer.cs`: Añadido evento `ServerStateChanged`, monitoreo de inactividad de clientes móviles (`MonitorInactivityAsync`) con apagado automático tras 5 minutos sin peticiones.
+  - `src/Nokto.Core/Persistence/StorageResolver.cs`: Detección nativa del Modo Portable si el directorio del binario es escribible y no se encuentra en Program Files (eliminada la necesidad de un archivo `portable.lock` externo).
+  - `src/Nokto.UI/ViewModels/MainViewModel.cs`: Implementados los 3 bloques funcionales del Modo Studio, comandos de guardado (`SaveStudioPreset`), ejecución (`StartStudioPreset`), eliminación (`DeleteSelectedPreset`), adición de nuevos flujos (`AddNewPreset`), gestión de pasos (`AddStudioStep`, `RemoveStudioStep`, `MoveStudioStepUp`, `MoveStudioStepDown`), y ciclo de vida de servidor LAN bajo demanda (`AttachLanServer`, `StartLanServer`, `StopLanServer`, `StatusLanDotColor`).
+  - `src/Nokto.UI/Views/MainWindow.axaml`: Rediseñado el panel derecho de la pestaña Modo Studio con los tres bloques interactivos completos (Disparador con parámetros específicos, lista dinámica de acciones intermedias con reordenamiento `▲`/`▼` y eliminación `✕`, y selector de acción terminal con tiempo de gracia y forzado) junto a los botones de control (Guardar, Iniciar, Abortar, Eliminar); y añadido indicador de estado visual (punto discreto gris/verde) en el botón "Control LAN" de la barra inferior.
+  - `src/Nokto.UI/Views/MainWindow.axaml.cs`: Gestión del ciclo de vida nativo de la ventana, intercepción del evento `Closing` y minimizado para ocultación silenciosa en el System Tray (<25 MB RAM, 0% CPU), y detención inmediata del servidor LAN al cerrar `QrModalWindow`.
+  - `src/Nokto.UI/App.axaml.cs`: Eliminado arranque automático de sockets de red; integración del servidor LAN bajo demanda; soporte de flags de línea de comandos (`--silent`, `--tray`, `-s`, `--work`, `-w`); restauración y foco de ventana en primer plano (`ShowMainWindow`).
+  - `src/Nokto.UI/Program.cs`: Manejador de instancia única mediante canal Named Pipe IPC (`Nokto_Desktop_IPC_Pipe`) con notificación a la instancia previa para restauración en primer plano.
+  - `artifacts/Nokto-Portable-x64/`: Limpieza exhaustiva; contiene EXCLUSIVAMENTE el ejecutable binario único `Nokto.exe`.
+  - `artifacts/Nokto-v1.0.0-Portable-x64.zip`: Archivo comprimido actualizado con el ejecutable limpio.
+  - `docs/AUDIT_STATUS.md`: Informe técnico de auditoría actualizado.
+- **Resumen técnico del cambio:**
+  1. **Modo Studio 100% Interactivo y Ejecutable:**
+     - Bloque 1 (Disparador Principal): Configuración dinámica de Proceso Activo (nombre y debounce), Cuenta Atrás (horas, minutos, segundos), Hora Fija (TimePicker 24h), Inactividad de Usuario (minutos), Silencio de Audio WASAPI (segundos bajo umbral de decibelios) y Estado de Batería (desconexión de corriente AC o umbral porcentual).
+     - Bloque 2 (Acciones Intermedias): Lista dinámica de acciones encadenadas con adición en serie (Captura de pantalla, Fade out WASAPI, Pausa multimedia, Ejecución de comando CLI con timeout y código de salida esperado, Apagado de monitores), controles ergonómicos para reordenar arriba/abajo y eliminación.
+     - Bloque 3 (Acción Terminal): Selector de apagado, suspensión, hibernación, reinicio, bloqueo de sesión, apagado de pantallas o ninguna, con periodo de gracia regulable (0 a 300s) y casilla de cierre forzado.
+     - Botones de Control: [ 💾 Guardar Flujo ] (persiste en `presets.json`), [ ▶ INICIAR FLUJO ] (arranca el pipeline en `WorkflowEngine`), [ ⏹ ABORTAR TAREA ] (cancela inmediatamente flujos activos) y [ 🗑 Eliminar ] (elimina preajustes seleccionados).
+  2. **Control Remoto LAN Estrictamente Bajo Demanda (Cero Alertas de Firewall / Sigilo):**
+     - Al arrancar Nokto, no se abre ningún puerto ni socket en segundo plano, evitando ventanas emergentes de Firewall de Windows o advertencias de seguridad corporativas.
+     - El servidor LAN y el socket TCP solo se enlazan cuando el usuario presiona "Control LAN".
+     - Al cerrar el modal de código QR (`QrModalWindow`), los puertos se liberan de inmediato (o tras 5 minutos de inactividad de clientes móviles).
+     - Botón "Control LAN" con indicador visual discreto (punto gris cuando está apagado, verde cuando está escuchando).
+  3. **Ciclo de Vida Nativo de la Ventana y Residencia en Segundo Plano:**
+     - Doble clic normal abre la ventana principal visible, centrada y en primer plano.
+     - Al hacer clic en cerrar [✕] o minimizar [─], la ventana se oculta silenciosamente de la barra de tareas y el proceso reside en el System Tray (<25 MB RAM, 0% CPU) manteniendo activos los temporizadores, el Modo Trabajo y los triggers.
+     - Una segunda ejecución de `Nokto.exe` es interceptada por el Named Pipe IPC (`Nokto_Desktop_IPC_Pipe`), trayendo la ventana existente al primer plano y cerrando el proceso duplicado.
+     - Cierre definitivo únicamente al seleccionar "Salir de Nokto" en el menú contextual de la bandeja o tras una acción terminal de apagado.
+  4. **Flags de Línea de Comandos:**
+     - `--silent` o `--tray`: Inicia minimizado en la bandeja sin mostrar la ventana.
+     - `--work`: Inicia y activa directamente el Modo Trabajo (Keep-Alive con simulación de tecla F15 y jitter).
+  5. **Distribución Portable Limpia:**
+     - Supresión total de archivos `.pdb` en Release mediante `Directory.Build.props` y `Nokto.UI.csproj`.
+     - `artifacts/Nokto-Portable-x64/` contiene única y exclusivamente el archivo `Nokto.exe`.
+- **Resultado de la compilación y pruebas:**
+  - `dotnet build Nokto.sln`: 0 Advertencias, 0 Errores.
+  - Suite de verificación automatizada: 10/10 tests superados (0 fallos).
+  - Empaquetado portable: `Nokto.exe` listo y probado.
+
 - **Fase del roadmap:** Post-Fase 6 (Experiencia de Usuario, Estabilidad Visual y Empaquetado Portable)
 - **Archivos creados o modificados:**
   - `src/Nokto.UI/Tray/DynamicTrayIconRenderer.cs`: Añadido método de alta fidelidad `RenderAppWindowIcon()` (64x64 px) renderizado directamente en memoria con SkiaSharp para la ventana Win32.

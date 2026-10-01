@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Nokto.Core.Abstractions;
 using Nokto.Core.Models;
@@ -421,6 +422,54 @@ public sealed class WindowsSystemAdapter : ISystemAdapter
         byte[] rawPixels = new byte[width * height * 4];
         GetDIBits(hdc, hBitmap, 0, (uint)height, rawPixels, ref bi, 0 /* DIB_RGB_COLORS */);
         Buffer.BlockCopy(rawPixels, 0, targetBuffer, offset, rawPixels.Length);
+    }
+
+    /// <inheritdoc />
+    public void SendMediaControl(bool pauseOnly = true)
+    {
+        try
+        {
+            var inputs = new INPUT[2];
+            ushort vk = pauseOnly ? NativeConstants.VK_MEDIA_PLAY_PAUSE : NativeConstants.VK_MEDIA_STOP;
+
+            inputs[0] = new INPUT
+            {
+                type = NativeConstants.INPUT_KEYBOARD,
+                u = new InputUnion
+                {
+                    ki = new KEYBDINPUT
+                    {
+                        wVk = vk,
+                        wScan = 0,
+                        dwFlags = 0,
+                        time = 0,
+                        dwExtraInfo = IntPtr.Zero
+                    }
+                }
+            };
+
+            inputs[1] = new INPUT
+            {
+                type = NativeConstants.INPUT_KEYBOARD,
+                u = new InputUnion
+                {
+                    ki = new KEYBDINPUT
+                    {
+                        wVk = vk,
+                        wScan = 0,
+                        dwFlags = NativeConstants.KEYEVENTF_KEYUP,
+                        time = 0,
+                        dwExtraInfo = IntPtr.Zero
+                    }
+                }
+            };
+
+            NativeMethods.SendInput(2, inputs, Marshal.SizeOf<INPUT>());
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[WindowsSystemAdapter] Error al enviar comando multimedia: {ex.Message}");
+        }
     }
 
     public void Dispose()

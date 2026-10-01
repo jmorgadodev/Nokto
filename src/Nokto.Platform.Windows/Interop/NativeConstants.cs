@@ -57,6 +57,8 @@ internal static class NativeConstants
     public const uint MOUSEEVENTF_MOVE = 0x0001;
     public const uint KEYEVENTF_KEYUP = 0x0002;
     public const ushort VK_F15 = 0x7E;
+    public const ushort VK_MEDIA_PLAY_PAUSE = 0xB3;
+    public const ushort VK_MEDIA_STOP = 0xB2;
 
     // System Metrics
     public const int SM_XVIRTUALSCREEN = 76;

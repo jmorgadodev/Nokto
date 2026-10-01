@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using Nokto.UI.ViewModels;
 
@@ -5,7 +6,7 @@ namespace Nokto.UI.Views;
 
 public partial class MainWindow : Window
 {
-    private bool _isRealShutdown;
+    private bool _isExplicitExit;
     private GraceOverlayWindow? _graceOverlay;
     private MainViewModel? _viewModel;
 
@@ -66,23 +67,37 @@ public partial class MainWindow : Window
         {
             var qrModal = new QrModalWindow();
             qrModal.SetConnectionDetails(_viewModel?.LanConnectionUrl ?? "http://localhost:4884");
+            qrModal.Closed += (s, e) =>
+            {
+                _viewModel?.StopLanServer();
+            };
             qrModal.ShowDialog(this);
         });
     }
 
     private void OnMainWindowClosing(object? sender, WindowClosingEventArgs e)
     {
-        if (!_isRealShutdown)
+        if (!_isExplicitExit)
         {
-            // Minimiza a la bandeja del sistema en vez de cerrarse
+            // Residencia en segundo plano: oculta la ventana a la bandeja del sistema
             e.Cancel = true;
+            Hide();
+        }
+    }
+
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+        if (change.Property == WindowStateProperty && WindowState == WindowState.Minimized)
+        {
+            // Al minimizar [-], oculta de la barra de tareas hacia el System Tray
             Hide();
         }
     }
 
     public void ForceCloseApplication()
     {
-        _isRealShutdown = true;
+        _isExplicitExit = true;
         _graceOverlay?.Close();
         Close();
     }

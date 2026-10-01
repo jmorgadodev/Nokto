@@ -26,6 +26,9 @@ public sealed class LanHttpServer : IDisposable
     private Task? _tcpBridgeTask;
     private byte[]? _cachedPwaHtmlBytes;
     private bool _isDisposed;
+    private DateTime _lastClientActivity = DateTime.UtcNow;
+
+    public event Action? ServerStateChanged;
 
     public bool IsRunning => (_listener?.IsListening == true) || (_tcpBridge != null);
     public int Port => _settings.Port;
@@ -130,13 +133,39 @@ public sealed class LanHttpServer : IDisposable
                 }
             }
 
+            _lastClientActivity = DateTime.UtcNow;
             _listenerTask = Task.Run(() => ListenLoopAsync(_cts.Token));
+            _ = Task.Run(() => MonitorInactivityAsync(_cts.Token));
+            ServerStateChanged?.Invoke();
         }
         catch (Exception ex)
         {
             Debug.WriteLine($"No se pudo iniciar el microservidor LAN: {ex.Message}");
             try { _listener?.Close(); } catch { }
             _listener = null;
+            ServerStateChanged?.Invoke();
+        }
+    }
+
+    private async Task MonitorInactivityAsync(CancellationToken ct)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(30));
+        while (!ct.IsCancellationRequested)
+        {
+            try
+            {
+                await timer.WaitForNextTickAsync(ct);
+                if (DateTime.UtcNow - _lastClientActivity > TimeSpan.FromMinutes(5))
+                {
+                    Debug.WriteLine("[LAN Server] Auto-detención por inactividad de clientes móviles (5 minutos transcurridos).");
+                    Stop();
+                    break;
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
         }
     }
 
@@ -150,6 +179,7 @@ public sealed class LanHttpServer : IDisposable
             while (!ct.IsCancellationRequested)
             {
                 var client = await _tcpBridge.AcceptTcpClientAsync(ct);
+                _lastClientActivity = DateTime.UtcNow;
                 _ = Task.Run(async () =>
                 {
                     using (client)
@@ -216,6 +246,8 @@ public sealed class LanHttpServer : IDisposable
         {
             _listener = null;
         }
+
+        ServerStateChanged?.Invoke();
     }
 
     private async Task ListenLoopAsync(CancellationToken ct)
@@ -225,6 +257,7 @@ public sealed class LanHttpServer : IDisposable
             try
             {
                 var context = await _listener.GetContextAsync();
+                _lastClientActivity = DateTime.UtcNow;
                 _ = Task.Run(() => HandleRequestAsync(context), ct);
             }
             catch (HttpListenerException)

@@ -88,6 +88,10 @@ public sealed class MacOsSystemAdapter : ISystemAdapter
         return Task.FromResult(Array.Empty<byte>());
     }
 
+    public void SendMediaControl(bool pauseOnly = true)
+    {
+    }
+
     public void Dispose()
     {
     }

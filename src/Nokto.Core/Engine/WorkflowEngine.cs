@@ -554,6 +554,10 @@ public sealed class WorkflowEngine : IWorkflowEngine
                         await ExecuteCommandStepAsync(step, ct);
                         break;
 
+                    case ActionType.MediaControl:
+                        _systemAdapter.SendMediaControl(pauseOnly: true);
+                        break;
+
                     case ActionType.KeepAliveEngine:
                         _systemAdapter.SimulateKeepAlivePulse(KeepAliveMode.Mixed);
                         break;

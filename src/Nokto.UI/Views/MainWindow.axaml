@@ -2,6 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:Nokto.UI.ViewModels"
         x:Class="Nokto.UI.Views.MainWindow"
+        x:Name="RootWindow"
         x:DataType="vm:MainViewModel"
         Title="Nokto — Sistema Determinista de Energía"
         Width="880"
@@ -666,42 +667,308 @@
                             </Grid>
                         </Border>
 
-                        <!-- PANEL DERECHO: EDITOR SECUENCIAL DE PIPELINE -->
+                        <!-- PANEL DERECHO: EDITOR SECUENCIAL DE PIPELINE INTERACTIVO -->
                         <Border Grid.Column="1" Background="#16181D" BorderBrush="#262930" BorderThickness="1" CornerRadius="8" Padding="16">
                             <StackPanel Spacing="14">
-                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <PathIcon Data="{StaticResource IconSliders}" Width="13" Height="13" Foreground="#00D2FF" VerticalAlignment="Center"/>
-                                    <TextBlock Text="EDITOR DE PIPELINE DETERMINISTA" Foreground="#00D2FF" FontWeight="Bold" FontSize="13" VerticalAlignment="Center"/>
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                        <PathIcon Data="{StaticResource IconSliders}" Width="13" Height="13" Foreground="#00D2FF" VerticalAlignment="Center"/>
+                                        <TextBlock Text="EDITOR DE PIPELINE DETERMINISTA" Foreground="#00D2FF" FontWeight="Bold" FontSize="13" VerticalAlignment="Center"/>
+                                    </StackPanel>
+                                    <Button Grid.Column="1"
+                                            Content="🗑 Eliminar"
+                                            Command="{Binding DeleteSelectedPresetCommand}"
+                                            Background="#301A1E"
+                                            Foreground="#FF4B4B"
+                                            FontSize="11"
+                                            Padding="10,4"/>
+                                </Grid>
+
+                                <!-- METADATOS DEL PRESET -->
+                                <StackPanel Spacing="6">
+                                    <TextBox Text="{Binding StudioPresetName, Mode=TwoWay}"
+                                             Watermark="Nombre del flujo"
+                                             FontWeight="Bold"
+                                             FontSize="13"
+                                             Background="#0E0F12"
+                                             Foreground="#F0F2F5"
+                                             BorderBrush="#262930"/>
+                                    <TextBox Text="{Binding StudioPresetDescription, Mode=TwoWay}"
+                                             Watermark="Descripción del flujo automatizado..."
+                                             FontSize="11"
+                                             Background="#0E0F12"
+                                             Foreground="#7D8390"
+                                             BorderBrush="#262930"/>
                                 </StackPanel>
-                                
-                                <!-- BLOQUE 1: DISPARADOR -->
+
+                                <!-- BLOQUE 1: DISPARADOR PRINCIPAL -->
                                 <Border Background="#0E0F12" BorderBrush="#262930" BorderThickness="1" CornerRadius="6" Padding="12">
-                                    <StackPanel Spacing="6">
-                                        <TextBlock Text="[BLOQUE 1: DISPARADOR PRINCIPAL]" Foreground="#00D2FF" FontWeight="SemiBold" FontSize="11"/>
-                                        <TextBlock Text="Tipo: Monitoreo de Proceso Activo" Foreground="#F0F2F5" FontSize="12"/>
-                                        <TextBlock Text="Condición: Esperar salida o umbral CPU configurado." Foreground="#7D8390" FontSize="11"/>
+                                    <StackPanel Spacing="10">
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <PathIcon Data="{StaticResource IconClock}" Width="12" Height="12" Foreground="#00D2FF" VerticalAlignment="Center"/>
+                                            <TextBlock Text="BLOQUE 1: DISPARADOR PRINCIPAL" Foreground="#00D2FF" FontWeight="SemiBold" FontSize="11" VerticalAlignment="Center"/>
+                                        </StackPanel>
+
+                                        <!-- Selector de tipo de disparador -->
+                                        <ComboBox SelectedIndex="{Binding StudioTriggerTypeIndex, Mode=TwoWay}"
+                                                  HorizontalAlignment="Stretch"
+                                                  FontSize="12"
+                                                  Background="#16181D"
+                                                  Foreground="#F0F2F5">
+                                            <ComboBoxItem Content="Proceso Activo (Vigilancia de salida de ejecutable)"/>
+                                            <ComboBoxItem Content="Cuenta Atrás (Temporizador HH : MM : SS)"/>
+                                            <ComboBoxItem Content="Hora Fija (Hora exacta del día)"/>
+                                            <ComboBoxItem Content="Inactividad de Usuario (Ratón / Teclado)"/>
+                                            <ComboBoxItem Content="Silencio de Audio WASAPI (Cero decibelios)"/>
+                                            <ComboBoxItem Content="Estado de Batería (Desconexión / Umbral)"/>
+                                        </ComboBox>
+
+                                        <!-- Parámetros: Proceso -->
+                                        <StackPanel Spacing="6" IsVisible="{Binding IsStudioTriggerProcess}">
+                                            <TextBlock Text="Nombre del ejecutable (ej. blender.exe, handbrake.exe):" Foreground="#7D8390" FontSize="11"/>
+                                            <Grid ColumnDefinitions="*,Auto">
+                                                <TextBox Text="{Binding StudioProcessName, Mode=TwoWay}"
+                                                         Background="#16181D" Foreground="#F0F2F5" FontSize="12"/>
+                                                <ComboBox Grid.Column="1" Margin="8,0,0,0" ItemsSource="{Binding AvailableProcesses}"
+                                                          SelectedItem="{Binding StudioProcessName, Mode=TwoWay}" Width="140"
+                                                          Background="#16181D" Foreground="#F0F2F5" FontSize="11"/>
+                                            </Grid>
+                                            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
+                                                <TextBlock Text="Tiempo de confirmación tras cierre (s):" Foreground="#7D8390" FontSize="11" VerticalAlignment="Center"/>
+                                                <NumericUpDown Value="{Binding StudioProcessDebounceSeconds, Mode=TwoWay}" Minimum="1" Maximum="120" Increment="1"
+                                                               Width="90" Background="#16181D" Foreground="#F0F2F5"/>
+                                            </StackPanel>
+                                        </StackPanel>
+
+                                        <!-- Parámetros: Cuenta Atrás -->
+                                        <StackPanel Spacing="6" IsVisible="{Binding IsStudioTriggerCountdown}">
+                                            <TextBlock Text="Duración del temporizador (HH : MM : SS):" Foreground="#7D8390" FontSize="11"/>
+                                            <Grid ColumnDefinitions="*,*,*">
+                                                <NumericUpDown Grid.Column="0" Value="{Binding StudioCountdownHours, Mode=TwoWay}" Minimum="0" Maximum="23"
+                                                               Background="#16181D" Foreground="#F0F2F5" Margin="0,0,4,0"/>
+                                                <NumericUpDown Grid.Column="1" Value="{Binding StudioCountdownMinutes, Mode=TwoWay}" Minimum="0" Maximum="59"
+                                                               Background="#16181D" Foreground="#F0F2F5" Margin="2,0,2,0"/>
+                                                <NumericUpDown Grid.Column="2" Value="{Binding StudioCountdownSeconds, Mode=TwoWay}" Minimum="0" Maximum="59"
+                                                               Background="#16181D" Foreground="#F0F2F5" Margin="4,0,0,0"/>
+                                            </Grid>
+                                        </StackPanel>
+
+                                        <!-- Parámetros: Hora Fija -->
+                                        <StackPanel Spacing="6" IsVisible="{Binding IsStudioTriggerExactTime}">
+                                            <TextBlock Text="Hora objetivo de activación:" Foreground="#7D8390" FontSize="11"/>
+                                            <TimePicker SelectedTime="{Binding StudioExactTime, Mode=TwoWay}"
+                                                        ClockIdentifier="24HourClock"
+                                                        Background="#16181D" Foreground="#F0F2F5"/>
+                                        </StackPanel>
+
+                                        <!-- Parámetros: Inactividad -->
+                                        <StackPanel Spacing="6" IsVisible="{Binding IsStudioTriggerInactivity}">
+                                            <TextBlock Text="Tiempo continuo sin interacción de teclado o ratón:" Foreground="#7D8390" FontSize="11"/>
+                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                <NumericUpDown Value="{Binding StudioInactivityMinutes, Mode=TwoWay}" Minimum="1" Maximum="480" Increment="5"
+                                                               Width="100" Background="#16181D" Foreground="#F0F2F5"/>
+                                                <TextBlock Text="minutos de inactividad" Foreground="#7D8390" FontSize="11" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </StackPanel>
+
+                                        <!-- Parámetros: Silencio de Audio WASAPI -->
+                                        <StackPanel Spacing="6" IsVisible="{Binding IsStudioTriggerAudioSilence}">
+                                            <TextBlock Text="Monitoreo de salida maestra de sonido (nivel pico &lt; 0.001):" Foreground="#7D8390" FontSize="11"/>
+                                            <StackPanel Orientation="Horizontal" Spacing="8">
+                                                <NumericUpDown Value="{Binding StudioAudioSilenceSeconds, Mode=TwoWay}" Minimum="5" Maximum="3600" Increment="5"
+                                                               Width="100" Background="#16181D" Foreground="#F0F2F5"/>
+                                                <TextBlock Text="segundos de silencio continuo requeridos" Foreground="#7D8390" FontSize="11" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </StackPanel>
+
+                                        <!-- Parámetros: Batería -->
+                                        <StackPanel Spacing="6" IsVisible="{Binding IsStudioTriggerBattery}">
+                                            <CheckBox IsChecked="{Binding StudioBatteryOnAcDisconnect, Mode=TwoWay}"
+                                                      Content="Disparar inmediatamente al desconectar el cargador (Modo Batería)"
+                                                      Foreground="#F0F2F5" FontSize="11"/>
+                                            <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,4,0,0">
+                                                <CheckBox IsChecked="{Binding StudioBatteryOnThreshold, Mode=TwoWay}"
+                                                          Content="Disparar si la batería desciende al:"
+                                                          Foreground="#F0F2F5" FontSize="11" VerticalAlignment="Center"/>
+                                                <NumericUpDown Value="{Binding StudioBatteryThresholdPercent, Mode=TwoWay}" Minimum="5" Maximum="95" Increment="5"
+                                                               Width="90" Background="#16181D" Foreground="#F0F2F5" IsEnabled="{Binding StudioBatteryOnThreshold}"/>
+                                                <TextBlock Text="%" Foreground="#7D8390" FontSize="11" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </StackPanel>
                                     </StackPanel>
                                 </Border>
 
-                                <!-- BLOQUE 2: ACCIÓN INTERMEDIA -->
+                                <!-- BLOQUE 2: ACCIONES INTERMEDIAS EN SERIE -->
                                 <Border Background="#0E0F12" BorderBrush="#262930" BorderThickness="1" CornerRadius="6" Padding="12">
-                                    <StackPanel Spacing="6">
-                                        <TextBlock Text="[BLOQUE 2: ACCIÓN INTERMEDIA]" Foreground="#00D2FF" FontWeight="SemiBold" FontSize="11"/>
-                                        <TextBlock Text="Tipo: Captura de Pantalla + Desvanecimiento de Audio" Foreground="#F0F2F5" FontSize="12"/>
-                                        <TextBlock Text="Destino: ./data/snapshots/ (Sellado de fecha y hora)" Foreground="#7D8390" FontSize="11"/>
+                                    <StackPanel Spacing="10">
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                                                <PathIcon Data="{StaticResource IconSliders}" Width="12" Height="12" Foreground="#00D2FF" VerticalAlignment="Center"/>
+                                                <TextBlock Text="BLOQUE 2: ACCIONES INTERMEDIAS EN SERIE" Foreground="#00D2FF" FontWeight="SemiBold" FontSize="11" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                            <!-- Botones para añadir paso -->
+                                            <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="4">
+                                                <Button Content="+ Captura" Command="{Binding AddStudioStepCommand}" CommandParameter="Screenshot"
+                                                        Background="#262930" Foreground="#F0F2F5" FontSize="10" Padding="6,3"/>
+                                                <Button Content="+ Fade Audio" Command="{Binding AddStudioStepCommand}" CommandParameter="AudioFade"
+                                                        Background="#262930" Foreground="#F0F2F5" FontSize="10" Padding="6,3"/>
+                                                <Button Content="+ Pausa Media" Command="{Binding AddStudioStepCommand}" CommandParameter="MediaControl"
+                                                        Background="#262930" Foreground="#F0F2F5" FontSize="10" Padding="6,3"/>
+                                                <Button Content="+ Comando" Command="{Binding AddStudioStepCommand}" CommandParameter="Command"
+                                                        Background="#262930" Foreground="#F0F2F5" FontSize="10" Padding="6,3"/>
+                                            </StackPanel>
+                                        </Grid>
+
+                                        <!-- Mensaje si no hay pasos -->
+                                        <TextBlock Text="No hay acciones intermedias configuradas. Agregue una con los botones superiores."
+                                                   Foreground="#5D6370" FontSize="11" FontStyle="Italic"
+                                                   IsVisible="{Binding !StudioPipelineSteps.Count}"/>
+
+                                        <!-- Lista de pasos dinámicos -->
+                                        <ItemsControl ItemsSource="{Binding StudioPipelineSteps}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate x:DataType="vm:StudioStepItem">
+                                                    <Border Background="#16181D" BorderBrush="#262930" BorderThickness="1" CornerRadius="6" Padding="10" Margin="0,0,0,8">
+                                                        <Grid ColumnDefinitions="Auto,*,Auto" RowDefinitions="Auto,Auto">
+                                                            <!-- Orden -->
+                                                            <Border Grid.Column="0" Grid.Row="0" Background="#262930" CornerRadius="4" Width="24" Height="24" Margin="0,0,10,0">
+                                                                <TextBlock Text="{Binding StepOrder}" FontWeight="Bold" FontSize="11" Foreground="#00D2FF" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                            </Border>
+
+                                                            <!-- Título y tipo -->
+                                                            <StackPanel Grid.Column="1" Grid.Row="0" VerticalAlignment="Center">
+                                                                <TextBlock Text="{Binding ActionTitle}" FontWeight="SemiBold" FontSize="12" Foreground="#F0F2F5"/>
+                                                                <TextBlock Text="{Binding ActionDescription}" FontSize="10" Foreground="#7D8390"/>
+                                                            </StackPanel>
+
+                                                            <!-- Botones Subir, Bajar, Eliminar -->
+                                                            <StackPanel Grid.Column="2" Grid.Row="0" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
+                                                                <Button Content="▲" FontSize="9" Padding="6,2" Background="#262930" Foreground="#F0F2F5"
+                                                                        Command="{Binding #RootWindow.((vm:MainViewModel)DataContext).MoveStudioStepUpCommand}"
+                                                                        CommandParameter="{Binding .}"/>
+                                                                <Button Content="▼" FontSize="9" Padding="6,2" Background="#262930" Foreground="#F0F2F5"
+                                                                        Command="{Binding #RootWindow.((vm:MainViewModel)DataContext).MoveStudioStepDownCommand}"
+                                                                        CommandParameter="{Binding .}"/>
+                                                                <Button Content="✕" FontSize="9" Padding="6,2" Background="#301A1E" Foreground="#FF4B4B"
+                                                                        Command="{Binding #RootWindow.((vm:MainViewModel)DataContext).RemoveStudioStepCommand}"
+                                                                        CommandParameter="{Binding .}"/>
+                                                            </StackPanel>
+
+                                                            <!-- Parámetros específicos según el paso -->
+                                                            <StackPanel Grid.Column="1" Grid.ColumnSpan="2" Grid.Row="1" Margin="0,8,0,0" Spacing="6">
+                                                                <!-- Fade Audio Params -->
+                                                                <Grid ColumnDefinitions="Auto,*,Auto,*" IsVisible="{Binding IsAudioFade}">
+                                                                    <TextBlock Grid.Column="0" Text="Duración (s):" Foreground="#7D8390" FontSize="10" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                                                    <NumericUpDown Grid.Column="1" Value="{Binding FadeDurationSeconds, Mode=TwoWay}" Minimum="1" Maximum="300"
+                                                                                   FontSize="10" Background="#0E0F12" Foreground="#F0F2F5" Margin="0,0,8,0"/>
+                                                                    <TextBlock Grid.Column="2" Text="Vol. Final (%):" Foreground="#7D8390" FontSize="10" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                                                    <NumericUpDown Grid.Column="3" Value="{Binding TargetVolumePercentage, Mode=TwoWay}" Minimum="0" Maximum="100"
+                                                                                   FontSize="10" Background="#0E0F12" Foreground="#F0F2F5"/>
+                                                                </Grid>
+
+                                                                <!-- Command Params -->
+                                                                <StackPanel Spacing="4" IsVisible="{Binding IsCommand}">
+                                                                    <Grid ColumnDefinitions="Auto,*">
+                                                                        <TextBlock Grid.Column="0" Text="Ejecutable:" Foreground="#7D8390" FontSize="10" VerticalAlignment="Center" Width="75"/>
+                                                                        <TextBox Grid.Column="1" Text="{Binding CommandExecutable, Mode=TwoWay}" FontSize="10" Background="#0E0F12" Foreground="#F0F2F5"/>
+                                                                    </Grid>
+                                                                    <Grid ColumnDefinitions="Auto,*">
+                                                                        <TextBlock Grid.Column="0" Text="Argumentos:" Foreground="#7D8390" FontSize="10" VerticalAlignment="Center" Width="75"/>
+                                                                        <TextBox Grid.Column="1" Text="{Binding CommandArguments, Mode=TwoWay}" FontSize="10" Background="#0E0F12" Foreground="#F0F2F5"/>
+                                                                    </Grid>
+                                                                    <Grid ColumnDefinitions="Auto,*,Auto,*">
+                                                                        <TextBlock Grid.Column="0" Text="Timeout (s):" Foreground="#7D8390" FontSize="10" VerticalAlignment="Center" Width="75"/>
+                                                                        <NumericUpDown Grid.Column="1" Value="{Binding CommandTimeoutSeconds, Mode=TwoWay}" Minimum="1" Maximum="3600"
+                                                                                       FontSize="10" Background="#0E0F12" Foreground="#F0F2F5" Margin="0,0,8,0"/>
+                                                                        <TextBlock Grid.Column="2" Text="Exit Code Esperado:" Foreground="#7D8390" FontSize="10" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                                                                        <NumericUpDown Grid.Column="3" Value="{Binding ExpectedExitCode, Mode=TwoWay}"
+                                                                                       FontSize="10" Background="#0E0F12" Foreground="#F0F2F5"/>
+                                                                    </Grid>
+                                                                </StackPanel>
+                                                            </StackPanel>
+                                                        </Grid>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
                                     </StackPanel>
                                 </Border>
 
                                 <!-- BLOQUE 3: ACCIÓN TERMINAL -->
                                 <Border Background="#0E0F12" BorderBrush="#262930" BorderThickness="1" CornerRadius="6" Padding="12">
-                                    <StackPanel Spacing="6">
-                                        <TextBlock Text="[BLOQUE 3: ACCIÓN TERMINAL]" Foreground="#00D2FF" FontWeight="SemiBold" FontSize="11"/>
-                                        <TextBlock Text="Tipo: Apagado Seguro de Sistema" Foreground="#F0F2F5" FontSize="12"/>
-                                        <TextBlock Text="Periodo de gracia: 60s con ventana de aviso flotante." Foreground="#7D8390" FontSize="11"/>
+                                    <StackPanel Spacing="10">
+                                        <StackPanel Orientation="Horizontal" Spacing="8">
+                                            <PathIcon Data="{StaticResource IconPower}" Width="12" Height="12" Foreground="#FF4B4B" VerticalAlignment="Center"/>
+                                            <TextBlock Text="BLOQUE 3: ACCIÓN TERMINAL DEL SISTEMA" Foreground="#FF4B4B" FontWeight="SemiBold" FontSize="11" VerticalAlignment="Center"/>
+                                        </StackPanel>
+
+                                        <!-- Selector de acción final -->
+                                        <ComboBox SelectedIndex="{Binding StudioTerminalActionIndex, Mode=TwoWay}"
+                                                  HorizontalAlignment="Stretch"
+                                                  FontSize="12"
+                                                  Background="#16181D"
+                                                  Foreground="#F0F2F5">
+                                            <ComboBoxItem Content="Apagar el PC (Shutdown)"/>
+                                            <ComboBoxItem Content="Suspender (Sleep S3)"/>
+                                            <ComboBoxItem Content="Hibernar (S4 Disk)"/>
+                                            <ComboBoxItem Content="Reiniciar el Sistema (Reboot)"/>
+                                            <ComboBoxItem Content="Bloquear Sesión de Usuario (LockStation)"/>
+                                            <ComboBoxItem Content="Apagar Monitores Solamente (SC_MONITORPOWER)"/>
+                                            <ComboBoxItem Content="Ninguna (Completar pipeline sin acción final)"/>
+                                        </ComboBox>
+
+                                        <Grid ColumnDefinitions="Auto,*,Auto" Margin="0,4,0,0">
+                                            <TextBlock Grid.Column="0" Text="Periodo de gracia previa (0 a 300 s):" Foreground="#7D8390" FontSize="11" VerticalAlignment="Center"/>
+                                            <NumericUpDown Grid.Column="1" Value="{Binding StudioGracePeriodSeconds, Mode=TwoWay}" Minimum="0" Maximum="300" Increment="10"
+                                                           Margin="12,0,12,0" Background="#16181D" Foreground="#F0F2F5"/>
+                                            <CheckBox Grid.Column="2" IsChecked="{Binding StudioForceClose, Mode=TwoWay}"
+                                                      Content="Forzar cierre de apps" Foreground="#F0F2F5" FontSize="11" VerticalAlignment="Center"/>
+                                        </Grid>
                                     </StackPanel>
                                 </Border>
 
-                                <Button Content="Guardar Modificaciones de Pipeline" Command="{Binding SavePresetCommand}" Background="#00D2FF" Foreground="#0E0F12" FontWeight="Bold" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"/>
+                                <!-- BOTONES DE CONTROL DE MODO STUDIO -->
+                                <Grid ColumnDefinitions="*,*,*" Margin="0,6,0,0">
+                                    <!-- 💾 Guardar Flujo -->
+                                    <Button Grid.Column="0"
+                                            Content="💾 Guardar Flujo"
+                                            Command="{Binding SaveStudioPresetCommand}"
+                                            Background="#262930"
+                                            Foreground="#00D2FF"
+                                            FontWeight="Bold"
+                                            FontSize="12"
+                                            HorizontalAlignment="Stretch"
+                                            HorizontalContentAlignment="Center"
+                                            Padding="0,10"
+                                            Margin="0,0,6,0"/>
+
+                                    <!-- ▶ INICIAR FLUJO -->
+                                    <Button Grid.Column="1"
+                                            Content="▶ INICIAR FLUJO"
+                                            Command="{Binding StartStudioPresetCommand}"
+                                            Background="#00E676"
+                                            Foreground="#0E0F12"
+                                            FontWeight="Bold"
+                                            FontSize="12"
+                                            HorizontalAlignment="Stretch"
+                                            HorizontalContentAlignment="Center"
+                                            Padding="0,10"
+                                            Margin="3,0,3,0"/>
+
+                                    <!-- ⏹ ABORTAR TAREA -->
+                                    <Button Grid.Column="2"
+                                            Content="⏹ ABORTAR TAREA"
+                                            Command="{Binding AbortTaskCommand}"
+                                            Background="#FF4B4B"
+                                            Foreground="#FFFFFF"
+                                            FontWeight="Bold"
+                                            FontSize="12"
+                                            HorizontalAlignment="Stretch"
+                                            HorizontalContentAlignment="Center"
+                                            Padding="0,10"
+                                            Margin="6,0,0,0"
+                                            IsEnabled="{Binding IsTaskRunning}"/>
+                                </Grid>
                             </StackPanel>
                         </Border>
                     </Grid>
@@ -734,7 +1001,7 @@
                     </StackPanel>
                 </StackPanel>
 
-                <!-- LAN Remote Button -->
+                <!-- LAN Remote Button con indicador de estado (punto gris apagado, verde escuchando) -->
                 <Button Grid.Column="2"
                         Background="#262930"
                         Foreground="#F0F2F5"
@@ -742,6 +1009,7 @@
                         Padding="10,4"
                         Command="{Binding OpenQrModalCommand}">
                     <StackPanel Orientation="Horizontal" Spacing="6">
+                        <Ellipse Width="7" Height="7" Fill="{Binding StatusLanDotColor}" VerticalAlignment="Center"/>
                         <PathIcon Data="{StaticResource IconLightning}" Width="11" Height="11" Foreground="#00D2FF"/>
                         <TextBlock Text="Control LAN" VerticalAlignment="Center"/>
                     </StackPanel>

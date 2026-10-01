@@ -42,8 +42,8 @@ public partial class App : Application
             {
                 var config = persistence.LoadConfig();
                 _lanServer = new LanHttpServer(engine, _systemAdapter, config.LanServer);
-                _lanServer.Start();
-                _mainViewModel.LanConnectionUrl = _lanServer.GetConnectionUrl();
+                // Servidor estrictamente bajo demanda: NO se inicia al arrancar para evitar alertas de red
+                _mainViewModel.AttachLanServer(_lanServer);
             }
             catch (Exception ex)
             {
@@ -67,6 +67,28 @@ public partial class App : Application
             desktop.MainWindow = _mainWindow;
 
             ConfigureTrayIcon(desktop);
+
+            // Tarea 4: Soporte de argumentos de línea de comandos (Modo Sigiloso / Modo Trabajo)
+            bool isSilent = desktop.Args?.Any(a =>
+                a.Equals("--silent", StringComparison.OrdinalIgnoreCase) ||
+                a.Equals("--tray", StringComparison.OrdinalIgnoreCase) ||
+                a.Equals("-s", StringComparison.OrdinalIgnoreCase)) == true;
+
+            bool startWork = desktop.Args?.Any(a =>
+                a.Equals("--work", StringComparison.OrdinalIgnoreCase) ||
+                a.Equals("-w", StringComparison.OrdinalIgnoreCase)) == true;
+
+            if (!isSilent)
+            {
+                _mainWindow.Show();
+                _mainWindow.WindowState = WindowState.Normal;
+                _mainWindow.Activate();
+            }
+
+            if (startWork)
+            {
+                _mainViewModel.ToggleKeepAliveCommand.Execute(null);
+            }
         }
 
         base.OnFrameworkInitializationCompleted();

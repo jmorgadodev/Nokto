@@ -7,6 +7,7 @@ using Nokto.Core.Abstractions;
 using Nokto.Core.Engine;
 using Nokto.Core.Models;
 using Nokto.Core.Persistence;
+using Nokto.LanServer;
 using Nokto.UI.Tray;
 
 namespace Nokto.UI.ViewModels;
@@ -18,6 +19,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private readonly PersistenceService _persistence;
     private readonly CancellationTokenSource _disposalCts = new();
 
+    private LanHttpServer? _lanServer;
     private CancellationTokenSource? _keepAliveCts;
     private PeriodicTimer? _metricsTimer;
     private float _pulsePhase = 0f;
@@ -37,6 +39,65 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private string _lanConnectionUrl = "http://localhost:4884";
+
+    [ObservableProperty]
+    private bool _isLanServerActive;
+
+    partial void OnIsLanServerActiveChanged(bool value)
+    {
+        OnPropertyChanged(nameof(StatusLanDotColor));
+    }
+
+    public string StatusLanDotColor => IsLanServerActive ? "#00E676" : "#7D8390";
+
+    public void AttachLanServer(LanHttpServer lanServer)
+    {
+        _lanServer = lanServer;
+        _lanServer.ServerStateChanged += () =>
+        {
+            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+            {
+                IsLanServerActive = _lanServer.IsRunning;
+            });
+        };
+    }
+
+    public void StartLanServer()
+    {
+        if (_lanServer != null && !_lanServer.IsRunning)
+        {
+            try
+            {
+                _lanServer.Start();
+                LanConnectionUrl = _lanServer.GetConnectionUrl();
+                IsLanServerActive = true;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[LAN] Error al iniciar servidor bajo demanda: {ex.Message}");
+            }
+        }
+        else if (_lanServer != null && _lanServer.IsRunning)
+        {
+            LanConnectionUrl = _lanServer.GetConnectionUrl();
+        }
+    }
+
+    public void StopLanServer()
+    {
+        if (_lanServer != null && _lanServer.IsRunning)
+        {
+            try
+            {
+                _lanServer.Stop();
+                IsLanServerActive = false;
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[LAN] Error al detener servidor: {ex.Message}");
+            }
+        }
+    }
 
     [ObservableProperty]
     private string _keepAliveButtonText = "Iniciar Modo";
@@ -91,6 +152,96 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private PresetDefinition? _selectedPreset;
+
+    partial void OnSelectedPresetChanged(PresetDefinition? value)
+    {
+        if (value != null)
+        {
+            LoadPresetIntoStudio(value);
+        }
+    }
+
+    // ========================================================
+    // --- MODO STUDIO: CONFIGURACIÓN INTERACTIVA (3 BLOQUES) -
+    // ========================================================
+    [ObservableProperty]
+    private string _studioPresetId = "";
+
+    [ObservableProperty]
+    private string _studioPresetName = "";
+
+    [ObservableProperty]
+    private string _studioPresetDescription = "";
+
+    // BLOQUE 1: DISPARADOR PRINCIPAL
+    [ObservableProperty]
+    private int _studioTriggerTypeIndex = 1; // 0=Proceso, 1=Cuenta Atrás, 2=Hora Fija, 3=Inactividad, 4=Silencio Audio, 5=Batería
+
+    public bool IsStudioTriggerProcess => StudioTriggerTypeIndex == 0;
+    public bool IsStudioTriggerCountdown => StudioTriggerTypeIndex == 1;
+    public bool IsStudioTriggerExactTime => StudioTriggerTypeIndex == 2;
+    public bool IsStudioTriggerInactivity => StudioTriggerTypeIndex == 3;
+    public bool IsStudioTriggerAudioSilence => StudioTriggerTypeIndex == 4;
+    public bool IsStudioTriggerBattery => StudioTriggerTypeIndex == 5;
+
+    partial void OnStudioTriggerTypeIndexChanged(int value)
+    {
+        OnPropertyChanged(nameof(IsStudioTriggerProcess));
+        OnPropertyChanged(nameof(IsStudioTriggerCountdown));
+        OnPropertyChanged(nameof(IsStudioTriggerExactTime));
+        OnPropertyChanged(nameof(IsStudioTriggerInactivity));
+        OnPropertyChanged(nameof(IsStudioTriggerAudioSilence));
+        OnPropertyChanged(nameof(IsStudioTriggerBattery));
+    }
+
+    [ObservableProperty]
+    private string _studioProcessName = "notepad.exe";
+
+    [ObservableProperty]
+    private decimal _studioProcessDebounceSeconds = 5;
+
+    [ObservableProperty]
+    private decimal? _studioCountdownHours = 0;
+
+    [ObservableProperty]
+    private decimal? _studioCountdownMinutes = 30;
+
+    [ObservableProperty]
+    private decimal? _studioCountdownSeconds = 0;
+
+    [ObservableProperty]
+    private TimeSpan? _studioExactTime = DateTime.Now.TimeOfDay.Add(TimeSpan.FromHours(1));
+
+    [ObservableProperty]
+    private decimal _studioInactivityMinutes = 15;
+
+    [ObservableProperty]
+    private decimal _studioAudioSilenceSeconds = 30;
+
+    [ObservableProperty]
+    private decimal _studioAudioSilencePeak = 0.001m;
+
+    [ObservableProperty]
+    private bool _studioBatteryOnAcDisconnect = true;
+
+    [ObservableProperty]
+    private bool _studioBatteryOnThreshold = false;
+
+    [ObservableProperty]
+    private decimal _studioBatteryThresholdPercent = 20;
+
+    // BLOQUE 2: ACCIONES INTERMEDIAS
+    public ObservableCollection<StudioStepItem> StudioPipelineSteps { get; } = [];
+
+    // BLOQUE 3: ACCIÓN TERMINAL
+    [ObservableProperty]
+    private int _studioTerminalActionIndex = 0; // 0=Apagar, 1=Suspender, 2=Hibernar, 3=Reiniciar, 4=Bloquear, 5=Apagar Monitores, 6=Ninguna
+
+    [ObservableProperty]
+    private decimal _studioGracePeriodSeconds = 60; // 0 a 300s
+
+    [ObservableProperty]
+    private bool _studioForceClose = false;
 
     // --- CONFIGURACIÓN MANUAL: DISPARADOR ---
     [ObservableProperty]
@@ -837,7 +988,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         var newPreset = new PresetDefinition
         {
             Id = "preset_" + Guid.NewGuid().ToString("N")[..8],
-            Name = "Nuevo Flujo Personalizado",
+            Name = "Nuevo Flujo",
             Description = "Descripción del nuevo flujo automatizado.",
             IsFavorite = false,
             Icon = "Sparkles",
@@ -863,7 +1014,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
                 Type = TerminalActionType.Shutdown,
                 Parameters = new Dictionary<string, JsonElement>
                 {
-                    ["gracePeriodSeconds"] = JsonSerializer.SerializeToElement(60)
+                    ["gracePeriodSeconds"] = JsonSerializer.SerializeToElement(60),
+                    ["forced"] = JsonSerializer.SerializeToElement(false)
                 }
             }
         };
@@ -871,6 +1023,394 @@ public partial class MainViewModel : ObservableObject, IDisposable
         Presets.Add(newPreset);
         SelectedPreset = newPreset;
         SaveCurrentPresets();
+    }
+
+    public void LoadPresetIntoStudio(PresetDefinition preset)
+    {
+        StudioPresetId = preset.Id;
+        StudioPresetName = preset.Name;
+        StudioPresetDescription = preset.Description;
+
+        // Disparador
+        if (preset.Trigger != null)
+        {
+            switch (preset.Trigger.Type)
+            {
+                case TriggerType.ProcessExit:
+                    StudioTriggerTypeIndex = 0;
+                    if (preset.Trigger.Parameters != null &&
+                        preset.Trigger.Parameters.TryGetValue("processName", out var pName))
+                    {
+                        StudioProcessName = pName.GetString() ?? "notepad.exe";
+                    }
+                    if (preset.Trigger.Parameters != null &&
+                        preset.Trigger.Parameters.TryGetValue("debounceSeconds", out var pDeb) &&
+                        pDeb.TryGetDecimal(out var debVal))
+                    {
+                        StudioProcessDebounceSeconds = debVal;
+                    }
+                    break;
+
+                case TriggerType.Countdown:
+                    StudioTriggerTypeIndex = 1;
+                    if (preset.Trigger.Parameters != null &&
+                        preset.Trigger.Parameters.TryGetValue("durationSeconds", out var pDur) &&
+                        pDur.TryGetInt32(out var sec))
+                    {
+                        StudioCountdownHours = sec / 3600;
+                        StudioCountdownMinutes = (sec % 3600) / 60;
+                        StudioCountdownSeconds = sec % 60;
+                    }
+                    break;
+
+                case TriggerType.UserIdle:
+                    StudioTriggerTypeIndex = 3;
+                    if (preset.Trigger.Parameters != null &&
+                        preset.Trigger.Parameters.TryGetValue("idleMinutes", out var pIdle) &&
+                        pIdle.TryGetDecimal(out var idleVal))
+                    {
+                        StudioInactivityMinutes = idleVal;
+                    }
+                    break;
+
+                case TriggerType.AudioSilence:
+                    StudioTriggerTypeIndex = 4;
+                    if (preset.Trigger.Parameters != null &&
+                        preset.Trigger.Parameters.TryGetValue("silenceThresholdSeconds", out var pSil) &&
+                        pSil.TryGetDecimal(out var silVal))
+                    {
+                        StudioAudioSilenceSeconds = silVal;
+                    }
+                    if (preset.Trigger.Parameters != null &&
+                        preset.Trigger.Parameters.TryGetValue("thresholdPeak", out var pPeak) &&
+                        pPeak.TryGetDecimal(out var peakVal))
+                    {
+                        StudioAudioSilencePeak = peakVal;
+                    }
+                    break;
+
+                case TriggerType.BatteryState:
+                    StudioTriggerTypeIndex = 5;
+                    if (preset.Trigger.Parameters != null &&
+                        preset.Trigger.Parameters.TryGetValue("onAcDisconnect", out var pAc))
+                    {
+                        StudioBatteryOnAcDisconnect = pAc.GetBoolean();
+                    }
+                    if (preset.Trigger.Parameters != null &&
+                        preset.Trigger.Parameters.TryGetValue("batteryLevelThreshold", out var pBat) &&
+                        pBat.TryGetDecimal(out var batVal))
+                    {
+                        StudioBatteryThresholdPercent = batVal;
+                        StudioBatteryOnThreshold = batVal > 0;
+                    }
+                    break;
+
+                default:
+                    StudioTriggerTypeIndex = 1;
+                    break;
+            }
+        }
+        else
+        {
+            StudioTriggerTypeIndex = 1;
+        }
+
+        // Acciones intermedias
+        StudioPipelineSteps.Clear();
+        if (preset.Pipeline != null)
+        {
+            foreach (var step in preset.Pipeline.OrderBy(s => s.StepOrder))
+            {
+                StudioPipelineSteps.Add(StudioStepItem.FromDefinition(step));
+            }
+        }
+        RenumberStudioSteps();
+
+        // Acción Terminal
+        if (preset.TerminalAction != null)
+        {
+            StudioTerminalActionIndex = preset.TerminalAction.Type switch
+            {
+                TerminalActionType.Shutdown => 0,
+                TerminalActionType.Sleep => 1,
+                TerminalActionType.Hibernate => 2,
+                TerminalActionType.Restart => 3,
+                TerminalActionType.LockStation => 4,
+                TerminalActionType.None => 6,
+                _ => 0
+            };
+
+            if (preset.TerminalAction.Parameters != null)
+            {
+                if (preset.TerminalAction.Parameters.TryGetValue("gracePeriodSeconds", out var pGrace) &&
+                    pGrace.TryGetDecimal(out var graceVal))
+                {
+                    StudioGracePeriodSeconds = Math.Clamp(graceVal, 0, 300);
+                }
+                if (preset.TerminalAction.Parameters.TryGetValue("forced", out var pForce))
+                {
+                    StudioForceClose = pForce.GetBoolean();
+                }
+            }
+        }
+        else
+        {
+            StudioTerminalActionIndex = 0;
+            StudioGracePeriodSeconds = 60;
+            StudioForceClose = false;
+        }
+    }
+
+    public PresetDefinition BuildPresetFromStudio(string? overrideId = null)
+    {
+        string presetId = string.IsNullOrWhiteSpace(overrideId)
+            ? (string.IsNullOrWhiteSpace(StudioPresetId) ? "preset_" + Guid.NewGuid().ToString("N")[..8] : StudioPresetId)
+            : overrideId;
+
+        // Disparador
+        TriggerDefinition trigger;
+        switch (StudioTriggerTypeIndex)
+        {
+            case 0: // Proceso
+                trigger = new TriggerDefinition
+                {
+                    Type = TriggerType.ProcessExit,
+                    Parameters = new Dictionary<string, JsonElement>
+                    {
+                        ["processName"] = JsonSerializer.SerializeToElement(string.IsNullOrWhiteSpace(StudioProcessName) ? "notepad.exe" : StudioProcessName),
+                        ["debounceSeconds"] = JsonSerializer.SerializeToElement((int)StudioProcessDebounceSeconds)
+                    }
+                };
+                break;
+
+            case 1: // Cuenta Atrás
+            default:
+                int totalSec = (int)((StudioCountdownHours ?? 0) * 3600 + (StudioCountdownMinutes ?? 0) * 60 + (StudioCountdownSeconds ?? 0));
+                if (totalSec <= 0) totalSec = 60;
+                trigger = new TriggerDefinition
+                {
+                    Type = TriggerType.Countdown,
+                    Parameters = new Dictionary<string, JsonElement>
+                    {
+                        ["durationSeconds"] = JsonSerializer.SerializeToElement(totalSec)
+                    }
+                };
+                break;
+
+            case 2: // Hora Fija
+                DateTime now = DateTime.Now;
+                var span = StudioExactTime ?? DateTime.Now.TimeOfDay.Add(TimeSpan.FromHours(1));
+                DateTime target = now.Date + span;
+                if (target <= now) target = target.AddDays(1);
+                int waitSec = (int)(target - now).TotalSeconds;
+                if (waitSec <= 0) waitSec = 5;
+                trigger = new TriggerDefinition
+                {
+                    Type = TriggerType.Countdown,
+                    Parameters = new Dictionary<string, JsonElement>
+                    {
+                        ["durationSeconds"] = JsonSerializer.SerializeToElement(waitSec)
+                    }
+                };
+                break;
+
+            case 3: // Inactividad
+                int idleM = (int)StudioInactivityMinutes;
+                if (idleM <= 0) idleM = 1;
+                trigger = new TriggerDefinition
+                {
+                    Type = TriggerType.UserIdle,
+                    Parameters = new Dictionary<string, JsonElement>
+                    {
+                        ["idleMinutes"] = JsonSerializer.SerializeToElement(idleM)
+                    }
+                };
+                break;
+
+            case 4: // Silencio WASAPI
+                int silSec = (int)StudioAudioSilenceSeconds;
+                if (silSec <= 0) silSec = 30;
+                trigger = new TriggerDefinition
+                {
+                    Type = TriggerType.AudioSilence,
+                    Parameters = new Dictionary<string, JsonElement>
+                    {
+                        ["silenceThresholdSeconds"] = JsonSerializer.SerializeToElement(silSec),
+                        ["thresholdPeak"] = JsonSerializer.SerializeToElement((double)StudioAudioSilencePeak)
+                    }
+                };
+                break;
+
+            case 5: // Batería
+                int batPct = StudioBatteryOnThreshold ? (int)StudioBatteryThresholdPercent : 0;
+                trigger = new TriggerDefinition
+                {
+                    Type = TriggerType.BatteryState,
+                    Parameters = new Dictionary<string, JsonElement>
+                    {
+                        ["onAcDisconnect"] = JsonSerializer.SerializeToElement(StudioBatteryOnAcDisconnect),
+                        ["batteryLevelThreshold"] = JsonSerializer.SerializeToElement(batPct)
+                    }
+                };
+                break;
+        }
+
+        // Acciones intermedias
+        var pipeline = StudioPipelineSteps.Select(s => s.ToDefinition()).ToList();
+
+        // Acción Terminal
+        TerminalActionType termType = StudioTerminalActionIndex switch
+        {
+            0 => TerminalActionType.Shutdown,
+            1 => TerminalActionType.Sleep,
+            2 => TerminalActionType.Hibernate,
+            3 => TerminalActionType.Restart,
+            4 => TerminalActionType.LockStation,
+            5 => TerminalActionType.None,
+            6 => TerminalActionType.None,
+            _ => TerminalActionType.Shutdown
+        };
+
+        if (StudioTerminalActionIndex == 5)
+        {
+            pipeline.Add(new PipelineStepDefinition
+            {
+                StepOrder = pipeline.Count + 1,
+                ActionType = ActionType.TurnOffMonitors,
+                IgnoreFailure = true
+            });
+        }
+
+        var terminal = new TerminalActionDefinition
+        {
+            Type = termType,
+            Parameters = new Dictionary<string, JsonElement>
+            {
+                ["gracePeriodSeconds"] = JsonSerializer.SerializeToElement((int)StudioGracePeriodSeconds),
+                ["forced"] = JsonSerializer.SerializeToElement(StudioForceClose)
+            }
+        };
+
+        return new PresetDefinition
+        {
+            Id = presetId,
+            Name = string.IsNullOrWhiteSpace(StudioPresetName) ? "Flujo Personalizado" : StudioPresetName,
+            Description = StudioPresetDescription,
+            Icon = "Sparkles",
+            Trigger = trigger,
+            Pipeline = pipeline,
+            TerminalAction = terminal
+        };
+    }
+
+    [RelayCommand]
+    public void SaveStudioPreset()
+    {
+        var updated = BuildPresetFromStudio();
+        int existingIndex = -1;
+        for (int i = 0; i < Presets.Count; i++)
+        {
+            if (Presets[i].Id == updated.Id)
+            {
+                existingIndex = i;
+                break;
+            }
+        }
+
+        if (existingIndex >= 0)
+        {
+            Presets[existingIndex] = updated;
+        }
+        else
+        {
+            Presets.Add(updated);
+        }
+
+        SelectedPreset = updated;
+        SaveCurrentPresets();
+        CurrentStatusText = $"Flujo '{updated.Name}' guardado con éxito.";
+    }
+
+    [RelayCommand]
+    public async Task StartStudioPreset()
+    {
+        var preset = BuildPresetFromStudio();
+        await _workflowEngine.StartPresetAsync(preset);
+    }
+
+    [RelayCommand]
+    public void DeleteSelectedPreset()
+    {
+        if (SelectedPreset == null) return;
+
+        var toRemove = SelectedPreset;
+        Presets.Remove(toRemove);
+        SaveCurrentPresets();
+
+        SelectedPreset = Presets.FirstOrDefault();
+        CurrentStatusText = $"Flujo '{toRemove.Name}' eliminado.";
+    }
+
+    [RelayCommand]
+    public void AddStudioStep(string? actionTypeStr)
+    {
+        var actionType = actionTypeStr switch
+        {
+            "Screenshot" => ActionType.CaptureScreenshot,
+            "AudioFade" => ActionType.AudioFadeOut,
+            "MediaControl" => ActionType.MediaControl,
+            "Command" => ActionType.ExecuteCommand,
+            "MonitorsOff" => ActionType.TurnOffMonitors,
+            _ => ActionType.CaptureScreenshot
+        };
+
+        var step = new StudioStepItem
+        {
+            StepOrder = StudioPipelineSteps.Count + 1,
+            ActionType = actionType,
+            IgnoreFailure = true
+        };
+        StudioPipelineSteps.Add(step);
+        RenumberStudioSteps();
+    }
+
+    [RelayCommand]
+    public void RemoveStudioStep(StudioStepItem step)
+    {
+        if (StudioPipelineSteps.Remove(step))
+        {
+            RenumberStudioSteps();
+        }
+    }
+
+    [RelayCommand]
+    public void MoveStudioStepUp(StudioStepItem step)
+    {
+        int index = StudioPipelineSteps.IndexOf(step);
+        if (index > 0)
+        {
+            StudioPipelineSteps.Move(index, index - 1);
+            RenumberStudioSteps();
+        }
+    }
+
+    [RelayCommand]
+    public void MoveStudioStepDown(StudioStepItem step)
+    {
+        int index = StudioPipelineSteps.IndexOf(step);
+        if (index >= 0 && index < StudioPipelineSteps.Count - 1)
+        {
+            StudioPipelineSteps.Move(index, index + 1);
+            RenumberStudioSteps();
+        }
+    }
+
+    private void RenumberStudioSteps()
+    {
+        for (int i = 0; i < StudioPipelineSteps.Count; i++)
+        {
+            StudioPipelineSteps[i].StepOrder = i + 1;
+        }
     }
 
     [RelayCommand]
@@ -913,6 +1453,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [RelayCommand]
     public void OpenQrModal()
     {
+        StartLanServer();
         RequestQrModal?.Invoke();
     }
 

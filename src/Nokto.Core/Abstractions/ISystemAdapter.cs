@@ -82,4 +82,9 @@ public interface ISystemAdapter : IDisposable
     /// Captura el contenido visual del escritorio completo (multi-monitor).
     /// </summary>
     Task<byte[]> CaptureScreenAsync(bool stampMetadata = false, string? label = null, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Envía una señal de control multimedia nativa (reproducir/pausar o detener) al sistema operativo.
+    /// </summary>
+    void SendMediaControl(bool pauseOnly = true);
 }

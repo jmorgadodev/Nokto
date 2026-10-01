@@ -20,17 +20,48 @@ public sealed class StorageResolver
     {
         _baseDirectory = customBaseDirectory ?? AppDomain.CurrentDomain.BaseDirectory;
 
-        // Regla 1.1: Verifica si existe portable.lock o config.json en el directorio base
+        // Detección nativa de modo portable:
+        // 1. Archivo indicador explícito (portable.lock o config.json en el directorio base)
+        // 2. O si el directorio base es escribible y no se encuentra en las rutas del sistema Program Files
         bool hasPortableLock = File.Exists(Path.Combine(_baseDirectory, "portable.lock"));
         bool hasConfigAdjacent = File.Exists(Path.Combine(_baseDirectory, "config.json"));
 
-        _isPortableMode = hasPortableLock || hasConfigAdjacent;
+        bool isProgramFiles = false;
+        try
+        {
+            string pf = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+            string pfx86 = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86);
+            if (!string.IsNullOrEmpty(pf) && _baseDirectory.StartsWith(pf, StringComparison.OrdinalIgnoreCase))
+                isProgramFiles = true;
+            if (!string.IsNullOrEmpty(pfx86) && _baseDirectory.StartsWith(pfx86, StringComparison.OrdinalIgnoreCase))
+                isProgramFiles = true;
+        }
+        catch { }
+
+        bool isWritable = !isProgramFiles && IsDirectoryWritable(_baseDirectory);
+
+        _isPortableMode = hasPortableLock || hasConfigAdjacent || isWritable;
 
         _dataDirectory = _isPortableMode
             ? Path.Combine(_baseDirectory, "data")
             : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Nokto");
 
         EnsureDirectoriesExist();
+    }
+
+    private static bool IsDirectoryWritable(string dir)
+    {
+        try
+        {
+            string testFile = Path.Combine(dir, ".perm_test_" + Guid.NewGuid().ToString("N"));
+            File.WriteAllText(testFile, "1");
+            File.Delete(testFile);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private void EnsureDirectoriesExist()
