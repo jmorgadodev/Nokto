@@ -3,6 +3,22 @@
              x:Class="Nokto.UI.App"
              RequestedThemeVariant="Dark">
 
+    <Application.Resources>
+        <!-- Fluent StreamGeometry Vector Icons -->
+        <StreamGeometry x:Key="IconSliders">M3 5a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v1h14a1 1 0 1 1 0 2H6v1a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5zm17 6a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1v-1H3a1 1 0 1 1 0-2h15v-1a1 1 0 0 1 1-1h1zm-8 6a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1v-1H3a1 1 0 1 1 0-2h7v-1a1 1 0 0 1 1-1h1z</StreamGeometry>
+        <StreamGeometry x:Key="IconLightning">M11 2L3 13h6v9l9-12h-7l1-8z</StreamGeometry>
+        <StreamGeometry x:Key="IconWorkflow">M3 3h5v5H3V3zm13 0h5v5h-5V3zM9.5 16h5v5h-5v-5zM6.5 8v3h11V8h2v5h-6v3h-2v-3h-7V8h2z</StreamGeometry>
+        <StreamGeometry x:Key="IconPower">M11 2h2v10h-2V2zm5.66 3.34l1.41-1.41A10 10 0 1 1 5.93 3.93l1.41 1.41a8 8 0 1 0 9.32 0z</StreamGeometry>
+        <StreamGeometry x:Key="IconRestart">M12 4V1L7 6l5 5V7a6 6 0 1 1-6 6H4a8 8 0 1 0 8-9z</StreamGeometry>
+        <StreamGeometry x:Key="IconMoon">M12.3 2a10 10 0 0 0 9.7 13.7 10 10 0 1 1-9.7-13.7z</StreamGeometry>
+        <StreamGeometry x:Key="IconHibernate">M4 5h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zm0 2v10h16V7H4zm14 7a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm-3 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm-6-5h4l-4 4h4v1H8l4-4H8V9z</StreamGeometry>
+        <StreamGeometry x:Key="IconLock">M12 2a5 5 0 0 0-5 5v3H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-2V7a5 5 0 0 0-5-5zm-3 5a3 3 0 0 1 6 0v3H9V7zm3 8a1.5 1.5 0 0 1 1 1.41v2.18a1 1 0 1 1-2 0v-2.18A1.5 1.5 0 0 1 12 15z</StreamGeometry>
+        <StreamGeometry x:Key="IconMonitorOff">M20 3H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h6v2H8v2h8v-2h-2v-2h6a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm0 12H4V5h16v10zm-9-8h2v6h-2V7z</StreamGeometry>
+        <StreamGeometry x:Key="IconClock">M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 11h-4V7h2v4h2z</StreamGeometry>
+        <StreamGeometry x:Key="IconPlay">M8 5v14l11-7z</StreamGeometry>
+        <StreamGeometry x:Key="IconStop">M6 6h12v12H6z</StreamGeometry>
+    </Application.Resources>
+
     <Application.Styles>
         <FluentTheme />
         

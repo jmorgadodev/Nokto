@@ -20,10 +20,27 @@ internal static class Program
         var persistence = new PersistenceService();
         using var engine = new WorkflowEngine(adapter, persistence);
 
+        if (args.Length > 0 && args[0] == "--generate-icon")
+        {
+            string targetPath = GetUiAssetsIcoPath();
+            IconGenerator.GenerateOfficialIco(targetPath);
+            Console.WriteLine($"[PASS] Icon generated at {targetPath}");
+            return 0;
+        }
+
         // Modo de verificación automatizada para CI, suite de pruebas o terminales sin consola interactiva
         bool isAutomated = (args.Length > 0 && (args[0] == "--auto-test" || args[0] == "-a" || args[0] == "--verify" || args[0] == "-v")) || Console.IsInputRedirected;
         if (isAutomated)
         {
+            try
+            {
+                string targetPath = GetUiAssetsIcoPath();
+                if (!File.Exists(targetPath))
+                {
+                    IconGenerator.GenerateOfficialIco(targetPath);
+                }
+            }
+            catch { }
             return await RunAutomatedVerificationAsync(adapter, persistence, engine);
         }
 
@@ -843,5 +860,17 @@ internal static class Program
 
         Console.WriteLine("\nPresione cualquier tecla para continuar...");
         Console.ReadKey(intercept: true);
+    }
+
+    private static string GetUiAssetsIcoPath()
+    {
+        string dir = AppDomain.CurrentDomain.BaseDirectory;
+        while (!string.IsNullOrEmpty(dir) && !File.Exists(Path.Combine(dir, "Nokto.sln")))
+        {
+            var parent = Directory.GetParent(dir);
+            if (parent == null) break;
+            dir = parent.FullName;
+        }
+        return Path.Combine(dir, "src", "Nokto.UI", "Assets", "nokto.ico");
     }
 }

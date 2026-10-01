@@ -2,6 +2,49 @@
 
 Este documento registra de manera cronológica y detallada cada avance, fase del roadmap, archivos modificados y resultados de compilación del proyecto Nokto.
 
+## [Refinamiento Visual y Conectividad: Control Remoto LAN Robusto, PWA OLED en Reposo, Iconografía Vectorial Fluent e Icono Oficial .ico] - 2026-10-01 20:05:00
+- **Fase del roadmap:** Post-Fase 6 (Experiencia de Usuario, Estabilidad de Red LAN y Diseño Visual)
+- **Archivos creados o modificados:**
+  - `src/Nokto.LanServer/LanHttpServer.cs`
+  - `src/Nokto.LanServer/LanServerHost.cs`
+  - `src/Nokto.LanServer/Embedded/pwa.html`
+  - `build/setup-lan-firewall.bat` *(Nuevo)*
+  - `src/Nokto.UI/Assets/nokto.ico` *(Nuevo)*
+  - `src/Nokto.UI/Nokto.UI.csproj`
+  - `src/Nokto.UI/App.axaml`
+  - `src/Nokto.UI/Views/MainWindow.axaml`
+  - `src/Nokto.UI/ViewModels/MainViewModel.cs`
+  - `tests/Nokto.ConsoleTest/IconGenerator.cs` *(Nuevo)*
+  - `tests/Nokto.ConsoleTest/Nokto.ConsoleTest.csproj`
+  - `tests/Nokto.ConsoleTest/Program.cs`
+  - `docs/AUDIT_STATUS.md`
+  - `CHANGELOG.md`
+- **Resumen técnico del cambio:**
+  1. **Diagnóstico y Corrección Integral del Control Remoto LAN y Código QR:**
+     - En `LanHttpServer.cs`: Implementada resolución determinista de IPv4 local activa (`GetLocalIpAddress`) descartando adaptadores virtuales y contenedores (`vEthernet`, `WSL`, `Docker`, `Hyper-V`, `VMware`, `VirtualBox`, `Tailscale`, `VPN`) y priorizando tarjetas físicas Wi-Fi / Ethernet con Gateway por defecto, complementado con consulta de enrutamiento UDP al kernel (`8.8.8.8`). El código QR y la URL de emparejamiento apuntan siempre a la IP física real de la LAN (ej. `192.168.1.84:4884`).
+     - **Modo Puente TCP Determinista (No-Elevado):** En Windows sin permisos de administrador o sin reserva previa de URLACL, `http.sys` rechaza enlaces no-loopback arrojando `HttpListenerException (Acceso denegado)`. Se implementó un enlace resiliente en 3 capas: intenta `http://+:4884/`, si falla prueba la IP local, y si persiste el rechazo activa un puente socket TCP (`TcpListener` en `0.0.0.0:4884`) que reenvía limpiamente los paquetes HTTP a `127.0.0.1:4885`. De este modo, los smartphones en la LAN se conectan y cargan la PWA al 100% sin requerir permisos de administrador.
+     - En `LanServerHost.cs`: Métodos utilitarios `GetFirewallCommand`, `GetUrlAclCommand` y `TryConfigureFirewall`.
+     - Creado script `build/setup-lan-firewall.bat` para configurar la regla de entrada en el Firewall de Windows y la reserva URLACL en un solo clic.
+  2. **Estado en Reposo Elegante en la PWA Móvil (`Embedded/pwa.html`):**
+     - Rediseño Mobile-First en negro OLED (`#000000`).
+     - Cuando el PC está en estado `Idle`, la PWA oculta los controles de tarea activa y muestra la tarjeta Hero con estado "PC en reposo (Listo)", telemetría en vivo (CPU %, RAM MB, Red KB/s) y accesos rápidos prominentes: "Apagar Pantallas", "Bloquear Sesión", "Apagar PC Ahora" y "Ver Captura de Pantalla".
+     - Al activarse un flujo, la tarjeta transmuta automáticamente al temporizador decreciente con barra de progreso cian y botones "+10 Min", "+30 Min" y "ABORTAR TAREA".
+  3. **Icono Oficial del Ejecutable y de la Ventana (.ICO Multirresolución):**
+     - Generado en `src/Nokto.UI/Assets/nokto.ico` con capas de 16x16, 32x32, 48x48 y 256x256 px mediante SkiaSharp (`IconGenerator.cs`), conteniendo la identidad de Nokto: placa circular técnica oscura `#16181D`, arco geométrico en cian `#00D2FF` y núcleo luminoso blanco `#F0F2F5`.
+     - Vinculado en `Nokto.UI.csproj` mediante `<ApplicationIcon>Assets\nokto.ico</ApplicationIcon>` y en `MainWindow.axaml` con `Icon="/Assets/nokto.ico"`.
+  4. **Calibración de Dimensiones de Ventana (Layout y Escalado DPI):**
+     - Dimensiones ampliadas y balanceadas para escalados DPI al 125% y 150%: `Width="880"`, `Height="640"`, `MinWidth="820"`, `MinHeight="580"`, `WindowStartupLocation="CenterScreen"`.
+     - Contenedores con `Padding="24,16,24,16"` y `ScrollViewer` vertical pasivo para garantizar visibilidad permanente de controles y del botón verde "[ ▶ INICIAR TAREA ]" en cualquier resolución.
+  5. **Sustitución de Emojis por Iconografía Vectorial Fluent (`StreamGeometry`):**
+     - Eliminados todos los emojis de texto de pestañas, encabezados y ComboBoxes.
+     - Declarados en `App.axaml` recursos `StreamGeometry` vectoriales (`IconSliders`, `IconLightning`, `IconWorkflow`, `IconPower`, `IconRestart`, `IconMoon`, `IconHibernate`, `IconLock`, `IconMonitorOff`, `IconClock`, `IconPlay`, `IconStop`).
+     - Pestañas estilizadas con iconos vectoriales en sus encabezados.
+     - Selector de acción terminal con iconos temáticos coloreados (Apagar en rojo `#FF4B4B`, Reiniciar en cian `#00D2FF`, Suspender/Hibernar en gris `#A0A5B0`, Bloquear en ámbar `#FFB300`, Apagar Monitores en cian `#00D2FF`).
+- **Resultado de la compilación y pruebas:**
+  - `dotnet build Nokto.sln`: 0 Advertencias, 0 Errores.
+  - Verificación LAN: PWA servida con HTTP 200 y JSON autenticado recibido desde IP LAN `192.168.1.84:4884`.
+  - 10 de 10 tests automatizados superados con éxito en 10.20s.
+
 ## [Fase 6: Disparadores AudioSilence y BatteryState, Modo Seguro Dry-Run y Suite de 10 Tests Automatizados] - 2026-10-01 19:48:00
 - **Fase del roadmap:** Cierre 100% de Especificaciones PRD (`docs/01_PRD_CORE.md`) y Suite de Calidad
 - **Archivos creados o modificados:**

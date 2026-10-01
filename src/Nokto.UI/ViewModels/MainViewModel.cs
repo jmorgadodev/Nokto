@@ -78,10 +78,10 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private bool _isStudioMode;
 
     [ObservableProperty]
-    private double _windowWidth = 680;
+    private double _windowWidth = 880;
 
     [ObservableProperty]
-    private double _windowHeight = 620;
+    private double _windowHeight = 640;
 
     [ObservableProperty]
     private string _selectedProcessName = "blender.exe";
@@ -840,16 +840,6 @@ public partial class MainViewModel : ObservableObject, IDisposable
     public void ToggleStudioMode()
     {
         IsStudioMode = !IsStudioMode;
-        if (IsStudioMode)
-        {
-            WindowWidth = 820;
-            WindowHeight = 620;
-        }
-        else
-        {
-            WindowWidth = 460;
-            WindowHeight = 580;
-        }
     }
 
     [RelayCommand]

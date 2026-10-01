@@ -9,6 +9,7 @@
     <AssemblyName>Nokto</AssemblyName>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+    <ApplicationIcon>Assets\nokto.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
 
     <!-- Configuración para Binario Único Portable -->
@@ -19,6 +20,10 @@
     <PublishTrimmed>false</PublishTrimmed>
     <TieredCompilation>true</TieredCompilation>
   </PropertyGroup>
+
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\**" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Nokto.Core\Nokto.Core.csproj" />
