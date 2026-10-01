@@ -2,6 +2,60 @@
 
 Este documento registra de manera cronológica y detallada cada avance, fase del roadmap, archivos modificados y resultados de compilación del proyecto Nokto.
 
+## [Fase 6: Disparadores AudioSilence y BatteryState, Modo Seguro Dry-Run y Suite de 10 Tests Automatizados] - 2026-10-01 19:48:00
+- **Fase del roadmap:** Cierre 100% de Especificaciones PRD (`docs/01_PRD_CORE.md`) y Suite de Calidad
+- **Archivos creados o modificados:**
+  - `src/Nokto.Core/Abstractions/ISystemAdapter.cs`
+  - `src/Nokto.Core/Engine/IWorkflowEngine.cs`
+  - `src/Nokto.Core/Engine/WorkflowEngine.cs`
+  - `src/Nokto.Core/Models/Enums.cs`
+  - `src/Nokto.Core/Models/BatteryStatus.cs` *(Nuevo)*
+  - `src/Nokto.Core/Models/SystemMetrics.cs`
+  - `src/Nokto.Core/Serialization/NoktoJsonContext.cs`
+  - `src/Nokto.Platform.Windows/Interop/NativeStructs.cs`
+  - `src/Nokto.Platform.Windows/Interop/NativeMethods.cs`
+  - `src/Nokto.Platform.Windows/Audio/WasapiAudio.cs`
+  - `src/Nokto.Platform.Windows/WindowsSystemAdapter.cs`
+  - `src/Nokto.Platform.MacOs/MacOsSystemAdapter.cs`
+  - `src/Nokto.UI/ViewModels/MainViewModel.cs`
+  - `src/Nokto.UI/Views/MainWindow.axaml`
+  - `tests/Nokto.ConsoleTest/Program.cs`
+  - `docs/AUDIT_STATUS.md`
+  - `CHANGELOG.md`
+- **Resumen técnico del cambio:**
+  1. **Disparador por Silencio de Audio (`AudioSilenceTrigger` - REQ-22):**
+     - En `Nokto.Platform.Windows/Audio/WasapiAudio.cs`: Implementada la interfaz nativa COM `IAudioMeterInformation` (`C02216F6-0388-4E45-9285-18B42C1B15F9`) activada directamente sobre el dispositivo de salida por defecto mediante `IMMDevice.Activate(CLSCTX_ALL)`.
+     - Lectura en tiempo real del nivel de pico maestro (`GetPeakValue(out float peak)`) en rango de 0.0f a 1.0f con cero impacto en la latencia o distorsión del audio.
+     - En `Nokto.Core/Engine/WorkflowEngine.cs`: Evaluación asíncrona mediante `PeriodicTimer` (1s), detectando silencio continuo cuando el pico se mantenga bajo el umbral estricto (< 0.001f) durante `silenceThresholdSeconds`.
+  2. **Disparador por Estado de Batería (`BatteryStateTrigger` - REQ-23):**
+     - En `Nokto.Platform.Windows/Interop/`: Mapeo de la estructura nativa `SYSTEM_POWER_STATUS` y la función P/Invoke `GetSystemPowerStatus` de `kernel32.dll`.
+     - En `Nokto.Core/Models/BatteryStatus.cs`: Modelo fuertemente tipado (`HasBattery`, `IsCharging`, `IsOnAcPower`, `BatteryLifePercent`, `BatteryLifeSecondsRemaining`) registrado en `NoktoJsonContext` para compatibilidad Native AOT.
+     - En `Nokto.Core/Engine/WorkflowEngine.cs`: Monitoreo en bucle asíncrono con evaluación de desconexión de corriente (`ACLineStatus == 0`) y/o caída del porcentaje de batería por debajo del umbral (`BatteryLifePercent <= threshold`).
+  3. **Integración en UI Desktop (`Nokto.UI`):**
+     - Controles reactivos en `MainWindow.axaml` (Pestaña "Configuración Manual"): ComboBox extendido con opciones 4 ("Silencio de Audio") y 5 ("Estado de Batería / AC"), junto a paneles de entrada dinámicos con selectores de segundos de silencio y umbrales porcentuales de batería.
+     - Soporte completo en `MainViewModel.cs` para enlazar ambos disparadores directamente a la máquina de estados.
+  4. **Modo Seguro de Pruebas (`IsDryRunMode`):**
+     - Flag booleano añadido en `ISystemAdapter` y `WorkflowEngine`.
+     - Cuando `IsDryRunMode == true`, las acciones de energía potencialmente destructivas (`Shutdown`, `Sleep`, `Hibernate`, `Restart`) omiten las llamadas reales al kernel de Windows y registran en consola y en `audit.jsonl` la cadena: `[DRY-RUN] Acción de energía simulada con éxito: {Action} (Forzado: {Force})`.
+     - Las acciones no destructivas (lectura de hardware, Keep-Alive VK_F15, screenshots, WASAPI metering y microservidor LAN) operan al 100% de fidelidad real.
+  5. **Suite Automatizada de Verificación (10/10 Tests en `Nokto.ConsoleTest`):**
+     - Ejecutable mediante argumento de línea de comandos `--auto-test` o `-a`.
+     - Cobertura exhaustiva de componentes clave:
+       * `[TEST 01]` Detección de Procesos y Debounce (`Nokto.ConsoleTest.exe` supervisado).
+       * `[TEST 02]` Métricas en vivo (lectura real de CPU %, RAM MB y Red KB/s).
+       * `[TEST 03]` Monitor de Inactividad de Periféricos (`GetLastInputInfo` real).
+       * `[TEST 04]` Detección de Estado de Batería / AC (`GetSystemPowerStatus` real).
+       * `[TEST 05]` Detección de Nivel y Silencio de Audio (WASAPI COM `IAudioMeterInformation` real).
+       * `[TEST 06]` Motor Keep-Alive / Jitter (simulación no destructiva `VK_F15` y micro-movimiento).
+       * `[TEST 07]` Captura de Pantalla real estampada guardada en `./data/snapshots/`.
+       * `[TEST 08]` Serialización AOT transaccional de `presets.json` y `audit.jsonl`.
+       * `[TEST 09]` Microservidor HTTP LAN y respuesta HTTP 200 en `/api/status`.
+       * `[TEST 10]` Disparo de flujo encadenado en modo Dry-Run con periodo de gracia de 5s y auditoría JSONL.
+- **Resultado de la compilación y ejecución:**
+  - `dotnet build Nokto.sln`: 0 Advertencias, 0 Errores.
+  - `dotnet run --project tests/Nokto.ConsoleTest -- --auto-test`: 10/10 tests superados (0 fallos) en 8.14s.
+  - Cumplimiento de `docs/01_PRD_CORE.md`: 100% completado (23/23 requerimientos).
+
 ## [Corrección de Arranque Portable: Instancia Única por Named Pipe y Resiliencia en Minimizaciones] - 2026-10-01 19:30:00
 - **Fase del roadmap:** Post-Fase 5 (Estabilidad de Ejecución y Empaquetado Portable)
 - **Archivos creados o modificados:**

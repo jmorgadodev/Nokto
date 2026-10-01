@@ -100,6 +100,8 @@ public partial class MainViewModel : ObservableObject, IDisposable
     public bool IsTriggerExactTime => SelectedTriggerTypeIndex == 1;
     public bool IsTriggerInactivity => SelectedTriggerTypeIndex == 2;
     public bool IsTriggerProcessExit => SelectedTriggerTypeIndex == 3;
+    public bool IsTriggerAudioSilence => SelectedTriggerTypeIndex == 4;
+    public bool IsTriggerBatteryState => SelectedTriggerTypeIndex == 5;
 
     partial void OnSelectedTriggerTypeIndexChanged(int value)
     {
@@ -107,7 +109,21 @@ public partial class MainViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(IsTriggerExactTime));
         OnPropertyChanged(nameof(IsTriggerInactivity));
         OnPropertyChanged(nameof(IsTriggerProcessExit));
+        OnPropertyChanged(nameof(IsTriggerAudioSilence));
+        OnPropertyChanged(nameof(IsTriggerBatteryState));
     }
+
+    [ObservableProperty]
+    private decimal _audioSilenceSeconds = 30;
+
+    [ObservableProperty]
+    private bool _batteryTriggerOnAcDisconnect = true;
+
+    [ObservableProperty]
+    private bool _batteryTriggerOnThreshold = false;
+
+    [ObservableProperty]
+    private decimal _batteryThresholdPercent = 20;
 
     [ObservableProperty]
     private decimal _countdownHours = 0;
@@ -548,6 +564,35 @@ public partial class MainViewModel : ObservableObject, IDisposable
                         }
                     };
                 }
+                break;
+
+            case 4: // Silencio de Audio
+                int silenceSec = (int)AudioSilenceSeconds;
+                if (silenceSec <= 0) silenceSec = 30;
+                taskName = $"Silencio de Audio ({silenceSec}s)";
+                trigger = new TriggerDefinition
+                {
+                    Type = TriggerType.AudioSilence,
+                    Parameters = new Dictionary<string, JsonElement>
+                    {
+                        ["silenceThresholdSeconds"] = JsonSerializer.SerializeToElement(silenceSec),
+                        ["thresholdPeak"] = JsonSerializer.SerializeToElement(0.001)
+                    }
+                };
+                break;
+
+            case 5: // Estado de Batería
+                int batPct = BatteryTriggerOnThreshold ? (int)BatteryThresholdPercent : 0;
+                taskName = BatteryTriggerOnAcDisconnect ? "Desconexión de Cargador (AC)" : $"Batería baja ({batPct}%)";
+                trigger = new TriggerDefinition
+                {
+                    Type = TriggerType.BatteryState,
+                    Parameters = new Dictionary<string, JsonElement>
+                    {
+                        ["onAcDisconnect"] = JsonSerializer.SerializeToElement(BatteryTriggerOnAcDisconnect),
+                        ["batteryLevelThreshold"] = JsonSerializer.SerializeToElement(batPct)
+                    }
+                };
                 break;
 
             case 0: // Cuenta Atrás

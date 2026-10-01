@@ -5,6 +5,7 @@ namespace Nokto.Core.Engine;
 public interface IWorkflowEngine : IDisposable
 {
     EngineState CurrentState { get; }
+    bool IsDryRunMode { get; set; }
     SystemStatusState GetStatusSnapshot();
 
     event Action<SystemStatusState>? StatusChanged;

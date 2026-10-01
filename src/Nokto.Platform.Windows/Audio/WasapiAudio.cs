@@ -125,16 +125,36 @@ internal interface IAudioEndpointVolume
     int GetVolumeRange(out float pflVolumeMindB, out float pflVolumeMaxdB, out float pflVolumeIncrementdB);
 }
 
+[ComImport]
+[Guid("C02216F6-0388-4E45-9285-18B42C1B15F9")]
+[InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+internal interface IAudioMeterInformation
+{
+    [PreserveSig]
+    int GetPeakValue(out float pfPeak);
+
+    [PreserveSig]
+    int GetMeteringChannelCount(out uint pnChannelCount);
+
+    [PreserveSig]
+    int GetChannelsPeakValues(uint u32ChannelCount, [In, Out] float[] afPeakValues);
+
+    [PreserveSig]
+    int QueryHardwareSupport(out uint pdwHardwareSupportMask);
+}
+
 /// <summary>
-/// Controlador WASAPI de bajo nivel para el volumen de audio maestro del sistema.
+/// Controlador WASAPI de bajo nivel para el volumen de audio maestro del sistema y medición de picos (metering).
 /// Sin dependencias pesadas de terceros.
 /// </summary>
 public sealed class WasapiAudioController : IDisposable
 {
     private const uint CLSCTX_INPROC_SERVER = 1;
     private static readonly Guid IID_IAudioEndpointVolume = typeof(IAudioEndpointVolume).GUID;
+    private static readonly Guid IID_IAudioMeterInformation = typeof(IAudioMeterInformation).GUID;
 
     private IAudioEndpointVolume? _endpointVolume;
+    private IAudioMeterInformation? _audioMeter;
     private bool _disposed;
 
     public WasapiAudioController()
@@ -156,11 +176,18 @@ public sealed class WasapiAudioController : IDisposable
 
             if (hr == 0 && device != null)
             {
-                var iid = IID_IAudioEndpointVolume;
-                hr = device.Activate(ref iid, CLSCTX_INPROC_SERVER, IntPtr.Zero, out var audioObj);
+                var iidVol = IID_IAudioEndpointVolume;
+                hr = device.Activate(ref iidVol, CLSCTX_INPROC_SERVER, IntPtr.Zero, out var audioObj);
                 if (hr == 0 && audioObj is IAudioEndpointVolume volume)
                 {
                     _endpointVolume = volume;
+                }
+
+                var iidMeter = IID_IAudioMeterInformation;
+                hr = device.Activate(ref iidMeter, CLSCTX_INPROC_SERVER, IntPtr.Zero, out var meterObj);
+                if (hr == 0 && meterObj is IAudioMeterInformation meter)
+                {
+                    _audioMeter = meter;
                 }
             }
         }
@@ -168,7 +195,19 @@ public sealed class WasapiAudioController : IDisposable
         {
             // Silently handle systems without audio endpoints
             _endpointVolume = null;
+            _audioMeter = null;
         }
+    }
+
+    /// <summary>
+    /// Obtiene el nivel de pico maestro actual [0.0f - 1.0f] mediante IAudioMeterInformation.
+    /// Si el sistema carece de audio o no hay actividad, retorna 0.0f.
+    /// </summary>
+    public float GetPeakValue()
+    {
+        if (_audioMeter == null) return 0f;
+        int hr = _audioMeter.GetPeakValue(out float peak);
+        return hr == 0 ? Math.Clamp(peak, 0f, 1f) : 0f;
     }
 
     public float GetMasterVolume()
@@ -250,6 +289,11 @@ public sealed class WasapiAudioController : IDisposable
     {
         if (!_disposed)
         {
+            if (_audioMeter != null && Marshal.IsComObject(_audioMeter))
+            {
+                Marshal.ReleaseComObject(_audioMeter);
+                _audioMeter = null;
+            }
             if (_endpointVolume != null && Marshal.IsComObject(_endpointVolume))
             {
                 Marshal.ReleaseComObject(_endpointVolume);

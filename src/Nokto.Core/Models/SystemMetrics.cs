@@ -13,6 +13,8 @@ public record SystemMetrics
     public double NetworkDownKBs { get; init; }
     public double NetworkUpKBs { get; init; }
     public int AudioSilenceDurationSeconds { get; init; }
+    public float AudioPeakLevel { get; init; }
+    public BatteryStatus? Battery { get; init; }
     public int UserIdleSeconds { get; init; }
     public DateTimeOffset Timestamp { get; init; } = DateTimeOffset.UtcNow;
 }

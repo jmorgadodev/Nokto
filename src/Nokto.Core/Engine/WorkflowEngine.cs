@@ -35,6 +35,12 @@ public sealed class WorkflowEngine : IWorkflowEngine
         private set { lock (_stateLock) _currentState = value; }
     }
 
+    public bool IsDryRunMode
+    {
+        get => _systemAdapter.IsDryRunMode;
+        set => _systemAdapter.IsDryRunMode = value;
+    }
+
     public event Action<SystemStatusState>? StatusChanged;
     public event Action<string>? LogMessageReceived;
     public event Action<int>? GracePeriodTick;
@@ -231,6 +237,18 @@ public sealed class WorkflowEngine : IWorkflowEngine
                 await WaitForUserIdleAsync(idleMinutes, ct);
                 break;
 
+            case TriggerType.AudioSilence:
+                int silenceThresholdSec = GetIntParam(trigger.Parameters, "silenceThresholdSeconds", 30);
+                double thresholdPeak = GetDoubleParam(trigger.Parameters, "thresholdPeak", 0.001);
+                await WaitForAudioSilenceAsync(silenceThresholdSec, (float)thresholdPeak, ct);
+                break;
+
+            case TriggerType.BatteryState:
+                bool onAcDisconnect = GetBoolParam(trigger.Parameters, "onAcDisconnect", true);
+                int batteryLevelThreshold = GetIntParam(trigger.Parameters, "batteryLevelThreshold", 0);
+                await WaitForBatteryStateAsync(onAcDisconnect, batteryLevelThreshold, ct);
+                break;
+
             case TriggerType.FixedTime:
             case TriggerType.Schedule:
             default:
@@ -412,6 +430,92 @@ public sealed class WorkflowEngine : IWorkflowEngine
         }
     }
 
+    private async Task WaitForAudioSilenceAsync(int silenceThresholdSeconds, float thresholdPeak, CancellationToken ct)
+    {
+        int continuousSilenceSeconds = 0;
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
+        _timeRemainingSeconds = silenceThresholdSeconds;
+
+        while (!ct.IsCancellationRequested)
+        {
+            await timer.WaitForNextTickAsync(ct);
+
+            float peak = _systemAdapter.GetMasterPeakValue();
+
+            if (peak <= thresholdPeak)
+            {
+                continuousSilenceSeconds++;
+                Log($"Silencio de audio detectado: {continuousSilenceSeconds}/{silenceThresholdSeconds}s (Pico: {peak:F4})");
+            }
+            else
+            {
+                if (continuousSilenceSeconds > 0)
+                {
+                    Log($"Sonido detectado (Pico: {peak:F4}). Reiniciando contador de silencio.");
+                }
+                continuousSilenceSeconds = 0;
+            }
+
+            _timeRemainingSeconds = Math.Max(0, silenceThresholdSeconds - continuousSilenceSeconds);
+            _progressPercentage = Math.Clamp(((double)continuousSilenceSeconds / silenceThresholdSeconds) * 100.0, 0, 100);
+            NotifyStateChanged();
+
+            if (continuousSilenceSeconds >= silenceThresholdSeconds)
+            {
+                Log($"Umbral de silencio de audio alcanzado: {silenceThresholdSeconds}s continuos.");
+                break;
+            }
+        }
+    }
+
+    private async Task WaitForBatteryStateAsync(bool onAcDisconnect, int batteryLevelThreshold, CancellationToken ct)
+    {
+        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(2));
+
+        while (!ct.IsCancellationRequested)
+        {
+            await timer.WaitForNextTickAsync(ct);
+
+            var status = _systemAdapter.GetBatteryStatus();
+
+            bool conditionMet = false;
+            string reason = "";
+
+            if (onAcDisconnect && !status.IsOnAcPower)
+            {
+                conditionMet = true;
+                reason = "Desconexión de corriente alterna (AC Offline / En Batería)";
+            }
+            else if (batteryLevelThreshold > 0 && status.BatteryLifePercent >= 0 && status.BatteryLifePercent <= batteryLevelThreshold)
+            {
+                conditionMet = true;
+                reason = $"Nivel de batería crítico ({status.BatteryLifePercent}% <= {batteryLevelThreshold}%)";
+            }
+
+            if (conditionMet)
+            {
+                Log($"Disparador de batería satisfecho: {reason}.");
+                _progressPercentage = 100.0;
+                _timeRemainingSeconds = 0;
+                NotifyStateChanged();
+                break;
+            }
+
+            if (status.BatteryLifePercent >= 0)
+            {
+                _progressPercentage = status.BatteryLifePercent;
+                _timeRemainingSeconds = status.BatteryLifeSecondsRemaining > 0 ? status.BatteryLifeSecondsRemaining : 0;
+            }
+            else
+            {
+                _progressPercentage = 0;
+                _timeRemainingSeconds = 0;
+            }
+
+            NotifyStateChanged();
+        }
+    }
+
     private async Task ExecutePipelineAsync(List<PipelineStepDefinition> pipeline, CancellationToken ct)
     {
         var sortedSteps = pipeline.OrderBy(s => s.StepOrder).ToList();
@@ -538,6 +642,22 @@ public sealed class WorkflowEngine : IWorkflowEngine
         bool force = GetBoolParam(terminalAction.Parameters, "forced", false);
         Log($"Ejecutando acción terminal: {terminalAction.Type} (Force: {force})");
 
+        if (IsDryRunMode)
+        {
+            switch (terminalAction.Type)
+            {
+                case TerminalActionType.Shutdown:
+                case TerminalActionType.Sleep:
+                case TerminalActionType.Hibernate:
+                case TerminalActionType.Restart:
+                    string dryRunMsg = $"[DRY-RUN] Acción de energía simulada con éxito: {terminalAction.Type} (Forzado: {force})";
+                    Console.WriteLine(dryRunMsg);
+                    Log(dryRunMsg);
+                    await _systemAdapter.SetPowerStateAsync(PowerAction.Shutdown, force, ct);
+                    return;
+            }
+        }
+
         switch (terminalAction.Type)
         {
             case TerminalActionType.Shutdown:
@@ -575,6 +695,12 @@ public sealed class WorkflowEngine : IWorkflowEngine
     {
         try
         {
+            string finalNotes = notes;
+            if (IsDryRunMode && (terminalAction == "Shutdown" || terminalAction == "Sleep" || terminalAction == "Hibernate" || terminalAction == "Restart"))
+            {
+                finalNotes = $"[DRY-RUN] Acción de energía simulada con éxito: {terminalAction} (Forzado: False)";
+            }
+
             var entry = new AuditLogEntry
             {
                 Timestamp = DateTimeOffset.UtcNow,
@@ -584,7 +710,7 @@ public sealed class WorkflowEngine : IWorkflowEngine
                 TriggerFired = triggerFired,
                 TerminalActionExecuted = terminalAction,
                 SnapshotFile = snapshot,
-                ExitNotes = notes
+                ExitNotes = finalNotes
             };
 
             _persistence.AppendAuditLog(entry);

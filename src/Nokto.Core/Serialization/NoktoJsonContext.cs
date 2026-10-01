@@ -15,6 +15,7 @@ namespace Nokto.Core.Serialization;
 [JsonSerializable(typeof(QuickPowerRequest))]
 [JsonSerializable(typeof(PostponeRequest))]
 [JsonSerializable(typeof(SystemMetrics))]
+[JsonSerializable(typeof(BatteryStatus))]
 public partial class NoktoJsonContext : JsonSerializerContext
 {
 }

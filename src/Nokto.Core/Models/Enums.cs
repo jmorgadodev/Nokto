@@ -57,7 +57,8 @@ public enum TriggerType
     SustainedLoad,
     NetworkThroughput,
     AudioSilence,
-    UserIdle
+    UserIdle,
+    BatteryState
 }
 
 /// <summary>

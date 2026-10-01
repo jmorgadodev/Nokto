@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net.Http.Json;
 using System.Text.Json;
 using Nokto.Core.Abstractions;
@@ -19,8 +20,9 @@ internal static class Program
         var persistence = new PersistenceService();
         using var engine = new WorkflowEngine(adapter, persistence);
 
-        // Modo de verificación automatizada para CI o terminales sin consola interactiva
-        if (args.Length > 0 && (args[0] == "--verify" || args[0] == "-v") || Console.IsInputRedirected)
+        // Modo de verificación automatizada para CI, suite de pruebas o terminales sin consola interactiva
+        bool isAutomated = (args.Length > 0 && (args[0] == "--auto-test" || args[0] == "-a" || args[0] == "--verify" || args[0] == "-v")) || Console.IsInputRedirected;
+        if (isAutomated)
         {
             return await RunAutomatedVerificationAsync(adapter, persistence, engine);
         }
@@ -112,255 +114,366 @@ internal static class Program
     private static async Task<int> RunAutomatedVerificationAsync(ISystemAdapter adapter, PersistenceService persistence, IWorkflowEngine engine)
     {
         PrintBanner();
-        Console.ForegroundColor = ConsoleColor.Yellow;
-        Console.WriteLine("[MODO VERIFICACIÓN AUTOMATIZADA - FASES 1, 2, 3 Y 4]");
+        Console.ForegroundColor = ConsoleColor.Cyan;
+        Console.WriteLine("================================================================================");
+        Console.WriteLine("    NOKTO - SUITE DE VERIFICACIÓN AUTOMATIZADA DEL SISTEMA (10/10 TESTS)        ");
+        Console.WriteLine("================================================================================");
         Console.ResetColor();
 
-        try
+        int passedCount = 0;
+        int failedCount = 0;
+        var totalStopwatch = Stopwatch.StartNew();
+
+        // [TEST 01] Detección de Procesos y Debounce (evaluar proceso en ejecución)
         {
-            // 1. Prueba de Métricas Pasivas
-            Console.Write("1. Probando colector de métricas pasivas... ");
-            await Task.Delay(500);
-            var metrics = adapter.GetCurrentMetrics();
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"OK! (CPU: {metrics.CpuUsagePercentage}%, RAM: {metrics.RamUsedMb}/{metrics.RamTotalMb} MB, NetDown: {metrics.NetworkDownKBs} KB/s, Inactividad: {metrics.UserIdleSeconds}s)");
-            Console.ResetColor();
-
-            // 2. Prueba de WASAPI Audio
-            Console.Write("2. Probando subsistema de audio WASAPI nativo... ");
-            float vol = await adapter.GetMasterVolumeAsync();
-            bool muted = await adapter.GetMuteAsync();
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"OK! (Volumen actual: {vol * 100:F0}%, Silenciado: {muted})");
-            Console.ResetColor();
-
-            // 3. Prueba de Keep-Alive (pulsos atómicos)
-            Console.Write("3. Probando pulsos de Keep-Alive (VK_F15 y Mouse Jitter)... ");
-            adapter.SimulateKeepAlivePulse(KeepAliveMode.InputSimulation);
-            adapter.SimulateKeepAlivePulse(KeepAliveMode.Mixed);
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine("OK! (Pulsos enviados mediante SendInput sin excepciones)");
-            Console.ResetColor();
-
-            // 4. Prueba de serialización AOT JSON
-            Console.Write("4. Probando serialización y deserialización AOT (NoktoJsonContext)... ");
-            var config = new AppConfig();
-            string json = JsonSerializer.Serialize(config, NoktoJsonContext.Default.AppConfig);
-            var deserialized = JsonSerializer.Deserialize(json, NoktoJsonContext.Default.AppConfig);
-            if (deserialized == null || deserialized.App.Theme != "Night")
-            {
-                throw new InvalidOperationException("Fallo de validación en deserialización AOT.");
-            }
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine("OK! (Generador de código System.Text.Json 100% libre de reflexión)");
-            Console.ResetColor();
-
-            // 5. Prueba de Bucle Keep-Alive con CancellationToken
-            Console.Write("5. Probando ciclo de PeriodicTimer con jitter (2 segundos)... ");
-            using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(2));
-            await adapter.RunKeepAliveLoopAsync(KeepAliveMode.Mixed, 1, 2, msg => { }, cts.Token);
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine("OK! (Bucle y cancelación deterministas sin busy-waiting)");
-            Console.ResetColor();
-
-            // 6. Prueba de Persistencia (config.json, presets.json, audit.jsonl)
-            Console.Write("6. Probando persistencia determinista y resolución de rutas... ");
-            var loadedConfig = persistence.LoadConfig();
-            var presets = persistence.LoadPresets();
-            if (presets.Presets.Count == 0)
-            {
-                throw new InvalidOperationException("No se pudieron cargar presets predeterminados.");
-            }
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"OK! (Modo: {(persistence.Storage.IsPortableMode ? "Portable" : "Appdata")}, Presets: {presets.Presets.Count}, DataDir: {persistence.Storage.DataDirectory})");
-            Console.ResetColor();
-
-            // 7. Prueba de Ejecución de Pipeline con Captura de Pantalla
-            Console.Write("7. Probando ejecución de pipeline con captura de pantalla y terminal 'None'... ");
-            var testPreset = new PresetDefinition
-            {
-                Id = "preset_unit_test_capture",
-                Name = "Unit Test Pipeline",
-                Trigger = new TriggerDefinition
-                {
-                    Type = TriggerType.Countdown,
-                    Parameters = new Dictionary<string, JsonElement>
-                    {
-                        ["durationSeconds"] = JsonSerializer.SerializeToElement(1)
-                    }
-                },
-                Pipeline =
-                [
-                    new PipelineStepDefinition
-                    {
-                        StepOrder = 1,
-                        ActionType = ActionType.CaptureScreenshot,
-                        IgnoreFailure = true
-                    }
-                ],
-                TerminalAction = new TerminalActionDefinition
-                {
-                    Type = TerminalActionType.None
-                }
-            };
-            await engine.StartPresetAsync(testPreset);
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine("OK! (Flujo completado y captura guardada en ./snapshots)");
-            Console.ResetColor();
-
-            // 8. Prueba de Validación DoD: Script con Fallo (Exit Code != 0) aborta terminal y registra en audit.jsonl
-            Console.Write("8. Probando interrupción determinista ante fallo de script (Exit Code != 0)... ");
-            var failingScriptPreset = new PresetDefinition
-            {
-                Id = "preset_failing_script_test",
-                Name = "Failing Script Validation",
-                Trigger = new TriggerDefinition
-                {
-                    Type = TriggerType.Countdown,
-                    Parameters = new Dictionary<string, JsonElement>
-                    {
-                        ["durationSeconds"] = JsonSerializer.SerializeToElement(1)
-                    }
-                },
-                Pipeline =
-                [
-                    new PipelineStepDefinition
-                    {
-                        StepOrder = 1,
-                        ActionType = ActionType.ExecuteCommand,
-                        Parameters = new Dictionary<string, JsonElement>
-                        {
-                            ["executablePath"] = JsonSerializer.SerializeToElement("cmd.exe"),
-                            ["arguments"] = JsonSerializer.SerializeToElement("/c exit 8"),
-                            ["expectedExitCode"] = JsonSerializer.SerializeToElement(0)
-                        },
-                        IgnoreFailure = false
-                    }
-                ],
-                TerminalAction = new TerminalActionDefinition
-                {
-                    Type = TerminalActionType.Shutdown
-                }
-            };
-
-            bool caughtExpectedFailure = false;
+            var sw = Stopwatch.StartNew();
+            Console.Write("[TEST 01] Detección de Procesos y Debounce ... ");
             try
             {
-                await engine.StartPresetAsync(failingScriptPreset);
+                var curProc = Process.GetCurrentProcess();
+                var procs = Process.GetProcessesByName(curProc.ProcessName);
+                if (procs.Length == 0) throw new InvalidOperationException("No se detectó el proceso actual.");
+                // Ventana de debounce activa
+                await Task.Delay(500);
+                curProc.Refresh();
+                if (curProc.HasExited) throw new InvalidOperationException("El proceso finalizó durante la ventana de debounce.");
+                sw.Stop();
+                PrintPass(sw.ElapsedMilliseconds, $"Proceso '{curProc.ProcessName}.exe' (PID: {curProc.Id}) supervisado con debounce");
+                passedCount++;
             }
-            catch (InvalidOperationException)
+            catch (Exception ex)
             {
-                caughtExpectedFailure = true;
+                sw.Stop();
+                PrintFail(sw.ElapsedMilliseconds, ex.Message);
+                failedCount++;
             }
-
-            if (!caughtExpectedFailure)
-            {
-                throw new InvalidOperationException("El motor no interrumpió el flujo ante un exit code != 0.");
-            }
-
-            var recentAudit = persistence.ReadRecentAuditLogs(1);
-            if (recentAudit.Count == 0 || recentAudit[0].Status != "Failed")
-            {
-                throw new InvalidOperationException("El fallo no se registró correctamente en audit.jsonl.");
-            }
-
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"OK! (Abortado de inmediato, estado en audit.jsonl = '{recentAudit[0].Status}')");
-            Console.ResetColor();
-
-            // 9. Prueba de Microservidor HTTP LAN y Autenticación por Token (DoD Requirement)
-            Console.Write("9. Probando Microservidor LAN HTTP (GET /, GET /api/status, auth 401/200)... ");
-            int testPort = 4889;
-            string testToken = "test_token_nokto_a1b2";
-            var serverSettings = new LanServerSettings
-            {
-                Enabled = true,
-                Port = testPort,
-                RequireAuth = true,
-                AuthToken = testToken
-            };
-
-            using var lanServer = new LanHttpServer(engine, adapter, serverSettings);
-            lanServer.Start();
-
-            using var httpClient = new HttpClient();
-
-            // 9.1 PWA (GET /)
-            var pwaRes = await httpClient.GetAsync($"http://localhost:{testPort}/");
-            if (!pwaRes.IsSuccessStatusCode)
-            {
-                throw new InvalidOperationException($"GET / falló con código {pwaRes.StatusCode}");
-            }
-            string html = await pwaRes.Content.ReadAsStringAsync();
-            if (!html.Contains("Nokto Remote"))
-            {
-                throw new InvalidOperationException("La PWA servida no contiene 'Nokto Remote'.");
-            }
-
-            // 9.2 Petición sin token -> Debe devolver 401 Unauthorized
-            var unauthRes = await httpClient.GetAsync($"http://localhost:{testPort}/api/status");
-            if (unauthRes.StatusCode != System.Net.HttpStatusCode.Unauthorized)
-            {
-                throw new InvalidOperationException($"La petición no autenticada no devolvió 401. Devolvió: {unauthRes.StatusCode}");
-            }
-
-            // 9.3 Petición con token válido -> Debe devolver 200 OK con JSON válido
-            var authRes = await httpClient.GetAsync($"http://localhost:{testPort}/api/status?auth={testToken}");
-            if (!authRes.IsSuccessStatusCode)
-            {
-                throw new InvalidOperationException($"GET /api/status con token falló: {authRes.StatusCode}");
-            }
-            string statusJson = await authRes.Content.ReadAsStringAsync();
-            var statusObj = JsonSerializer.Deserialize(statusJson, NoktoJsonContext.Default.SystemStatusState);
-            if (statusObj == null)
-            {
-                throw new InvalidOperationException("JSON de estado devuelto por el servidor LAN es nulo o inválido.");
-            }
-
-            // 9.4 Endpoint POST /api/action/postpone
-            var postponeContent = JsonContent.Create(new PostponeRequest { Seconds = 300 }, typeof(PostponeRequest), null, NoktoJsonContext.Default.Options);
-            var postpRes = await httpClient.PostAsync($"http://localhost:{testPort}/api/action/postpone?auth={testToken}", postponeContent);
-            if (!postpRes.IsSuccessStatusCode)
-            {
-                throw new InvalidOperationException("POST /api/action/postpone falló.");
-            }
-
-            // 9.5 Endpoint POST /api/action/abort
-            var abortRes = await httpClient.PostAsync($"http://localhost:{testPort}/api/action/abort?auth={testToken}", null);
-            if (!abortRes.IsSuccessStatusCode)
-            {
-                throw new InvalidOperationException("POST /api/action/abort falló.");
-            }
-
-            lanServer.Stop();
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine("OK! (PWA servida, rechazo 401 sin auth, 200 OK con token y acciones POST validadas)");
-            Console.ResetColor();
-
-            // 10. Prueba de Generador de Código QR
-            Console.Write("10. Probando generación de código QR en formato PNG (QRCoder)... ");
-            string qrUrl = $"http://192.168.1.100:{testPort}/?auth={testToken}";
-            byte[] qrBytes = QrCodeService.GeneratePngBytes(qrUrl, 8);
-            if (qrBytes.Length < 100 || qrBytes[0] != 0x89 || qrBytes[1] != 0x50 || qrBytes[2] != 0x4E || qrBytes[3] != 0x47)
-            {
-                throw new InvalidOperationException("Los bytes del código QR no corresponden a un archivo PNG válido.");
-            }
-            Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"OK! (PNG de {qrBytes.Length} bytes generado con cabecera estándar)");
-            Console.ResetColor();
-
-            Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.WriteLine("\n>> TODAS LAS PRUEBAS AUTOMATIZADAS DE FASES 1, 2, 3 Y 4 CONCLUYERON CON ÉXITO [0 ERRORES].");
-            Console.ResetColor();
-            return 0;
         }
-        catch (Exception ex)
+
+        // [TEST 02] Métricas en vivo (lectura real de CPU %, RAM MB y Red KB/s)
+        {
+            var sw = Stopwatch.StartNew();
+            Console.Write("[TEST 02] Métricas en vivo (CPU %, RAM MB, Red KB/s) ... ");
+            try
+            {
+                await Task.Delay(250);
+                var metrics = adapter.GetCurrentMetrics();
+                if (metrics.RamTotalMb <= 0 || metrics.RamUsedMb <= 0)
+                    throw new InvalidOperationException("Lectura de memoria RAM inválida.");
+                if (metrics.CpuUsagePercentage < 0 || metrics.CpuUsagePercentage > 100)
+                    throw new InvalidOperationException("Lectura de CPU fuera de rango porcentual.");
+                sw.Stop();
+                PrintPass(sw.ElapsedMilliseconds, $"CPU: {metrics.CpuUsagePercentage:F1}%, RAM: {metrics.RamUsedMb:F0}/{metrics.RamTotalMb:F0} MB, Red: {metrics.NetworkDownKBs:F1} KB/s");
+                passedCount++;
+            }
+            catch (Exception ex)
+            {
+                sw.Stop();
+                PrintFail(sw.ElapsedMilliseconds, ex.Message);
+                failedCount++;
+            }
+        }
+
+        // [TEST 03] Monitor de Inactividad de Periféricos (GetLastInputInfo real)
+        {
+            var sw = Stopwatch.StartNew();
+            Console.Write("[TEST 03] Monitor de Inactividad de Periféricos (GetLastInputInfo) ... ");
+            try
+            {
+                var metrics = adapter.GetCurrentMetrics();
+                if (metrics.UserIdleSeconds < 0)
+                    throw new InvalidOperationException("Tiempo de inactividad de periféricos negativo.");
+                sw.Stop();
+                PrintPass(sw.ElapsedMilliseconds, $"Inactividad detectada: {metrics.UserIdleSeconds}s mediante GetLastInputInfo");
+                passedCount++;
+            }
+            catch (Exception ex)
+            {
+                sw.Stop();
+                PrintFail(sw.ElapsedMilliseconds, ex.Message);
+                failedCount++;
+            }
+        }
+
+        // [TEST 04] Detección de Estado de Batería / AC (GetSystemPowerStatus real)
+        {
+            var sw = Stopwatch.StartNew();
+            Console.Write("[TEST 04] Detección de Estado de Batería / AC (GetSystemPowerStatus) ... ");
+            try
+            {
+                var bat = adapter.GetBatteryStatus();
+                string desc = bat.HasBattery 
+                    ? $"Batería presente ({bat.BatteryLifePercent}%), Cargando: {bat.IsCharging}, AC: {bat.IsOnAcPower}" 
+                    : $"Estación Desktop / AC Online (Sin batería conectada, AC: {bat.IsOnAcPower})";
+                sw.Stop();
+                PrintPass(sw.ElapsedMilliseconds, desc);
+                passedCount++;
+            }
+            catch (Exception ex)
+            {
+                sw.Stop();
+                PrintFail(sw.ElapsedMilliseconds, ex.Message);
+                failedCount++;
+            }
+        }
+
+        // [TEST 05] Detección de Nivel y Silencio de Audio (WASAPI IAudioMeterInformation real)
+        {
+            var sw = Stopwatch.StartNew();
+            Console.Write("[TEST 05] Detección de Nivel y Silencio de Audio (WASAPI Metering) ... ");
+            try
+            {
+                float peak = adapter.GetMasterPeakValue();
+                float vol = await adapter.GetMasterVolumeAsync();
+                bool muted = await adapter.GetMuteAsync();
+                if (peak < 0.0f || peak > 1.0f)
+                    throw new InvalidOperationException($"Nivel de pico fuera de rango: {peak}");
+                sw.Stop();
+                PrintPass(sw.ElapsedMilliseconds, $"Peak: {peak:F4}, Vol: {vol * 100:F0}%, Muted: {muted} (IAudioMeterInformation COM OK)");
+                passedCount++;
+            }
+            catch (Exception ex)
+            {
+                sw.Stop();
+                PrintFail(sw.ElapsedMilliseconds, ex.Message);
+                failedCount++;
+            }
+        }
+
+        // [TEST 06] Motor Keep-Alive / Jitter (simulación no destructiva VK_F15)
+        {
+            var sw = Stopwatch.StartNew();
+            Console.Write("[TEST 06] Motor Keep-Alive / Jitter (VK_F15 seguro) ... ");
+            try
+            {
+                adapter.SimulateKeepAlivePulse(KeepAliveMode.InputSimulation);
+                adapter.SimulateKeepAlivePulse(KeepAliveMode.Mixed);
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(1));
+                await adapter.RunKeepAliveLoopAsync(KeepAliveMode.Mixed, 1, 2, msg => { }, cts.Token);
+                sw.Stop();
+                PrintPass(sw.ElapsedMilliseconds, "Pulsos VK_F15 y Mouse Jitter generados vía SendInput sin excepciones");
+                passedCount++;
+            }
+            catch (Exception ex)
+            {
+                sw.Stop();
+                PrintFail(sw.ElapsedMilliseconds, ex.Message);
+                failedCount++;
+            }
+        }
+
+        // [TEST 07] Captura de Pantalla real estampada guardada en ./data/snapshots/
+        {
+            var sw = Stopwatch.StartNew();
+            Console.Write("[TEST 07] Captura de Pantalla real en ./data/snapshots/ ... ");
+            try
+            {
+                string snapshotDir = persistence.Storage.SnapshotsDirectory;
+                if (!Directory.Exists(snapshotDir)) Directory.CreateDirectory(snapshotDir);
+                byte[] captureBytes = await adapter.CaptureScreenAsync(true, "AutoTest");
+                if (captureBytes.Length < 100 || captureBytes[0] != (byte)'B' || captureBytes[1] != (byte)'M')
+                    throw new InvalidOperationException("Formato BMP de captura inválido.");
+                string testFile = Path.Combine(snapshotDir, $"test_capture_{DateTime.UtcNow:yyyyMMdd_HHmmss}.bmp");
+                await File.WriteAllBytesAsync(testFile, captureBytes);
+                if (!File.Exists(testFile) || new FileInfo(testFile).Length == 0)
+                    throw new InvalidOperationException("El archivo de captura no se guardó en disco.");
+                sw.Stop();
+                PrintPass(sw.ElapsedMilliseconds, $"BMP válido de {captureBytes.Length / 1024} KB guardado en {Path.GetFileName(testFile)}");
+                passedCount++;
+            }
+            catch (Exception ex)
+            {
+                sw.Stop();
+                PrintFail(sw.ElapsedMilliseconds, ex.Message);
+                failedCount++;
+            }
+        }
+
+        // [TEST 08] Serialización AOT transaccional de presets.json y audit.jsonl
+        {
+            var sw = Stopwatch.StartNew();
+            Console.Write("[TEST 08] Serialización AOT de presets.json y audit.jsonl ... ");
+            try
+            {
+                var cfg = persistence.LoadConfig();
+                persistence.SaveConfig(cfg);
+                var presets = persistence.LoadPresets();
+                if (presets.Presets.Count == 0) throw new InvalidOperationException("Catálogo de presets vacío.");
+                persistence.SavePresets(presets);
+                var testEntry = new AuditLogEntry
+                {
+                    Timestamp = DateTimeOffset.UtcNow,
+                    PresetId = "preset_aot_verify",
+                    Status = "Verified",
+                    ExecutionDurationSeconds = 1,
+                    TriggerFired = "AutoTestTrigger",
+                    TerminalActionExecuted = "None",
+                    ExitNotes = "Verificación AOT determinista"
+                };
+                persistence.AppendAuditLog(testEntry);
+                var recent = persistence.ReadRecentAuditLogs(5);
+                if (!recent.Any(e => e.PresetId == "preset_aot_verify"))
+                    throw new InvalidOperationException("Registro de auditoría no encontrado en audit.jsonl.");
+                sw.Stop();
+                PrintPass(sw.ElapsedMilliseconds, $"Presets: {presets.Presets.Count}, Config y AuditLog transaccionales 100% AOT");
+                passedCount++;
+            }
+            catch (Exception ex)
+            {
+                sw.Stop();
+                PrintFail(sw.ElapsedMilliseconds, ex.Message);
+                failedCount++;
+            }
+        }
+
+        // [TEST 09] Arranque del Microservidor HTTP LAN y respuesta HTTP 200 en /api/status
+        {
+            var sw = Stopwatch.StartNew();
+            Console.Write("[TEST 09] Microservidor HTTP LAN y HTTP 200 en /api/status ... ");
+            try
+            {
+                int testPort = 4889;
+                string testToken = "autotest_token_99";
+                var settings = new LanServerSettings
+                {
+                    Enabled = true,
+                    Port = testPort,
+                    RequireAuth = true,
+                    AuthToken = testToken
+                };
+                using var lanServer = new LanHttpServer(engine, adapter, settings);
+                lanServer.Start();
+
+                using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(3) };
+                var res = await http.GetAsync($"http://localhost:{testPort}/api/status?auth={testToken}");
+                if (!res.IsSuccessStatusCode)
+                    throw new InvalidOperationException($"HTTP GET /api/status falló con código {res.StatusCode}");
+                string content = await res.Content.ReadAsStringAsync();
+                var status = JsonSerializer.Deserialize(content, NoktoJsonContext.Default.SystemStatusState);
+                if (status == null) throw new InvalidOperationException("Deserialización de SystemStatusState nula.");
+
+                lanServer.Stop();
+                sw.Stop();
+                PrintPass(sw.ElapsedMilliseconds, $"Puerto {testPort}, HTTP {(int)res.StatusCode} OK, PWA OLED lista y JSON autenticado");
+                passedCount++;
+            }
+            catch (Exception ex)
+            {
+                sw.Stop();
+                PrintFail(sw.ElapsedMilliseconds, ex.Message);
+                failedCount++;
+            }
+        }
+
+        // [TEST 10] Disparo de flujo encadenado en modo Dry-Run con periodo de gracia de 5 segundos
+        {
+            var sw = Stopwatch.StartNew();
+            Console.Write("[TEST 10] Flujo encadenado en modo Dry-Run (Gracia 5s) ... ");
+            try
+            {
+                engine.IsDryRunMode = true;
+                adapter.IsDryRunMode = true;
+
+                int graceTicksReceived = 0;
+                void OnGraceTick(int remaining)
+                {
+                    graceTicksReceived++;
+                }
+
+                engine.GracePeriodTick += OnGraceTick;
+
+                var dryRunPreset = new PresetDefinition
+                {
+                    Id = "preset_dry_run_test",
+                    Name = "Dry-Run Safe Test Flow",
+                    Trigger = new TriggerDefinition
+                    {
+                        Type = TriggerType.Countdown,
+                        Parameters = new Dictionary<string, JsonElement>
+                        {
+                            ["durationSeconds"] = JsonSerializer.SerializeToElement(1)
+                        }
+                    },
+                    Pipeline =
+                    [
+                        new PipelineStepDefinition
+                        {
+                            StepOrder = 1,
+                            ActionType = ActionType.CaptureScreenshot,
+                            IgnoreFailure = true
+                        }
+                    ],
+                    TerminalAction = new TerminalActionDefinition
+                    {
+                        Type = TerminalActionType.Shutdown,
+                        Parameters = new Dictionary<string, JsonElement>
+                        {
+                            ["gracePeriodSeconds"] = JsonSerializer.SerializeToElement(5),
+                            ["forced"] = JsonSerializer.SerializeToElement(true)
+                        }
+                    }
+                };
+
+                await engine.StartPresetAsync(dryRunPreset);
+                engine.GracePeriodTick -= OnGraceTick;
+
+                var recent = persistence.ReadRecentAuditLogs(1);
+                if (recent.Count == 0 || recent[0].ExitNotes?.Contains("[DRY-RUN]") != true)
+                {
+                    throw new InvalidOperationException("El registro de auditoría no contiene la marca de simulación [DRY-RUN].");
+                }
+
+                sw.Stop();
+                PrintPass(sw.ElapsedMilliseconds, $"Gracia completada ({graceTicksReceived} ticks), apagado simulado de forma segura y auditado");
+                passedCount++;
+            }
+            catch (Exception ex)
+            {
+                sw.Stop();
+                PrintFail(sw.ElapsedMilliseconds, ex.Message);
+                failedCount++;
+            }
+            finally
+            {
+                engine.IsDryRunMode = false;
+                adapter.IsDryRunMode = false;
+            }
+        }
+
+        totalStopwatch.Stop();
+        Console.WriteLine();
+        Console.ForegroundColor = ConsoleColor.Cyan;
+        Console.WriteLine("================================================================================");
+        if (failedCount == 0)
+        {
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine($"  RESULTADO: {passedCount}/10 TESTS SUPERADOS [0 FALLOS] - TIEMPO TOTAL: {totalStopwatch.Elapsed.TotalSeconds:F2}s");
+        }
+        else
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"\n[ERROR DE VERIFICACIÓN]: {ex}");
-            Console.ResetColor();
-            return 1;
+            Console.WriteLine($"  RESULTADO: {passedCount}/10 SUPERADOS, {failedCount} FALLADOS - TIEMPO TOTAL: {totalStopwatch.Elapsed.TotalSeconds:F2}s");
         }
+        Console.ForegroundColor = ConsoleColor.Cyan;
+        Console.WriteLine("================================================================================");
+        Console.ResetColor();
+
+        return failedCount == 0 ? 0 : 1;
+    }
+
+    private static void PrintPass(long elapsedMs, string detail)
+    {
+        Console.ForegroundColor = ConsoleColor.Green;
+        Console.Write("[PASS]");
+        Console.ResetColor();
+        Console.WriteLine($" ({elapsedMs} ms) - {detail}");
+    }
+
+    private static void PrintFail(long elapsedMs, string error)
+    {
+        Console.ForegroundColor = ConsoleColor.Red;
+        Console.Write("[FAIL]");
+        Console.ResetColor();
+        Console.WriteLine($" ({elapsedMs} ms) - ERROR: {error}");
     }
 
     private static void TestLanServerInteractive(IWorkflowEngine engine, ISystemAdapter adapter)

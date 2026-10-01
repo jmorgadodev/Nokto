@@ -8,6 +8,19 @@ namespace Nokto.Platform.MacOs;
 /// </summary>
 public sealed class MacOsSystemAdapter : ISystemAdapter
 {
+    public bool IsDryRunMode { get; set; }
+
+    public float GetMasterPeakValue() => 0f;
+
+    public BatteryStatus GetBatteryStatus() => new BatteryStatus
+    {
+        HasBattery = false,
+        IsCharging = false,
+        IsOnAcPower = true,
+        BatteryLifePercent = -1,
+        BatteryLifeSecondsRemaining = -1
+    };
+
     public Task SetPowerStateAsync(PowerAction action, bool force = false, CancellationToken cancellationToken = default)
     {
         throw new PlatformNotSupportedException("El soporte nativo para macOS se implementará en fases posteriores.");

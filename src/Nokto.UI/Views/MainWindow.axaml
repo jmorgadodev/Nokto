@@ -71,6 +71,8 @@
                                             <ComboBoxItem Content="⏰ Hora Exacta"/>
                                             <ComboBoxItem Content="💤 Inactividad del Usuario"/>
                                             <ComboBoxItem Content="🎬 Al Terminar un Proceso"/>
+                                            <ComboBoxItem Content="🔇 Silencio de Audio"/>
+                                            <ComboBoxItem Content="🔋 Estado de Batería / AC"/>
                                         </ComboBox>
                                     </StackPanel>
 
@@ -145,6 +147,29 @@
                                                 <NumericUpDown Value="{Binding CpuThreshold, Mode=TwoWay}" Minimum="1" Maximum="100" FormatString="0 '%'" Width="90" Background="#16181D" Foreground="#F0F2F5"/>
                                                 <TextBlock Text="durante 60s" Foreground="#7D8390" FontSize="11" VerticalAlignment="Center"/>
                                             </StackPanel>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- PANEL DINÁMICO 5: SILENCIO DE AUDIO -->
+                                    <Border IsVisible="{Binding IsTriggerAudioSilence}" Background="#0E0F12" BorderBrush="#262930" BorderThickness="1" CornerRadius="6" Padding="10">
+                                        <StackPanel Spacing="8">
+                                            <TextBlock Text="Segundos de silencio continuo en audio maestro:" Foreground="#7D8390" FontSize="11" TextWrapping="Wrap"/>
+                                            <NumericUpDown Value="{Binding AudioSilenceSeconds, Mode=TwoWay}" Minimum="5" Maximum="3600" FormatString="0 's'" Background="#16181D" Foreground="#F0F2F5"/>
+                                            <TextBlock Text="Detecta ausencia de audio mediante WASAPI IAudioMeterInformation (pico &lt; 0.001) para pausas o fin de reproducción." Foreground="#7D8390" FontSize="10" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- PANEL DINÁMICO 6: ESTADO DE BATERÍA / AC -->
+                                    <Border IsVisible="{Binding IsTriggerBatteryState}" Background="#0E0F12" BorderBrush="#262930" BorderThickness="1" CornerRadius="6" Padding="10">
+                                        <StackPanel Spacing="8">
+                                            <TextBlock Text="Condición de alimentación y batería:" Foreground="#7D8390" FontSize="11" TextWrapping="Wrap"/>
+                                            <CheckBox IsChecked="{Binding BatteryTriggerOnAcDisconnect, Mode=TwoWay}" Content="Al desconectar el cargador (Modo Batería)" Foreground="#F0F2F5" FontSize="11"/>
+                                            <CheckBox IsChecked="{Binding BatteryTriggerOnThreshold, Mode=TwoWay}" Content="Al caer la batería por debajo de:" Foreground="#F0F2F5" FontSize="11"/>
+                                            <StackPanel IsVisible="{Binding BatteryTriggerOnThreshold}" Orientation="Horizontal" Spacing="6">
+                                                <NumericUpDown Value="{Binding BatteryThresholdPercent, Mode=TwoWay}" Minimum="5" Maximum="95" FormatString="0 '%'" Width="90" Background="#16181D" Foreground="#F0F2F5"/>
+                                                <TextBlock Text="de carga restante" Foreground="#7D8390" FontSize="11" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                            <TextBlock Text="Supervisa GetSystemPowerStatus de forma nativa para portátiles." Foreground="#7D8390" FontSize="10"/>
                                         </StackPanel>
                                     </Border>
                                 </StackPanel>

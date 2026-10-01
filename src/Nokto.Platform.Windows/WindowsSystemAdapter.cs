@@ -28,8 +28,24 @@ public sealed class WindowsSystemAdapter : ISystemAdapter
     }
 
     /// <inheritdoc />
+    public bool IsDryRunMode { get; set; }
+
+    /// <inheritdoc />
     public Task SetPowerStateAsync(PowerAction action, bool force = false, CancellationToken cancellationToken = default)
     {
+        if (IsDryRunMode)
+        {
+            switch (action)
+            {
+                case PowerAction.Shutdown:
+                case PowerAction.Restart:
+                case PowerAction.Sleep:
+                case PowerAction.Hibernate:
+                    Console.WriteLine($"[DRY-RUN] Acción de energía simulada con éxito: {action} (Forzado: {force})");
+                    return Task.CompletedTask;
+            }
+        }
+
         switch (action)
         {
             case PowerAction.Shutdown:
@@ -232,9 +248,53 @@ public sealed class WindowsSystemAdapter : ISystemAdapter
     }
 
     /// <inheritdoc />
+    public float GetMasterPeakValue()
+    {
+        return _audioController.GetPeakValue();
+    }
+
+    /// <inheritdoc />
+    public BatteryStatus GetBatteryStatus()
+    {
+        if (NativeMethods.GetSystemPowerStatus(out var status))
+        {
+            // ACLineStatus: 0 = Offline, 1 = Online, 255 = Unknown
+            bool isOnAc = status.ACLineStatus == 1 || status.ACLineStatus == 255;
+            // BatteryFlag: 128 = No system battery, 255 = Unknown
+            bool hasBattery = status.BatteryFlag != 128 && status.BatteryFlag != 255;
+            bool isCharging = (status.BatteryFlag & 8) != 0;
+            int percent = status.BatteryLifePercent <= 100 ? status.BatteryLifePercent : -1;
+            int secondsRemaining = status.BatteryLifeTime >= 0 ? status.BatteryLifeTime : -1;
+
+            return new BatteryStatus
+            {
+                HasBattery = hasBattery,
+                IsCharging = isCharging,
+                IsOnAcPower = isOnAc,
+                BatteryLifePercent = percent,
+                BatteryLifeSecondsRemaining = secondsRemaining
+            };
+        }
+
+        return new BatteryStatus
+        {
+            HasBattery = false,
+            IsCharging = false,
+            IsOnAcPower = true,
+            BatteryLifePercent = -1,
+            BatteryLifeSecondsRemaining = -1
+        };
+    }
+
+    /// <inheritdoc />
     public SystemMetrics GetCurrentMetrics()
     {
-        return _metricsCollector.CollectMetrics();
+        var metrics = _metricsCollector.CollectMetrics();
+        return metrics with
+        {
+            AudioPeakLevel = GetMasterPeakValue(),
+            Battery = GetBatteryStatus()
+        };
     }
 
     /// <inheritdoc />

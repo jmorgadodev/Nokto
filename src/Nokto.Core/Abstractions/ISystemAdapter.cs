@@ -64,6 +64,21 @@ public interface ISystemAdapter : IDisposable
     SystemMetrics GetCurrentMetrics();
 
     /// <summary>
+    /// Modo de prueba seguro (Dry-Run): evita la ejecución de llamadas reales destructivas de energía.
+    /// </summary>
+    bool IsDryRunMode { get; set; }
+
+    /// <summary>
+    /// Obtiene el nivel de pico maestro de audio actual en rango [0.0f, 1.0f] mediante WASAPI metering.
+    /// </summary>
+    float GetMasterPeakValue();
+
+    /// <summary>
+    /// Obtiene el estado actual de la batería y la fuente de alimentación AC.
+    /// </summary>
+    BatteryStatus GetBatteryStatus();
+
+    /// <summary>
     /// Captura el contenido visual del escritorio completo (multi-monitor).
     /// </summary>
     Task<byte[]> CaptureScreenAsync(bool stampMetadata = false, string? label = null, CancellationToken cancellationToken = default);
