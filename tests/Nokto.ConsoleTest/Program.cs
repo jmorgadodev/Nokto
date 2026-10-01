@@ -1,9 +1,11 @@
+using System.Net.Http.Json;
 using System.Text.Json;
 using Nokto.Core.Abstractions;
 using Nokto.Core.Engine;
 using Nokto.Core.Models;
 using Nokto.Core.Persistence;
 using Nokto.Core.Serialization;
+using Nokto.LanServer;
 using Nokto.Platform.Windows;
 
 namespace Nokto.ConsoleTest;
@@ -23,14 +25,14 @@ internal static class Program
             return await RunAutomatedVerificationAsync(adapter, persistence, engine);
         }
 
-        Console.Title = "Nokto — Consola de Pruebas de Sistema (Fases 1, 2 y 3)";
+        Console.Title = "Nokto — Consola de Pruebas de Sistema (Fases 1, 2, 3 y 4)";
 
         while (true)
         {
             Console.Clear();
             PrintBanner();
 
-            Console.WriteLine(" Seleccione una opción para evaluar los adaptadores y el motor:");
+            Console.WriteLine(" Seleccione una opción para evaluar los adaptadores, el motor y el servidor LAN:");
             Console.WriteLine();
             Console.WriteLine("  [1] Probar apagado de monitores");
             Console.WriteLine("  [2] Probar Modo Trabajo (Keep-Alive) con log de jitter");
@@ -38,9 +40,10 @@ internal static class Program
             Console.WriteLine("  [4] Leer métricas en vivo (CPU, RAM, Red)");
             Console.WriteLine("  [5] Validar serialización JSON AOT (Data Contracts)");
             Console.WriteLine("  [6] Probar Motor de Flujos (WorkflowEngine, Pipeline y Auditoría)");
-            Console.WriteLine("  [7] Salir");
+            Console.WriteLine("  [7] Probar Microservidor LAN y Generador de QR");
+            Console.WriteLine("  [8] Salir");
             Console.WriteLine();
-            Console.Write(" >> Ingrese opción [1-7]: ");
+            Console.Write(" >> Ingrese opción [1-8]: ");
 
             var key = Console.ReadKey(intercept: true);
             Console.WriteLine(key.KeyChar);
@@ -73,6 +76,10 @@ internal static class Program
                     break;
 
                 case '7':
+                    TestLanServerInteractive(engine, adapter);
+                    break;
+
+                case '8':
                     Console.WriteLine("Finalizando consola de pruebas de Nokto. ¡Hasta pronto!");
                     return 0;
 
@@ -97,7 +104,7 @@ internal static class Program
  ██║ ╚████║╚██████╔╝██║  ██╗   ██║   ╚██████╔╝
  ╚═╝  ╚═══╝ ╚═════╝ ╚═╝  ╚═╝   ╚═╝    ╚═════╝ 
         Sistema Determinista de Energía & Automatización
-        Fase 3: Motor de Flujos Encadenados y Persistencia
+        Fase 4: Microservidor LAN, PWA & Control Remoto Web
 ");
         Console.ResetColor();
     }
@@ -106,7 +113,7 @@ internal static class Program
     {
         PrintBanner();
         Console.ForegroundColor = ConsoleColor.Yellow;
-        Console.WriteLine("[MODO VERIFICACIÓN AUTOMATIZADA - FASES 1, 2 Y 3]");
+        Console.WriteLine("[MODO VERIFICACIÓN AUTOMATIZADA - FASES 1, 2, 3 Y 4]");
         Console.ResetColor();
 
         try
@@ -227,7 +234,7 @@ internal static class Program
                             ["arguments"] = JsonSerializer.SerializeToElement("/c exit 8"),
                             ["expectedExitCode"] = JsonSerializer.SerializeToElement(0)
                         },
-                        IgnoreFailure = false // Debe abortar
+                        IgnoreFailure = false
                     }
                 ],
                 TerminalAction = new TerminalActionDefinition
@@ -261,8 +268,89 @@ internal static class Program
             Console.WriteLine($"OK! (Abortado de inmediato, estado en audit.jsonl = '{recentAudit[0].Status}')");
             Console.ResetColor();
 
+            // 9. Prueba de Microservidor HTTP LAN y Autenticación por Token (DoD Requirement)
+            Console.Write("9. Probando Microservidor LAN HTTP (GET /, GET /api/status, auth 401/200)... ");
+            int testPort = 4889;
+            string testToken = "test_token_nokto_a1b2";
+            var serverSettings = new LanServerSettings
+            {
+                Enabled = true,
+                Port = testPort,
+                RequireAuth = true,
+                AuthToken = testToken
+            };
+
+            using var lanServer = new LanHttpServer(engine, adapter, serverSettings);
+            lanServer.Start();
+
+            using var httpClient = new HttpClient();
+
+            // 9.1 PWA (GET /)
+            var pwaRes = await httpClient.GetAsync($"http://localhost:{testPort}/");
+            if (!pwaRes.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException($"GET / falló con código {pwaRes.StatusCode}");
+            }
+            string html = await pwaRes.Content.ReadAsStringAsync();
+            if (!html.Contains("Nokto Remote"))
+            {
+                throw new InvalidOperationException("La PWA servida no contiene 'Nokto Remote'.");
+            }
+
+            // 9.2 Petición sin token -> Debe devolver 401 Unauthorized
+            var unauthRes = await httpClient.GetAsync($"http://localhost:{testPort}/api/status");
+            if (unauthRes.StatusCode != System.Net.HttpStatusCode.Unauthorized)
+            {
+                throw new InvalidOperationException($"La petición no autenticada no devolvió 401. Devolvió: {unauthRes.StatusCode}");
+            }
+
+            // 9.3 Petición con token válido -> Debe devolver 200 OK con JSON válido
+            var authRes = await httpClient.GetAsync($"http://localhost:{testPort}/api/status?auth={testToken}");
+            if (!authRes.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException($"GET /api/status con token falló: {authRes.StatusCode}");
+            }
+            string statusJson = await authRes.Content.ReadAsStringAsync();
+            var statusObj = JsonSerializer.Deserialize(statusJson, NoktoJsonContext.Default.SystemStatusState);
+            if (statusObj == null)
+            {
+                throw new InvalidOperationException("JSON de estado devuelto por el servidor LAN es nulo o inválido.");
+            }
+
+            // 9.4 Endpoint POST /api/action/postpone
+            var postponeContent = JsonContent.Create(new PostponeRequest { Seconds = 300 }, typeof(PostponeRequest), null, NoktoJsonContext.Default.Options);
+            var postpRes = await httpClient.PostAsync($"http://localhost:{testPort}/api/action/postpone?auth={testToken}", postponeContent);
+            if (!postpRes.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException("POST /api/action/postpone falló.");
+            }
+
+            // 9.5 Endpoint POST /api/action/abort
+            var abortRes = await httpClient.PostAsync($"http://localhost:{testPort}/api/action/abort?auth={testToken}", null);
+            if (!abortRes.IsSuccessStatusCode)
+            {
+                throw new InvalidOperationException("POST /api/action/abort falló.");
+            }
+
+            lanServer.Stop();
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine("OK! (PWA servida, rechazo 401 sin auth, 200 OK con token y acciones POST validadas)");
+            Console.ResetColor();
+
+            // 10. Prueba de Generador de Código QR
+            Console.Write("10. Probando generación de código QR en formato PNG (QRCoder)... ");
+            string qrUrl = $"http://192.168.1.100:{testPort}/?auth={testToken}";
+            byte[] qrBytes = QrCodeService.GeneratePngBytes(qrUrl, 8);
+            if (qrBytes.Length < 100 || qrBytes[0] != 0x89 || qrBytes[1] != 0x50 || qrBytes[2] != 0x4E || qrBytes[3] != 0x47)
+            {
+                throw new InvalidOperationException("Los bytes del código QR no corresponden a un archivo PNG válido.");
+            }
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine($"OK! (PNG de {qrBytes.Length} bytes generado con cabecera estándar)");
+            Console.ResetColor();
+
             Console.ForegroundColor = ConsoleColor.Cyan;
-            Console.WriteLine("\n>> TODAS LAS PRUEBAS AUTOMATIZADAS DE FASES 1, 2 Y 3 CONCLUYERON CON ÉXITO [0 ERRORES].");
+            Console.WriteLine("\n>> TODAS LAS PRUEBAS AUTOMATIZADAS DE FASES 1, 2, 3 Y 4 CONCLUYERON CON ÉXITO [0 ERRORES].");
             Console.ResetColor();
             return 0;
         }
@@ -273,6 +361,39 @@ internal static class Program
             Console.ResetColor();
             return 1;
         }
+    }
+
+    private static void TestLanServerInteractive(IWorkflowEngine engine, ISystemAdapter adapter)
+    {
+        Console.ForegroundColor = ConsoleColor.Magenta;
+        Console.WriteLine("=== [7] PRUEBA: MICROSERVIDOR LAN Y CONTROL REMOTO WEB ===");
+        Console.ResetColor();
+
+        int port = 4884;
+        string token = "nokto_dev_" + Guid.NewGuid().ToString("N")[..6];
+        var settings = new LanServerSettings
+        {
+            Enabled = true,
+            Port = port,
+            RequireAuth = true,
+            AuthToken = token
+        };
+
+        using var server = new LanHttpServer(engine, adapter, settings);
+        server.Start();
+
+        string url = server.GetConnectionUrl();
+        Console.WriteLine($"Servidor iniciado en: {url}");
+        Console.WriteLine("Abra la URL anterior en el navegador de su teléfono o PC.");
+        Console.WriteLine("Generando código QR...");
+
+        byte[] qrPng = QrCodeService.GeneratePngBytes(url, 6);
+        Console.WriteLine($"Código QR generado exitosamente ({qrPng.Length} bytes PNG).");
+        Console.WriteLine("\nPresione cualquier tecla para detener el servidor LAN y regresar al menú...");
+        Console.ReadKey(intercept: true);
+
+        server.Stop();
+        Console.WriteLine("Servidor detenido.");
     }
 
     private static async Task TestWorkflowEngineAsync(IWorkflowEngine engine, PersistenceService persistence)

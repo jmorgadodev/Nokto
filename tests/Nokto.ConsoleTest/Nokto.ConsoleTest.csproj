@@ -12,6 +12,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Nokto.Core\Nokto.Core.csproj" />
     <ProjectReference Include="..\..\src\Nokto.Platform.Windows\Nokto.Platform.Windows.csproj" />
+    <ProjectReference Include="..\..\src\Nokto.LanServer\Nokto.LanServer.csproj" />
   </ItemGroup>
 
 </Project>

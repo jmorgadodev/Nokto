@@ -5,6 +5,7 @@ using Avalonia.Markup.Xaml;
 using Nokto.Core.Abstractions;
 using Nokto.Core.Engine;
 using Nokto.Core.Persistence;
+using Nokto.LanServer;
 using Nokto.Platform.Windows;
 using Nokto.UI.Tray;
 using Nokto.UI.ViewModels;
@@ -18,6 +19,7 @@ public partial class App : Application
     private MainViewModel? _mainViewModel;
     private MainWindow? _mainWindow;
     private TrayIcon? _trayIcon;
+    private LanHttpServer? _lanServer;
 
     public override void Initialize()
     {
@@ -32,6 +34,18 @@ public partial class App : Application
             _systemAdapter = new WindowsSystemAdapter();
             var engine = new WorkflowEngine(_systemAdapter, persistence);
             _mainViewModel = new MainViewModel(_systemAdapter, engine, persistence);
+
+            var config = persistence.LoadConfig();
+            _lanServer = new LanHttpServer(engine, _systemAdapter, config.LanServer);
+            _lanServer.Start();
+            _mainViewModel.LanConnectionUrl = _lanServer.GetConnectionUrl();
+
+            desktop.Exit += (s, e) =>
+            {
+                _lanServer?.Dispose();
+                _systemAdapter?.Dispose();
+                engine.Dispose();
+            };
 
             _mainWindow = new MainWindow();
             _mainWindow.InitializeWithViewModel(_mainViewModel);

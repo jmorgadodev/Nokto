@@ -2,6 +2,50 @@
 
 Este documento registra de manera cronológica y detallada cada avance, fase del roadmap, archivos modificados y resultados de compilación del proyecto Nokto.
 
+## [Fase 4: Microservidor LAN, PWA Embebida y Control Remoto Web] - 2026-10-01 18:48:00
+- **Fase del roadmap:** Fase 4 (Local LAN Control & Mobile PWA)
+- **Archivos creados o modificados:**
+  - `src/Nokto.LanServer/Nokto.LanServer.csproj`
+  - `src/Nokto.LanServer/Embedded/pwa.html`
+  - `src/Nokto.LanServer/LanHttpServer.cs`
+  - `src/Nokto.LanServer/QrCodeService.cs`
+  - `src/Nokto.UI/App.axaml.cs`
+  - `src/Nokto.UI/ViewModels/MainViewModel.cs`
+  - `src/Nokto.UI/Views/MainWindow.axaml.cs`
+  - `src/Nokto.UI/Views/QrModalWindow.axaml`
+  - `src/Nokto.UI/Views/QrModalWindow.axaml.cs`
+  - `tests/Nokto.ConsoleTest/Nokto.ConsoleTest.csproj`
+  - `tests/Nokto.ConsoleTest/Program.cs`
+  - `CHANGELOG.md`
+- **Resumen técnico del cambio:**
+  1. **Microservidor HTTP Embebido ([`LanHttpServer`](file:///c:/Users/jorge/Proyectos/Nokto/src/Nokto.LanServer/LanHttpServer.cs)):**
+     - Basado en `System.Net.HttpListener` de huella mínima (<1 MB memoria adicional).
+     - Mecanismo de enlace resiliente en 3 niveles: intenta wildcard `http://*:port/`, enlace con IP LAN `http://<local-ip>:port/`, y fallback estricto no elevado a `localhost` y `127.0.0.1`.
+     - Seguridad por token de autorización (`X-Nokto-Auth` header o parámetro `?auth=token` en query string). Rechazo con `401 Unauthorized` si no coincide.
+     - Soporte integral de CORS (`*`, métodos `GET, POST, OPTIONS`).
+     - Endpoints REST deterministas:
+       * `GET /`: Entrega la PWA embebida con cabecera `text/html; charset=utf-8`.
+       * `GET /api/status`: Retorna `SystemStatusState` (estado de máquina, trigger actual, progreso restante, métricas CPU/RAM/Red).
+       * `GET /api/screen-preview`: Captura en tiempo real de pantalla principal y entrega como imagen JPEG.
+       * `POST /api/action/abort`: Interrupción inmediata del flujo o periodo de gracia.
+       * `POST /api/action/postpone`: Aplaza el flujo o extiende el periodo de gracia en N segundos (por defecto +600s).
+       * `POST /api/action/quick-power`: Ejecuta acciones directas de energía (`Sleep`, `Hibernate`, `Shutdown`, `Restart`, `TurnOffMonitors`).
+  2. **PWA Embebida OLED ([`pwa.html`](file:///c:/Users/jorge/Proyectos/Nokto/src/Nokto.LanServer/Embedded/pwa.html)):**
+     - Embebida como recurso compreso dentro del ensamblado `Nokto.LanServer`.
+     - Diseño responsive para smartphones (Mobile First) con fondo negro absoluto `#000000` (OLED-friendly) para consumo de batería nulo.
+     - Interfaz con botones táctiles de 48px de área táctil mínima, feedback háptico vía `navigator.vibrate()`.
+     - Sondeo asíncrono pasivo cada 2 segundos (`/api/status`), visor modal de captura de pantalla con botón de refresco y alarma visual en rojo titilante durante el periodo de gracia.
+  3. **Generador y Emparejamiento por Código QR ([`QrCodeService`](file:///c:/Users/jorge/Proyectos/Nokto/src/Nokto.LanServer/QrCodeService.cs) & [`QrModalWindow`](file:///c:/Users/jorge/Proyectos/Nokto/src/Nokto.UI/Views/QrModalWindow.axaml)):**
+     - Integración con paquete de alto rendimiento `QRCoder` (1.8.0).
+     - Generación directa en memoria de bytes PNG del URL de emparejamiento con token inyectado (`http://<local-ip>:<port>/?auth=<token>`).
+     - Modal de Avalonia UI con renderizado del QR en pantalla y botón para copiar URL al portapapeles.
+  4. **Suite de Verificación Automatizada (Pruebas 9 y 10):**
+     - Test de microservidor HTTP (PWA servida con texto clave, rechazo 401 sin auth, 200 OK autenticado, endpoints POST validados).
+     - Test de generación de bytes PNG con validación de cabecera de imagen.
+- **Resultado de la compilación:**
+  - `dotnet build Nokto.sln`: 0 Advertencias, 0 Errores.
+  - Verificación automatizada con `dotnet run --project tests/Nokto.ConsoleTest -- --verify`: 10 de 10 pruebas exitosas.
+
 ---
 
 ## [Fase 3: Motor de Flujos Encadenados y Persistencia] - 2026-10-01 18:38:00

@@ -30,6 +30,9 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private bool _isKeepAliveActive;
 
     [ObservableProperty]
+    private string _lanConnectionUrl = "http://localhost:4884";
+
+    [ObservableProperty]
     private string _keepAliveButtonText = "Iniciar Modo";
 
     [ObservableProperty]

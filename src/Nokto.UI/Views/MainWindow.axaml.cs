@@ -56,6 +56,7 @@ public partial class MainWindow : Window
         Avalonia.Threading.Dispatcher.UIThread.Post(() =>
         {
             var qrModal = new QrModalWindow();
+            qrModal.SetConnectionDetails(_viewModel?.LanConnectionUrl ?? "http://localhost:4884");
             qrModal.ShowDialog(this);
         });
     }

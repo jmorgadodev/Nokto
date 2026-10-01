@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Nokto Remote</title>
+  <meta name="theme-color" content="#000000">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+    body {
+      background-color: #000000;
+      color: #F0F2F5;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      padding: 16px;
+      user-select: none;
+      transition: background-color 0.3s;
+    }
+    body.grace-alert {
+      background-color: #1a1200;
+      box-shadow: inset 0 0 20px #FFB300;
+      animation: pulseAlert 1s infinite alternate;
+    }
+    @keyframes pulseAlert {
+      from { box-shadow: inset 0 0 10px #FFB300; }
+      to { box-shadow: inset 0 0 35px #FFB300; }
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #262930;
+    }
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 700;
+      font-size: 17px;
+      letter-spacing: -0.3px;
+    }
+    .brand-icon {
+      color: #00D2FF;
+      font-size: 20px;
+    }
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: #16181D;
+      border: 1px solid #262930;
+      border-radius: 12px;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #00E676;
+    }
+    .status-dot.offline {
+      background: #FF4B4B;
+    }
+    .station-name {
+      font-size: 12px;
+      color: #7D8390;
+      margin-top: 4px;
+    }
+    .timer-card {
+      background: #16181D;
+      border: 1px solid #262930;
+      border-radius: 16px;
+      padding: 24px 16px;
+      text-align: center;
+      margin: 16px 0;
+    }
+    .timer-value {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-size: 44px;
+      font-weight: 700;
+      letter-spacing: -1px;
+      color: #F0F2F5;
+      margin: 4px 0;
+      font-variant-numeric: tabular-nums;
+    }
+    .timer-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: #7D8390;
+      font-weight: 600;
+    }
+    .task-info {
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px solid #262930;
+      font-size: 13px;
+    }
+    .task-title {
+      font-weight: 600;
+      color: #00D2FF;
+    }
+    .task-phase {
+      color: #7D8390;
+      font-size: 12px;
+      margin-top: 2px;
+    }
+    .progress-bar-container {
+      background: #262930;
+      height: 6px;
+      border-radius: 3px;
+      overflow: hidden;
+      margin-top: 14px;
+    }
+    .progress-bar {
+      background: #00D2FF;
+      height: 100%;
+      width: 0%;
+      transition: width 0.3s;
+    }
+    .metrics-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    .metric-chip {
+      background: #16181D;
+      border: 1px solid #262930;
+      border-radius: 10px;
+      padding: 8px;
+      text-align: center;
+    }
+    .metric-chip .value {
+      font-size: 14px;
+      font-weight: 600;
+      color: #F0F2F5;
+      font-family: monospace;
+    }
+    .metric-chip .label {
+      font-size: 10px;
+      color: #7D8390;
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+    .btn {
+      width: 100%;
+      padding: 14px;
+      border-radius: 12px;
+      border: none;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+      transition: transform 0.1s, opacity 0.2s;
+    }
+    .btn:active {
+      transform: scale(0.98);
+      opacity: 0.85;
+    }
+    .btn-preview {
+      background: #262930;
+      color: #F0F2F5;
+      border: 1px solid #383C46;
+    }
+    .btn-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .btn-postpone {
+      background: #16181D;
+      color: #F0F2F5;
+      border: 1px solid #262930;
+    }
+    .btn-abort {
+      background: #FF4B4B;
+      color: #FFFFFF;
+      font-size: 15px;
+      font-weight: 700;
+      padding: 16px;
+      box-shadow: 0 4px 14px rgba(255, 75, 75, 0.4);
+    }
+    .quick-controls {
+      margin-top: 6px;
+      padding-top: 14px;
+      border-top: 1px solid #262930;
+    }
+    .quick-controls-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: #7D8390;
+      margin-bottom: 8px;
+      font-weight: 600;
+    }
+    .btn-secondary {
+      background: #16181D;
+      border: 1px solid #262930;
+      color: #7D8390;
+      font-size: 12px;
+      padding: 10px;
+    }
+    /* Modal Screen Preview */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(0, 0, 0, 0.92);
+      z-index: 1000;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 16px;
+    }
+    .modal.active {
+      display: flex;
+    }
+    .modal-content {
+      max-width: 100%;
+      max-height: 80vh;
+      border-radius: 8px;
+      border: 1px solid #262930;
+      object-fit: contain;
+    }
+    .modal-close {
+      margin-top: 16px;
+      background: #262930;
+      color: #F0F2F5;
+      border: none;
+      border-radius: 20px;
+      padding: 8px 24px;
+      font-weight: 600;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <div class="header">
+    <div>
+      <div class="brand">
+        <span class="brand-icon">◐</span> Nokto Remote
+      </div>
+      <div class="station-name" id="stationName">Estación: PC Local</div>
+    </div>
+    <div class="status-badge">
+      <div class="status-dot" id="statusDot"></div>
+      <span id="statusLabel">En línea</span>
+    </div>
+  </div>
+
+  <!-- COUNTDOWN CARD -->
+  <div class="timer-card">
+    <div class="timer-label">Tiempo Restante</div>
+    <div class="timer-value" id="timerValue">--:--:--</div>
+    <div class="task-info">
+      <div class="task-title" id="taskTitle">En reposo</div>
+      <div class="task-phase" id="taskPhase">Sin tareas activas</div>
+    </div>
+    <div class="progress-bar-container">
+      <div class="progress-bar" id="progressBar"></div>
+    </div>
+  </div>
+
+  <!-- LIVE METRICS -->
+  <div class="metrics-row">
+    <div class="metric-chip">
+      <div class="value" id="cpuVal">0.0%</div>
+      <div class="label">CPU</div>
+    </div>
+    <div class="metric-chip">
+      <div class="value" id="ramVal">0 MB</div>
+      <div class="label">RAM</div>
+    </div>
+    <div class="metric-chip">
+      <div class="value" id="netVal">0 KB/s</div>
+      <div class="label">Red</div>
+    </div>
+  </div>
+
+  <!-- ACTIONS -->
+  <button class="btn btn-preview" onclick="openScreenPreview()">
+    📸 Ver Captura de Pantalla
+  </button>
+
+  <div class="btn-row">
+    <button class="btn btn-postpone" onclick="postponeTask(600)">
+      ⏱ +10 Min
+    </button>
+    <button class="btn btn-postpone" onclick="postponeTask(1800)">
+      ⏱ +30 Min
+    </button>
+  </div>
+
+  <button class="btn btn-abort" onclick="abortTask()">
+    ⛔ ABORTAR TAREA
+  </button>
+
+  <!-- QUICK CONTROLS -->
+  <div class="quick-controls">
+    <div class="quick-controls-title">Controles Rápidos del PC</div>
+    <div class="btn-row">
+      <button class="btn btn-secondary" onclick="quickPower('TurnOffMonitors')">
+        🌙 Apagar Pantallas
+      </button>
+      <button class="btn btn-secondary" onclick="quickPower('Shutdown')">
+        ⚡ Apagar PC Ahora
+      </button>
+    </div>
+  </div>
+
+  <!-- MODAL SCREEN PREVIEW -->
+  <div class="modal" id="previewModal" onclick="closeScreenPreview()">
+    <img id="previewImage" class="modal-content" src="" alt="Captura del PC">
+    <button class="modal-close" onclick="closeScreenPreview()">Cerrar Vista</button>
+  </div>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    let authToken = urlParams.get('auth') || localStorage.getItem('nokto_auth') || '';
+    if (urlParams.get('auth')) {
+      localStorage.setItem('nokto_auth', authToken);
+    }
+
+    function haptic() {
+      if (navigator.vibrate) {
+        navigator.vibrate(25);
+      }
+    }
+
+    async function apiRequest(endpoint, method = 'GET', body = null) {
+      const headers = { 'X-Nokto-Auth': authToken };
+      if (body) headers['Content-Type'] = 'application/json';
+
+      const url = endpoint + (authToken ? `?auth=${encodeURIComponent(authToken)}` : '');
+      const options = { method, headers };
+      if (body) options.body = JSON.stringify(body);
+
+      try {
+        const res = await fetch(url, options);
+        if (res.status === 401) {
+          updateConnectionStatus(false, 'No autorizado');
+          return null;
+        }
+        if (!res.ok) return null;
+        return await res.json();
+      } catch (err) {
+        updateConnectionStatus(false, 'Desconectado');
+        return null;
+      }
+    }
+
+    function updateConnectionStatus(online, label = 'En línea') {
+      const dot = document.getElementById('statusDot');
+      const lbl = document.getElementById('statusLabel');
+      if (online) {
+        dot.className = 'status-dot';
+        lbl.innerText = label;
+      } else {
+        dot.className = 'status-dot offline';
+        lbl.innerText = label;
+      }
+    }
+
+    async function pollStatus() {
+      const data = await apiRequest('/api/status');
+      if (!data) return;
+
+      updateConnectionStatus(true, 'En línea');
+
+      // Actualizar Tiempos
+      const timerVal = document.getElementById('timerValue');
+      const taskTitle = document.getElementById('taskTitle');
+      const taskPhase = document.getElementById('taskPhase');
+      const progressBar = document.getElementById('progressBar');
+
+      if (data.engineState === 'Idle') {
+        timerVal.innerText = '--:--:--';
+        taskTitle.innerText = 'Sistema en reposo';
+        taskPhase.innerText = 'Esperando nuevo flujo';
+        progressBar.style.width = '0%';
+        document.body.classList.remove('grace-alert');
+      } else {
+        const sec = data.timeRemainingSeconds || 0;
+        const h = String(Math.floor(sec / 3600)).padStart(2, '0');
+        const m = String(Math.floor((sec % 3600) / 60)).padStart(2, '0');
+        const s = String(sec % 60).padStart(2, '0');
+        timerVal.innerText = `${h}:${m}:${s}`;
+
+        taskTitle.innerText = data.activePresetName || 'Flujo en Ejecución';
+        taskPhase.innerText = `Fase: ${data.currentPhase || data.engineState}`;
+        progressBar.style.width = `${Math.min(100, data.progressPercentage || 0)}%`;
+
+        if (data.gracePeriodActive || (sec > 0 && sec <= 60)) {
+          document.body.classList.add('grace-alert');
+          if (navigator.vibrate) navigator.vibrate([100, 100, 100]);
+        } else {
+          document.body.classList.remove('grace-alert');
+        }
+      }
+
+      // Métricas
+      if (data.metrics) {
+        document.getElementById('cpuVal').innerText = `${data.metrics.cpuUsagePercentage || 0}%`;
+        document.getElementById('ramVal').innerText = `${Math.round(data.metrics.ramUsedMb || 0)} MB`;
+        const net = Math.round((data.metrics.networkDownKBs || 0) + (data.metrics.networkUpKBs || 0));
+        document.getElementById('netVal').innerText = `${net} KB/s`;
+      }
+    }
+
+    async function abortTask() {
+      haptic();
+      if (confirm('¿Deseas abortar la tarea activa de inmediato?')) {
+        await apiRequest('/api/action/abort', 'POST');
+        pollStatus();
+      }
+    }
+
+    async function postponeTask(seconds) {
+      haptic();
+      await apiRequest('/api/action/postpone', 'POST', { seconds });
+      pollStatus();
+    }
+
+    async function quickPower(action) {
+      haptic();
+      if (action === 'Shutdown' && !confirm('¿Confirmas apagar el equipo ahora?')) {
+        return;
+      }
+      await apiRequest('/api/action/quick-power', 'POST', { action, force: false });
+      pollStatus();
+    }
+
+    function openScreenPreview() {
+      haptic();
+      const modal = document.getElementById('previewModal');
+      const img = document.getElementById('previewImage');
+      img.src = '/api/screen-preview?auth=' + encodeURIComponent(authToken) + '&t=' + Date.now();
+      modal.classList.add('active');
+    }
+
+    function closeScreenPreview() {
+      document.getElementById('previewModal').classList.remove('active');
+    }
+
+    // Polling cada 1 segundo
+    setInterval(pollStatus, 1000);
+    pollStatus();
+  </script>
+</body>
+</html>
