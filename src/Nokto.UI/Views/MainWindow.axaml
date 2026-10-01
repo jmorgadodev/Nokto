@@ -6,7 +6,7 @@
         Title="Nokto — Sistema Determinista de Energía"
         Width="{Binding WindowWidth}"
         Height="{Binding WindowHeight}"
-        MinWidth="460" MinHeight="580"
+        MinWidth="600" MinHeight="560"
         WindowStartupLocation="CenterScreen"
         Background="#0E0F12">
 
@@ -28,7 +28,7 @@
                     <Border Background="#262930" CornerRadius="12" Padding="10,4">
                         <StackPanel Orientation="Horizontal" Spacing="6">
                             <Ellipse Width="8" Height="8"
-                                     Fill="{Binding IsTaskRunning, Converter={x:Static ObjectConverters.IsNotNull}, FallbackValue='#00E676'}"/>
+                                     Fill="{Binding StatusDotColor}"/>
                             <TextBlock Text="{Binding CurrentStatusText}"
                                        Foreground="#F0F2F5"
                                        FontSize="11"
@@ -39,260 +39,489 @@
             </Grid>
         </Border>
 
-        <!-- MAIN BODY CONTENT (SIMPLE VIEW VS STUDIO VIEW) -->
-        <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-            <Grid>
-                <!-- VISTA SIMPLE (MODO RÁPIDO 460x580) -->
-                <StackPanel IsVisible="{Binding !IsStudioMode}" Margin="16" Spacing="12">
-                    <!-- BANNER TAREA EN CURSO (SI ESTÁ ACTIVA) -->
-                    <Border IsVisible="{Binding IsTaskRunning}"
-                            Background="#16181D"
-                            BorderBrush="#00D2FF"
-                            BorderThickness="1"
-                            CornerRadius="8"
-                            Padding="14,10">
-                        <Grid RowDefinitions="Auto,Auto,Auto">
-                            <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
-                                <StackPanel Grid.Column="0" Spacing="2">
-                                    <TextBlock Text="{Binding ActiveTaskTitle}" Foreground="#00D2FF" FontWeight="SemiBold" FontSize="13"/>
-                                    <TextBlock Text="Tiempo restante para acción terminal:" Foreground="#7D8390" FontSize="11"/>
+        <!-- MAIN BODY CONTENT CON PESTAÑAS (TABCONTROL) -->
+        <TabControl Grid.Row="1" Background="Transparent" Margin="14,10,14,0">
+
+            <!-- ======================================================== -->
+            <!-- PESTAÑA 1: CONFIGURACIÓN MANUAL (VISTA PRINCIPAL)        -->
+            <!-- ======================================================== -->
+            <TabItem Header="⚙ Configuración Manual" FontSize="12" FontWeight="SemiBold">
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                    <StackPanel Spacing="14" Margin="0,10,0,10">
+                        <!-- GRID EN 2 COLUMNAS (DISPARADOR VS ACCIÓN) -->
+                        <Grid ColumnDefinitions="*,16,*">
+
+                            <!-- COLUMNA IZQUIERDA: ¿CUÁNDO EJECUTAR? (DISPARADOR) -->
+                            <Border Grid.Column="0" Background="#16181D" BorderBrush="#262930" BorderThickness="1" CornerRadius="8" Padding="14">
+                                <StackPanel Spacing="12">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <TextBlock Text="⏱" FontSize="14"/>
+                                        <TextBlock Text="¿CUÁNDO EJECUTAR? (DISPARADOR)" Foreground="#00D2FF" FontWeight="Bold" FontSize="11"/>
+                                    </StackPanel>
+
+                                    <!-- Selector de Tipo de Disparador -->
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Text="Tipo de disparador:" Foreground="#7D8390" FontSize="11"/>
+                                        <ComboBox SelectedIndex="{Binding SelectedTriggerTypeIndex, Mode=TwoWay}"
+                                                  HorizontalAlignment="Stretch"
+                                                  Background="#0E0F12"
+                                                  Foreground="#F0F2F5"
+                                                  FontSize="12">
+                                            <ComboBoxItem Content="⏳ Cuenta Atrás"/>
+                                            <ComboBoxItem Content="⏰ Hora Exacta"/>
+                                            <ComboBoxItem Content="💤 Inactividad del Usuario"/>
+                                            <ComboBoxItem Content="🎬 Al Terminar un Proceso"/>
+                                        </ComboBox>
+                                    </StackPanel>
+
+                                    <!-- PANEL DINÁMICO 1: CUENTA ATRÁS -->
+                                    <Border IsVisible="{Binding IsTriggerCountdown}" Background="#0E0F12" BorderBrush="#262930" BorderThickness="1" CornerRadius="6" Padding="10">
+                                        <StackPanel Spacing="8">
+                                            <TextBlock Text="Establecer tiempo de espera:" Foreground="#7D8390" FontSize="11"/>
+                                            <Grid ColumnDefinitions="*,*,*">
+                                                <StackPanel Grid.Column="0" Margin="0,0,4,0">
+                                                    <TextBlock Text="Horas" FontSize="10" Foreground="#7D8390" Margin="0,0,0,2"/>
+                                                    <NumericUpDown Value="{Binding CountdownHours, Mode=TwoWay}" Minimum="0" Maximum="23" FormatString="00" Background="#16181D" Foreground="#F0F2F5"/>
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="1" Margin="2,0,2,0">
+                                                    <TextBlock Text="Minutos" FontSize="10" Foreground="#7D8390" Margin="0,0,0,2"/>
+                                                    <NumericUpDown Value="{Binding CountdownMinutes, Mode=TwoWay}" Minimum="0" Maximum="59" FormatString="00" Background="#16181D" Foreground="#F0F2F5"/>
+                                                </StackPanel>
+                                                <StackPanel Grid.Column="2" Margin="4,0,0,0">
+                                                    <TextBlock Text="Segundos" FontSize="10" Foreground="#7D8390" Margin="0,0,0,2"/>
+                                                    <NumericUpDown Value="{Binding CountdownSeconds, Mode=TwoWay}" Minimum="0" Maximum="59" FormatString="00" Background="#16181D" Foreground="#F0F2F5"/>
+                                                </StackPanel>
+                                            </Grid>
+
+                                            <!-- Botones rápidos de suma -->
+                                            <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,2,0,0">
+                                                <TextBlock Text="Sumar:" Foreground="#7D8390" FontSize="10" VerticalAlignment="Center"/>
+                                                <Button Content="+15m" Command="{Binding AddCountdownMinutesCommand}" CommandParameter="15" Background="#262930" Foreground="#F0F2F5" FontSize="10" Padding="6,3"/>
+                                                <Button Content="+30m" Command="{Binding AddCountdownMinutesCommand}" CommandParameter="30" Background="#262930" Foreground="#F0F2F5" FontSize="10" Padding="6,3"/>
+                                                <Button Content="+1h" Command="{Binding AddCountdownMinutesCommand}" CommandParameter="60" Background="#262930" Foreground="#F0F2F5" FontSize="10" Padding="6,3"/>
+                                                <Button Content="Reset" Command="{Binding ResetCountdownCommand}" Background="#262930" Foreground="#FF4B4B" FontSize="10" Padding="6,3"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- PANEL DINÁMICO 2: HORA EXACTA -->
+                                    <Border IsVisible="{Binding IsTriggerExactTime}" Background="#0E0F12" BorderBrush="#262930" BorderThickness="1" CornerRadius="6" Padding="10">
+                                        <StackPanel Spacing="8">
+                                            <TextBlock Text="Selecciona la hora de ejecución:" Foreground="#7D8390" FontSize="11"/>
+                                            <TimePicker SelectedTime="{Binding ExactTime, Mode=TwoWay}"
+                                                        ClockIdentifier="24HourClock"
+                                                        Background="#16181D"
+                                                        Foreground="#F0F2F5"
+                                                        HorizontalAlignment="Stretch"/>
+                                            <TextBlock Text="{Binding ExactTimeSummaryText}" Foreground="#00D2FF" FontSize="11" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- PANEL DINÁMICO 3: INACTIVIDAD -->
+                                    <Border IsVisible="{Binding IsTriggerInactivity}" Background="#0E0F12" BorderBrush="#262930" BorderThickness="1" CornerRadius="6" Padding="10">
+                                        <StackPanel Spacing="8">
+                                            <TextBlock Text="Minutos de inactividad continuos (ratón y teclado):" Foreground="#7D8390" FontSize="11" TextWrapping="Wrap"/>
+                                            <NumericUpDown Value="{Binding InactivityMinutes, Mode=TwoWay}" Minimum="1" Maximum="360" FormatString="0 'min'" Background="#16181D" Foreground="#F0F2F5"/>
+                                            <TextBlock Text="Detección por hardware nativo con GetLastInputInfo." Foreground="#7D8390" FontSize="10"/>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <!-- PANEL DINÁMICO 4: AL TERMINAR PROCESO -->
+                                    <Border IsVisible="{Binding IsTriggerProcessExit}" Background="#0E0F12" BorderBrush="#262930" BorderThickness="1" CornerRadius="6" Padding="10">
+                                        <StackPanel Spacing="8">
+                                            <Grid ColumnDefinitions="*,Auto">
+                                                <TextBlock Grid.Column="0" Text="Proceso a supervisar:" Foreground="#7D8390" FontSize="11" VerticalAlignment="Center"/>
+                                                <Button Grid.Column="1" Content="↻ Refrescar" Command="{Binding RefreshProcessesCommand}" Background="Transparent" Foreground="#00D2FF" FontSize="10" Padding="4,1"/>
+                                            </Grid>
+                                            <ComboBox ItemsSource="{Binding AvailableProcesses}"
+                                                      SelectedItem="{Binding SelectedProcessName}"
+                                                      HorizontalAlignment="Stretch"
+                                                      Background="#16181D"
+                                                      Foreground="#F0F2F5"
+                                                      FontSize="11"/>
+                                            <CheckBox IsChecked="{Binding EnableCpuThreshold, Mode=TwoWay}" Content="Esperar que la CPU baje de un umbral" Foreground="#F0F2F5" FontSize="11" Margin="0,2,0,0"/>
+                                            <StackPanel IsVisible="{Binding EnableCpuThreshold}" Orientation="Horizontal" Spacing="6">
+                                                <TextBlock Text="CPU &lt;" Foreground="#7D8390" FontSize="11" VerticalAlignment="Center"/>
+                                                <NumericUpDown Value="{Binding CpuThreshold, Mode=TwoWay}" Minimum="1" Maximum="100" FormatString="0 '%'" Width="90" Background="#16181D" Foreground="#F0F2F5"/>
+                                                <TextBlock Text="durante 60s" Foreground="#7D8390" FontSize="11" VerticalAlignment="Center"/>
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Border>
                                 </StackPanel>
-                                <TextBlock Grid.Column="1"
-                                           Text="{Binding TimeRemainingText}"
-                                           Foreground="#F0F2F5"
-                                           FontWeight="Bold"
-                                           FontSize="18"
-                                           FontFamily="Consolas, monospace"
-                                           VerticalAlignment="Center"/>
-                            </Grid>
-                            <ProgressBar Grid.Row="1"
-                                         Height="4"
-                                         Margin="0,8,0,8"
-                                         Minimum="0" Maximum="100"
-                                         Value="{Binding ProgressPercentage}"
-                                         Foreground="#00D2FF"
-                                         Background="#262930"/>
-                            <Grid Grid.Row="2" ColumnDefinitions="*,10,*">
-                                <Button Grid.Column="0"
-                                        Content="⏱ +10 Min"
-                                        Background="#262930"
-                                        Foreground="#F0F2F5"
-                                        FontSize="11"
-                                        HorizontalAlignment="Stretch"
-                                        HorizontalContentAlignment="Center"
-                                        Command="{Binding PostponeTaskCommand}"
-                                        CommandParameter="10"/>
-                                <Button Grid.Column="2"
-                                        Content="⛔ Abortar Tarea"
-                                        Background="#FF4B4B"
-                                        Foreground="#FFFFFF"
-                                        FontSize="11"
-                                        FontWeight="SemiBold"
-                                        HorizontalAlignment="Stretch"
-                                        HorizontalContentAlignment="Center"
-                                        Command="{Binding AbortTaskCommand}"/>
-                            </Grid>
+                            </Border>
+
+                            <!-- COLUMNA DERECHA: ¿QUÉ ACCIÓN REALIZAR? -->
+                            <Border Grid.Column="2" Background="#16181D" BorderBrush="#262930" BorderThickness="1" CornerRadius="8" Padding="14">
+                                <StackPanel Spacing="12">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <TextBlock Text="⚡" FontSize="14"/>
+                                        <TextBlock Text="¿QUÉ ACCIÓN REALIZAR?" Foreground="#00D2FF" FontWeight="Bold" FontSize="11"/>
+                                    </StackPanel>
+
+                                    <!-- ComboBox de Acción Terminal -->
+                                    <StackPanel Spacing="4">
+                                        <TextBlock Text="Acción terminal al activarse:" Foreground="#7D8390" FontSize="11"/>
+                                        <ComboBox SelectedIndex="{Binding SelectedTerminalActionIndex, Mode=TwoWay}"
+                                                  HorizontalAlignment="Stretch"
+                                                  Background="#0E0F12"
+                                                  Foreground="#F0F2F5"
+                                                  FontSize="12">
+                                            <ComboBoxItem Content="⚡ Apagar el PC"/>
+                                            <ComboBoxItem Content="🌙 Suspender"/>
+                                            <ComboBoxItem Content="💤 Hibernar"/>
+                                            <ComboBoxItem Content="🔄 Reiniciar"/>
+                                            <ComboBoxItem Content="🔒 Bloquear Sesión"/>
+                                            <ComboBoxItem Content="🖥️ Apagar Monitores"/>
+                                        </ComboBox>
+                                    </StackPanel>
+
+                                    <!-- Modificadores de la Acción -->
+                                    <Border Background="#0E0F12" BorderBrush="#262930" BorderThickness="1" CornerRadius="6" Padding="10">
+                                        <StackPanel Spacing="8">
+                                            <TextBlock Text="Modificadores y seguridad:" Foreground="#7D8390" FontSize="11"/>
+                                            <CheckBox IsChecked="{Binding OptForceClose, Mode=TwoWay}"
+                                                      Content="Forzar cierre inmediato (sin apps colgadas)"
+                                                      Foreground="#F0F2F5" FontSize="11"/>
+                                            <CheckBox IsChecked="{Binding OptAudioFadeOut, Mode=TwoWay}"
+                                                      Content="Desvanecimiento progresivo WASAPI"
+                                                      Foreground="#F0F2F5" FontSize="11"/>
+                                            <CheckBox IsChecked="{Binding OptGracePeriod, Mode=TwoWay}"
+                                                      Content="Aviso flotante previo de gracia (60s)"
+                                                      Foreground="#F0F2F5" FontSize="11"/>
+                                            <CheckBox IsChecked="{Binding OptScreenshot, Mode=TwoWay}"
+                                                      Content="Tomar captura de pantalla de evidencia"
+                                                      Foreground="#F0F2F5" FontSize="11"/>
+                                        </StackPanel>
+                                    </Border>
+                                </StackPanel>
+                            </Border>
                         </Grid>
-                    </Border>
 
-                    <!-- GRID 2x2 DE TARJETAS FUNCIONALES -->
-                    <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,12,*">
-                        <!-- TARJETA 1: MODO TRABAJO (KEEP-ALIVE) -->
-                        <Border Grid.Row="0" Grid.Column="0"
-                                Background="#16181D"
-                                BorderBrush="{Binding IsKeepAliveActive, Converter={x:Static ObjectConverters.IsNotNull}, FallbackValue='#262930'}"
-                                BorderThickness="1"
-                                CornerRadius="8"
-                                Padding="12"
-                                Margin="0,0,0,12">
-                            <StackPanel Spacing="8">
-                                <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <TextBlock Text="☀️" FontSize="14"/>
-                                    <TextBlock Text="MODO TRABAJO" Foreground="#F0F2F5" FontWeight="Bold" FontSize="12"/>
+                        <!-- ZONA INFERIOR: ACCIÓN DESTACADA / PANEL DE TAREA ACTIVA -->
+                        <Border Background="#16181D" BorderBrush="#262930" BorderThickness="1" CornerRadius="8" Padding="14,10">
+                            <Grid>
+                                <!-- ESTADO 1: EN ESPERA -> BOTÓN INICIAR TAREA -->
+                                <StackPanel IsVisible="{Binding !IsTaskRunning}">
+                                    <Button Content="▶  INICIAR TAREA"
+                                            Background="#00E676"
+                                            Foreground="#0E0F12"
+                                            FontWeight="Bold"
+                                            FontSize="13"
+                                            HorizontalAlignment="Stretch"
+                                            HorizontalContentAlignment="Center"
+                                            Height="42"
+                                            Command="{Binding StartManualTaskCommand}"/>
                                 </StackPanel>
-                                <TextBlock Text="Mantener activo en Teams / Slack (Jitter F15 + Mouse)."
-                                           Foreground="#7D8390"
-                                           FontSize="11"
-                                           TextWrapping="Wrap"
-                                           Height="32"/>
-                                <Button Content="{Binding KeepAliveButtonText}"
-                                        Background="{Binding IsKeepAliveActive, Converter={x:Static ObjectConverters.IsNotNull}, FallbackValue='#00E676'}"
-                                        Foreground="#0E0F12"
-                                        FontWeight="Bold"
-                                        FontSize="11"
-                                        HorizontalAlignment="Stretch"
-                                        HorizontalContentAlignment="Center"
-                                        Command="{Binding ToggleKeepAliveCommand}"/>
-                            </StackPanel>
-                        </Border>
 
-                        <!-- TARJETA 2: MODO DORMIR -->
-                        <Border Grid.Row="0" Grid.Column="2"
-                                Background="#16181D"
-                                BorderBrush="#262930"
-                                BorderThickness="1"
-                                CornerRadius="8"
-                                Padding="12"
-                                Margin="0,0,0,12">
-                            <StackPanel Spacing="8">
-                                <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <TextBlock Text="🌙" FontSize="14"/>
-                                    <TextBlock Text="MODO DORMIR" Foreground="#F0F2F5" FontWeight="Bold" FontSize="12"/>
-                                </StackPanel>
-                                <TextBlock Text="Apagar en 45 min con fade out progresivo de audio."
-                                           Foreground="#7D8390"
-                                           FontSize="11"
-                                           TextWrapping="Wrap"
-                                           Height="32"/>
-                                <Button Content="Iniciar Reposo"
-                                        Background="#262930"
-                                        Foreground="#F0F2F5"
-                                        FontSize="11"
-                                        HorizontalAlignment="Stretch"
-                                        HorizontalContentAlignment="Center"
-                                        Command="{Binding StartSleepModeCommand}"/>
-                            </StackPanel>
-                        </Border>
-
-                        <!-- TARJETA 3: FIN DE TAREA -->
-                        <Border Grid.Row="1" Grid.Column="0"
-                                Background="#16181D"
-                                BorderBrush="#262930"
-                                BorderThickness="1"
-                                CornerRadius="8"
-                                Padding="12">
-                            <StackPanel Spacing="8">
-                                <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <TextBlock Text="🎬" FontSize="14"/>
-                                    <TextBlock Text="FIN DE TAREA" Foreground="#F0F2F5" FontWeight="Bold" FontSize="12"/>
-                                </StackPanel>
-                                <ComboBox ItemsSource="{Binding AvailableProcesses}"
-                                          SelectedItem="{Binding SelectedProcessName}"
-                                          HorizontalAlignment="Stretch"
-                                          FontSize="11"
-                                          Background="#0E0F12"
-                                          Foreground="#F0F2F5"/>
-                                <Button Content="Vigilar y Apagar"
-                                        Background="#262930"
-                                        Foreground="#F0F2F5"
-                                        FontSize="11"
-                                        HorizontalAlignment="Stretch"
-                                        HorizontalContentAlignment="Center"
-                                        Command="{Binding StartProcessWatchCommand}"/>
-                            </StackPanel>
-                        </Border>
-
-                        <!-- TARJETA 4: APAGADO RÁPIDO -->
-                        <Border Grid.Row="1" Grid.Column="2"
-                                Background="#16181D"
-                                BorderBrush="#262930"
-                                BorderThickness="1"
-                                CornerRadius="8"
-                                Padding="12">
-                            <StackPanel Spacing="8">
-                                <StackPanel Orientation="Horizontal" Spacing="6">
-                                    <TextBlock Text="⚡" FontSize="14"/>
-                                    <TextBlock Text="APAGADO RÁPIDO" Foreground="#F0F2F5" FontWeight="Bold" FontSize="12"/>
-                                </StackPanel>
-                                <Grid ColumnDefinitions="*,*,*">
-                                    <Button Grid.Column="0" Content="30m"
-                                            Background="#262930" Foreground="#F0F2F5" FontSize="10"
-                                            Padding="4,2" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                                            Command="{Binding StartQuickShutdownCommand}" CommandParameter="30" Margin="0,0,2,0"/>
-                                    <Button Grid.Column="1" Content="1h"
-                                            Background="#262930" Foreground="#F0F2F5" FontSize="10"
-                                            Padding="4,2" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                                            Command="{Binding StartQuickShutdownCommand}" CommandParameter="60" Margin="2,0,2,0"/>
-                                    <Button Grid.Column="2" Content="2h"
-                                            Background="#262930" Foreground="#F0F2F5" FontSize="10"
-                                            Padding="4,2" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
-                                            Command="{Binding StartQuickShutdownCommand}" CommandParameter="120" Margin="2,0,0,0"/>
+                                <!-- ESTADO 2: TAREA ACTIVA -> TIEMPO RESTANTE + PROGRESO + CANCELAR -->
+                                <Grid IsVisible="{Binding IsTaskRunning}" RowDefinitions="Auto,Auto,Auto">
+                                    <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+                                        <StackPanel Grid.Column="0" Spacing="2">
+                                            <TextBlock Text="{Binding ActiveTaskTitle}" Foreground="#00D2FF" FontWeight="SemiBold" FontSize="13"/>
+                                            <TextBlock Text="{Binding CurrentStatusText}" Foreground="#7D8390" FontSize="11"/>
+                                        </StackPanel>
+                                        <TextBlock Grid.Column="1"
+                                                   Text="{Binding TimeRemainingText}"
+                                                   Foreground="#F0F2F5"
+                                                   FontWeight="Bold"
+                                                   FontSize="20"
+                                                   FontFamily="Consolas, monospace"
+                                                   VerticalAlignment="Center"/>
+                                    </Grid>
+                                    <ProgressBar Grid.Row="1"
+                                                 Height="5"
+                                                 Margin="0,8,0,8"
+                                                 Minimum="0" Maximum="100"
+                                                 Value="{Binding ProgressPercentage}"
+                                                 Foreground="#00D2FF"
+                                                 Background="#262930"/>
+                                    <Grid Grid.Row="2" ColumnDefinitions="*,12,*">
+                                        <Button Grid.Column="0"
+                                                Content="⏱ +10 Min"
+                                                Background="#262930"
+                                                Foreground="#F0F2F5"
+                                                FontSize="11"
+                                                HorizontalAlignment="Stretch"
+                                                HorizontalContentAlignment="Center"
+                                                Command="{Binding PostponeTaskCommand}"
+                                                CommandParameter="10"/>
+                                        <Button Grid.Column="1"
+                                                Content="⏹ CANCELAR / ABORTAR"
+                                                Background="#FF4B4B"
+                                                Foreground="#FFFFFF"
+                                                FontWeight="Bold"
+                                                FontSize="11"
+                                                HorizontalAlignment="Stretch"
+                                                HorizontalContentAlignment="Center"
+                                                Command="{Binding AbortTaskCommand}"/>
+                                    </Grid>
                                 </Grid>
-                                <Button Content="Apagar Monitores"
-                                        Background="#262930"
-                                        Foreground="#00D2FF"
-                                        FontSize="11"
-                                        HorizontalAlignment="Stretch"
-                                        HorizontalContentAlignment="Center"
-                                        Command="{Binding TurnOffMonitorsNowCommand}"/>
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ======================================================== -->
+            <!-- PESTAÑA 2: ACCESOS RÁPIDOS (4 TARJETAS OPERATIVAS)       -->
+            <!-- ======================================================== -->
+            <TabItem Header="⚡ Accesos Rápidos" FontSize="12" FontWeight="SemiBold">
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                    <StackPanel Spacing="12" Margin="0,10,0,10">
+                        <!-- BANNER TAREA EN CURSO (SI ESTÁ ACTIVA) -->
+                        <Border IsVisible="{Binding IsTaskRunning}"
+                                Background="#16181D"
+                                BorderBrush="#00D2FF"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Padding="14,10">
+                            <Grid RowDefinitions="Auto,Auto,Auto">
+                                <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+                                    <StackPanel Grid.Column="0" Spacing="2">
+                                        <TextBlock Text="{Binding ActiveTaskTitle}" Foreground="#00D2FF" FontWeight="SemiBold" FontSize="13"/>
+                                        <TextBlock Text="Tiempo restante para acción terminal:" Foreground="#7D8390" FontSize="11"/>
+                                    </StackPanel>
+                                    <TextBlock Grid.Column="1"
+                                               Text="{Binding TimeRemainingText}"
+                                               Foreground="#F0F2F5"
+                                               FontWeight="Bold"
+                                               FontSize="18"
+                                               FontFamily="Consolas, monospace"
+                                               VerticalAlignment="Center"/>
+                                </Grid>
+                                <ProgressBar Grid.Row="1"
+                                             Height="4"
+                                             Margin="0,8,0,8"
+                                             Minimum="0" Maximum="100"
+                                             Value="{Binding ProgressPercentage}"
+                                             Foreground="#00D2FF"
+                                             Background="#262930"/>
+                                <Grid Grid.Row="2" ColumnDefinitions="*,10,*">
+                                    <Button Grid.Column="0"
+                                            Content="⏱ +10 Min"
+                                            Background="#262930"
+                                            Foreground="#F0F2F5"
+                                            FontSize="11"
+                                            HorizontalAlignment="Stretch"
+                                            HorizontalContentAlignment="Center"
+                                            Command="{Binding PostponeTaskCommand}"
+                                            CommandParameter="10"/>
+                                    <Button Grid.Column="1"
+                                            Content="⛔ Abortar Tarea"
+                                            Background="#FF4B4B"
+                                            Foreground="#FFFFFF"
+                                            FontSize="11"
+                                            FontWeight="SemiBold"
+                                            HorizontalAlignment="Stretch"
+                                            HorizontalContentAlignment="Center"
+                                            Command="{Binding AbortTaskCommand}"/>
+                                </Grid>
+                            </Grid>
+                        </Border>
+
+                        <!-- GRID 2x2 DE TARJETAS FUNCIONALES -->
+                        <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="*,12,*">
+                            <!-- TARJETA 1: MODO TRABAJO (KEEP-ALIVE) -->
+                            <Border Grid.Row="0" Grid.Column="0"
+                                    Background="#16181D"
+                                    BorderBrush="#262930"
+                                    BorderThickness="1"
+                                    CornerRadius="8"
+                                    Padding="12"
+                                    Margin="0,0,0,12">
+                                <StackPanel Spacing="8">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <TextBlock Text="☀️" FontSize="14"/>
+                                        <TextBlock Text="MODO TRABAJO" Foreground="#F0F2F5" FontWeight="Bold" FontSize="12"/>
+                                    </StackPanel>
+                                    <TextBlock Text="Mantener activo en Teams / Slack (Jitter F15 + Mouse)."
+                                               Foreground="#7D8390"
+                                               FontSize="11"
+                                               TextWrapping="Wrap"
+                                               Height="32"/>
+                                    <Button Content="{Binding KeepAliveButtonText}"
+                                            Background="#262930"
+                                            Foreground="#00E676"
+                                            FontWeight="Bold"
+                                            FontSize="11"
+                                            HorizontalAlignment="Stretch"
+                                            HorizontalContentAlignment="Center"
+                                            Command="{Binding ToggleKeepAliveCommand}"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- TARJETA 2: MODO DORMIR -->
+                            <Border Grid.Row="0" Grid.Column="2"
+                                    Background="#16181D"
+                                    BorderBrush="#262930"
+                                    BorderThickness="1"
+                                    CornerRadius="8"
+                                    Padding="12"
+                                    Margin="0,0,0,12">
+                                <StackPanel Spacing="8">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <TextBlock Text="🌙" FontSize="14"/>
+                                        <TextBlock Text="MODO DORMIR" Foreground="#F0F2F5" FontWeight="Bold" FontSize="12"/>
+                                    </StackPanel>
+                                    <TextBlock Text="Apagar en 45 min con fade out progresivo de audio."
+                                               Foreground="#7D8390"
+                                               FontSize="11"
+                                               TextWrapping="Wrap"
+                                               Height="32"/>
+                                    <Button Content="Iniciar Reposo"
+                                            Background="#262930"
+                                            Foreground="#F0F2F5"
+                                            FontSize="11"
+                                            HorizontalAlignment="Stretch"
+                                            HorizontalContentAlignment="Center"
+                                            Command="{Binding StartSleepModeCommand}"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- TARJETA 3: FIN DE TAREA -->
+                            <Border Grid.Row="1" Grid.Column="0"
+                                    Background="#16181D"
+                                    BorderBrush="#262930"
+                                    BorderThickness="1"
+                                    CornerRadius="8"
+                                    Padding="12">
+                                <StackPanel Spacing="8">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <TextBlock Text="🎬" FontSize="14"/>
+                                        <TextBlock Text="FIN DE TAREA" Foreground="#F0F2F5" FontWeight="Bold" FontSize="12"/>
+                                    </StackPanel>
+                                    <ComboBox ItemsSource="{Binding AvailableProcesses}"
+                                              SelectedItem="{Binding SelectedProcessName}"
+                                              HorizontalAlignment="Stretch"
+                                              FontSize="11"
+                                              Background="#0E0F12"
+                                              Foreground="#F0F2F5"/>
+                                    <Button Content="Vigilar y Apagar"
+                                            Background="#262930"
+                                            Foreground="#F0F2F5"
+                                            FontSize="11"
+                                            HorizontalAlignment="Stretch"
+                                            HorizontalContentAlignment="Center"
+                                            Command="{Binding StartProcessWatchCommand}"/>
+                                </StackPanel>
+                            </Border>
+
+                            <!-- TARJETA 4: APAGADO RÁPIDO -->
+                            <Border Grid.Row="1" Grid.Column="2"
+                                    Background="#16181D"
+                                    BorderBrush="#262930"
+                                    BorderThickness="1"
+                                    CornerRadius="8"
+                                    Padding="12">
+                                <StackPanel Spacing="8">
+                                    <StackPanel Orientation="Horizontal" Spacing="6">
+                                        <TextBlock Text="⚡" FontSize="14"/>
+                                        <TextBlock Text="APAGADO RÁPIDO" Foreground="#F0F2F5" FontWeight="Bold" FontSize="12"/>
+                                    </StackPanel>
+                                    <Grid ColumnDefinitions="*,*,*">
+                                        <Button Grid.Column="0" Content="30m"
+                                                Background="#262930" Foreground="#F0F2F5" FontSize="10"
+                                                Padding="4,2" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                                Command="{Binding StartQuickShutdownCommand}" CommandParameter="30" Margin="0,0,2,0"/>
+                                        <Button Grid.Column="1" Content="1h"
+                                                Background="#262930" Foreground="#F0F2F5" FontSize="10"
+                                                Padding="4,2" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                                Command="{Binding StartQuickShutdownCommand}" CommandParameter="60" Margin="2,0,2,0"/>
+                                        <Button Grid.Column="2" Content="2h"
+                                                Background="#262930" Foreground="#F0F2F5" FontSize="10"
+                                                Padding="4,2" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                                                Command="{Binding StartQuickShutdownCommand}" CommandParameter="120" Margin="2,0,0,0"/>
+                                    </Grid>
+                                    <Button Content="Apagar Monitores"
+                                            Background="#262930"
+                                            Foreground="#00D2FF"
+                                            FontSize="11"
+                                            HorizontalAlignment="Stretch"
+                                            HorizontalContentAlignment="Center"
+                                            Command="{Binding TurnOffMonitorsNowCommand}"/>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- ======================================================== -->
+            <!-- PESTAÑA 3: MODO STUDIO (EDITOR DE PIPELINES Y PRESETS)   -->
+            <!-- ======================================================== -->
+            <TabItem Header="🛠 Modo Studio" FontSize="12" FontWeight="SemiBold">
+                <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                    <Grid ColumnDefinitions="240,*" Margin="0,10,0,10">
+                        <!-- PANEL IZQUIERDO: PRESETS -->
+                        <Border Grid.Column="0" Background="#16181D" BorderBrush="#262930" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,12,0">
+                            <Grid RowDefinitions="Auto,*,Auto">
+                                <TextBlock Grid.Row="0" Text="⭐ PRESETS GUARDADOS" Foreground="#F0F2F5" FontWeight="Bold" FontSize="12" Margin="0,0,0,10"/>
+                                <ListBox Grid.Row="1" ItemsSource="{Binding Presets}" SelectedItem="{Binding SelectedPreset}" Background="Transparent" Foreground="#F0F2F5">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel Spacing="2" Margin="0,4">
+                                                <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="12"/>
+                                                <TextBlock Text="{Binding Description}" Foreground="#7D8390" FontSize="10" TextWrapping="Wrap"/>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                                <Button Grid.Row="2" Content="+ Nuevo Flujo" Command="{Binding AddNewPresetCommand}" Background="#262930" Foreground="#F0F2F5" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="0,8,0,0"/>
+                            </Grid>
+                        </Border>
+
+                        <!-- PANEL DERECHO: EDITOR SECUENCIAL DE PIPELINE -->
+                        <Border Grid.Column="1" Background="#16181D" BorderBrush="#262930" BorderThickness="1" CornerRadius="8" Padding="16">
+                            <StackPanel Spacing="14">
+                                <TextBlock Text="⚙ EDITOR DE PIPELINE DETERMINISTA" Foreground="#00D2FF" FontWeight="Bold" FontSize="13"/>
+                                
+                                <!-- BLOQUE 1: DISPARADOR -->
+                                <Border Background="#0E0F12" BorderBrush="#262930" BorderThickness="1" CornerRadius="6" Padding="12">
+                                    <StackPanel Spacing="6">
+                                        <TextBlock Text="[BLOQUE 1: DISPARADOR PRINCIPAL]" Foreground="#00D2FF" FontWeight="SemiBold" FontSize="11"/>
+                                        <TextBlock Text="Tipo: Monitoreo de Proceso Activo" Foreground="#F0F2F5" FontSize="12"/>
+                                        <TextBlock Text="Condición: Esperar salida o umbral CPU configurado." Foreground="#7D8390" FontSize="11"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- BLOQUE 2: ACCIÓN INTERMEDIA -->
+                                <Border Background="#0E0F12" BorderBrush="#262930" BorderThickness="1" CornerRadius="6" Padding="12">
+                                    <StackPanel Spacing="6">
+                                        <TextBlock Text="[BLOQUE 2: ACCIÓN INTERMEDIA]" Foreground="#00D2FF" FontWeight="SemiBold" FontSize="11"/>
+                                        <TextBlock Text="Tipo: Captura de Pantalla + Desvanecimiento de Audio" Foreground="#F0F2F5" FontSize="12"/>
+                                        <TextBlock Text="Destino: ./data/snapshots/ (Sellado de fecha y hora)" Foreground="#7D8390" FontSize="11"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- BLOQUE 3: ACCIÓN TERMINAL -->
+                                <Border Background="#0E0F12" BorderBrush="#262930" BorderThickness="1" CornerRadius="6" Padding="12">
+                                    <StackPanel Spacing="6">
+                                        <TextBlock Text="[BLOQUE 3: ACCIÓN TERMINAL]" Foreground="#FFB300" FontWeight="SemiBold" FontSize="11"/>
+                                        <TextBlock Text="Tipo: Suspensión / Apagado Determinista" Foreground="#F0F2F5" FontSize="12"/>
+                                        <TextBlock Text="Periodo de gracia cancelable previo: 60 segundos con Overlay Topmost." Foreground="#7D8390" FontSize="11"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- BOTONES DE CONTROL DE FLUJO -->
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,10,0,0">
+                                    <Button Content="💾 Guardar Presets" Command="{Binding SaveCurrentPresetsCommand}" Background="#262930" Foreground="#F0F2F5" FontSize="11"/>
+                                    <Button Content="▶ Ejecutar Preset" Command="{Binding ExecuteSelectedPresetCommand}" Background="#00E676" Foreground="#0E0F12" FontWeight="Bold" FontSize="11"/>
+                                </StackPanel>
                             </StackPanel>
                         </Border>
                     </Grid>
-                </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
 
-                <!-- VISTA AVANZADA (MODO STUDIO / CONSTRUCTOR DE FLUJOS 820x620) -->
-                <Grid IsVisible="{Binding IsStudioMode}" ColumnDefinitions="240,*" Margin="16">
-                    <!-- PANEL IZQUIERDO: PRESETS -->
-                    <Border Grid.Column="0" Background="#16181D" BorderBrush="#262930" BorderThickness="1" CornerRadius="8" Padding="12" Margin="0,0,12,0">
-                        <Grid RowDefinitions="Auto,*,Auto">
-                            <TextBlock Grid.Row="0" Text="⭐ PRESETS GUARDADOS" Foreground="#F0F2F5" FontWeight="Bold" FontSize="12" Margin="0,0,0,10"/>
-                            <ListBox Grid.Row="1" ItemsSource="{Binding Presets}" Background="Transparent" Foreground="#F0F2F5">
-                                <ListBox.ItemTemplate>
-                                    <DataTemplate>
-                                        <StackPanel Spacing="2" Margin="0,4">
-                                            <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="12"/>
-                                            <TextBlock Text="{Binding Description}" Foreground="#7D8390" FontSize="10" TextWrapping="Wrap"/>
-                                        </StackPanel>
-                                    </DataTemplate>
-                                </ListBox.ItemTemplate>
-                            </ListBox>
-                            <Button Grid.Row="2" Content="+ Nuevo Flujo" Background="#262930" Foreground="#F0F2F5" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Margin="0,8,0,0"/>
-                        </Grid>
-                    </Border>
-
-                    <!-- PANEL DERECHO: EDITOR SECUENCIAL DE PIPELINE -->
-                    <Border Grid.Column="1" Background="#16181D" BorderBrush="#262930" BorderThickness="1" CornerRadius="8" Padding="16">
-                        <StackPanel Spacing="14">
-                            <TextBlock Text="⚙ EDITOR DE PIPELINE DETERMINISTA" Foreground="#00D2FF" FontWeight="Bold" FontSize="13"/>
-                            
-                            <!-- BLOQUE 1: DISPARADOR -->
-                            <Border Background="#0E0F12" BorderBrush="#262930" BorderThickness="1" CornerRadius="6" Padding="12">
-                                <StackPanel Spacing="6">
-                                    <TextBlock Text="[BLOQUE 1: DISPARADOR PRINCIPAL]" Foreground="#00D2FF" FontWeight="SemiBold" FontSize="11"/>
-                                    <TextBlock Text="Tipo: Monitoreo de Proceso Activo (blender.exe)" Foreground="#F0F2F5" FontSize="12"/>
-                                    <TextBlock Text="Condición: CPU &lt; 8% durante 90 segundos continuos." Foreground="#7D8390" FontSize="11"/>
-                                </StackPanel>
-                            </Border>
-
-                            <!-- BLOQUE 2: ACCIÓN INTERMEDIA -->
-                            <Border Background="#0E0F12" BorderBrush="#262930" BorderThickness="1" CornerRadius="6" Padding="12">
-                                <StackPanel Spacing="6">
-                                    <TextBlock Text="[BLOQUE 2: ACCIÓN INTERMEDIA]" Foreground="#00D2FF" FontWeight="SemiBold" FontSize="11"/>
-                                    <TextBlock Text="Tipo: Captura de Pantalla + Desvanecimiento de Audio" Foreground="#F0F2F5" FontSize="12"/>
-                                    <TextBlock Text="Destino: ./data/snapshots/ (WebP calidad 80%)" Foreground="#7D8390" FontSize="11"/>
-                                </StackPanel>
-                            </Border>
-
-                            <!-- BLOQUE 3: ACCIÓN TERMINAL -->
-                            <Border Background="#0E0F12" BorderBrush="#262930" BorderThickness="1" CornerRadius="6" Padding="12">
-                                <StackPanel Spacing="6">
-                                    <TextBlock Text="[BLOQUE 3: ACCIÓN TERMINAL]" Foreground="#FFB300" FontWeight="SemiBold" FontSize="11"/>
-                                    <TextBlock Text="Tipo: Apagado del Sistema (ExitWindowsEx)" Foreground="#F0F2F5" FontSize="12"/>
-                                    <TextBlock Text="Periodo de gracia cancelable previo: 60 segundos con Overlay Topmost." Foreground="#7D8390" FontSize="11"/>
-                                </StackPanel>
-                            </Border>
-
-                            <!-- BOTONES DE CONTROL DE FLUJO -->
-                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Spacing="8" Margin="0,10,0,0">
-                                <Button Content="+ Añadir Paso" Background="#262930" Foreground="#F0F2F5" FontSize="11"/>
-                                <Button Content="💾 Guardar" Background="#262930" Foreground="#F0F2F5" FontSize="11"/>
-                                <Button Content="▶ Ejecutar Ahora" Background="#00E676" Foreground="#0E0F12" FontWeight="Bold" FontSize="11"/>
-                            </StackPanel>
-                        </StackPanel>
-                    </Border>
-                </Grid>
-            </Grid>
-        </ScrollViewer>
-
-        <!-- FOOTER BAR / HARDWARE MONITOR -->
+        <!-- FOOTER BAR / HARDWARE MONITOR (SIN STRING 'TRUE', LIMPIO Y ELEGANTE) -->
         <Border Grid.Row="2" Background="#16181D" BorderBrush="#262930" BorderThickness="0,1,0,0" Padding="14,8">
             <Grid ColumnDefinitions="Auto,*,Auto">
-                <Button Grid.Column="0"
-                        Content="{Binding IsStudioMode, Converter={x:Static ObjectConverters.IsNotNull}, FallbackValue='⚙ Modo Studio'}"
-                        Background="Transparent"
-                        Foreground="#00D2FF"
-                        FontSize="11"
-                        Command="{Binding ToggleStudioModeCommand}"/>
+                <!-- Estado / Motor -->
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                    <Ellipse Width="7" Height="7" Fill="{Binding StatusDotColor}"/>
+                    <TextBlock Text="{Binding EngineStateText}" Foreground="#7D8390" FontSize="11"/>
+                </StackPanel>
 
                 <!-- Live Metrics Readout -->
                 <StackPanel Grid.Column="1" Orientation="Horizontal" HorizontalAlignment="Center" Spacing="16" VerticalAlignment="Center">
@@ -313,9 +542,10 @@
                 <!-- LAN Remote Button -->
                 <Button Grid.Column="2"
                         Content="📱 Control LAN"
-                        Background="Transparent"
+                        Background="#262930"
                         Foreground="#F0F2F5"
                         FontSize="11"
+                        Padding="8,4"
                         Command="{Binding OpenQrModalCommand}"/>
             </Grid>
         </Border>

@@ -2,6 +2,38 @@
 
 Este documento registra de manera cronológica y detallada cada avance, fase del roadmap, archivos modificados y resultados de compilación del proyecto Nokto.
 
+## [Refactorización UI: Configuración Manual por Pestañas y Limpieza de Barra de Estado] - 2026-10-01 19:06:00
+- **Fase del roadmap:** Post-Fase 5 (Refinamiento UI/UX y Flexibilidad Operativa)
+- **Archivos creados o modificados:**
+  - `src/Nokto.UI/Views/MainWindow.axaml`
+  - `src/Nokto.UI/ViewModels/MainViewModel.cs`
+  - `CHANGELOG.md`
+- **Resumen técnico del cambio:**
+  1. **Estructura por Pestañas (`TabControl`):**
+     - **Pestaña 1: "Configuración Manual" (Vista principal por defecto):** Panel en 2 columnas claras que otorga libertad total al usuario para definir cualquier combinación de disparador y acción terminal.
+     - **Pestaña 2: "Accesos Rápidos":** Contiene las 4 tarjetas operativas preconfiguradas (Modo Trabajo, Modo Dormir, Fin de Tarea, Apagado Rápido).
+     - **Pestaña 3: "Modo Studio":** Integración nativa del catálogo de presets y editor secuencial de tuberías como pestaña propia.
+  2. **Columna Izquierda: "¿Cuándo ejecutar? (Disparador)":**
+     - Selector desplegable con 4 modos y paneles reactivos:
+       * **Cuenta Atrás:** Inputs numéricos de Horas (0-23), Minutos (0-59), Segundos (0-59) con botones rápidos de suma (`+15m`, `+30m`, `+1h`, `Reset`).
+       * **Hora Exacta:** Control `TimePicker` de formato 24h con cálculo dinámico en tiempo real (`ExactTimeSummaryText`).
+       * **Inactividad:** Input numérico para minutos de inactividad de periféricos sin usar ratón ni teclado.
+       * **Al Terminar Proceso:** Selector desplegable de procesos activos con botón de refresco y umbral opcional de CPU.
+  3. **Columna Derecha: "¿Qué acción realizar?":**
+     - Selector de acción terminal: Apagar el PC, Suspender, Hibernar, Reiniciar, Bloquear Sesión o Apagar Monitores.
+     - Checkboxes modificadores: Forzar cierre inmediato, desvanecimiento WASAPI, aviso flotante previo de gracia (60s) y captura de pantalla de evidencia.
+  4. **Zona Inferior y Panel Reactivo:**
+     - Botón destacado a ancho completo `[ ▶ INICIAR TAREA ]` en verde `#00E676` en estado de reposo.
+     - En ejecución: panel con título, tiempo restante en fuente monospace de 20px, barra de progreso cian `#00D2FF`, botón `[ ⏱ +10 Min ]` y botón `[ ⏹ CANCELAR / ABORTAR ]` en rojo `#FF4B4B`.
+  5. **Limpieza de Barra de Estado:**
+     - Eliminación total del botón residual que mostraba `"True"` en la esquina inferior izquierda.
+     - Conservación de métricas pasivas de hardware en vivo (CPU, RAM, Red) y acceso directo al modal de código QR para control remoto LAN.
+- **Resultado de la compilación:**
+  - `dotnet build Nokto.sln`: 0 Advertencias, 0 Errores.
+  - Verificación automatizada con `dotnet run --project tests/Nokto.ConsoleTest -- --verify`: 10 de 10 pruebas exitosas.
+
+---
+
 ## [Fase 5: Empaquetado, CI/CD y Distribución] - 2026-10-01 18:50:00
 - **Fase del roadmap:** Fase 5 (Packaging, CI/CD & Distribution)
 - **Archivos creados o modificados:**

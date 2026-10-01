@@ -29,6 +29,12 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private bool _isKeepAliveActive;
 
+    partial void OnIsKeepAliveActiveChanged(bool value)
+    {
+        OnPropertyChanged(nameof(StatusDotColor));
+        OnPropertyChanged(nameof(EngineStateText));
+    }
+
     [ObservableProperty]
     private string _lanConnectionUrl = "http://localhost:4884";
 
@@ -37,6 +43,12 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private bool _isTaskRunning;
+
+    partial void OnIsTaskRunningChanged(bool value)
+    {
+        OnPropertyChanged(nameof(StatusDotColor));
+        OnPropertyChanged(nameof(EngineStateText));
+    }
 
     [ObservableProperty]
     private string _currentStatusText = "Listo";
@@ -66,10 +78,10 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private bool _isStudioMode;
 
     [ObservableProperty]
-    private double _windowWidth = 460;
+    private double _windowWidth = 680;
 
     [ObservableProperty]
-    private double _windowHeight = 580;
+    private double _windowHeight = 620;
 
     [ObservableProperty]
     private string _selectedProcessName = "blender.exe";
@@ -79,6 +91,81 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private PresetDefinition? _selectedPreset;
+
+    // --- CONFIGURACIÓN MANUAL: DISPARADOR ---
+    [ObservableProperty]
+    private int _selectedTriggerTypeIndex = 0;
+
+    public bool IsTriggerCountdown => SelectedTriggerTypeIndex == 0;
+    public bool IsTriggerExactTime => SelectedTriggerTypeIndex == 1;
+    public bool IsTriggerInactivity => SelectedTriggerTypeIndex == 2;
+    public bool IsTriggerProcessExit => SelectedTriggerTypeIndex == 3;
+
+    partial void OnSelectedTriggerTypeIndexChanged(int value)
+    {
+        OnPropertyChanged(nameof(IsTriggerCountdown));
+        OnPropertyChanged(nameof(IsTriggerExactTime));
+        OnPropertyChanged(nameof(IsTriggerInactivity));
+        OnPropertyChanged(nameof(IsTriggerProcessExit));
+    }
+
+    [ObservableProperty]
+    private decimal _countdownHours = 0;
+
+    [ObservableProperty]
+    private decimal _countdownMinutes = 30;
+
+    [ObservableProperty]
+    private decimal _countdownSeconds = 0;
+
+    [ObservableProperty]
+    private TimeSpan? _exactTime = DateTime.Now.TimeOfDay.Add(TimeSpan.FromHours(1));
+
+    partial void OnExactTimeChanged(TimeSpan? value)
+    {
+        OnPropertyChanged(nameof(ExactTimeSummaryText));
+    }
+
+    public string ExactTimeSummaryText
+    {
+        get
+        {
+            var span = ExactTime ?? DateTime.Now.TimeOfDay.Add(TimeSpan.FromHours(1));
+            DateTime now = DateTime.Now;
+            DateTime target = now.Date + span;
+            if (target <= now) target = target.AddDays(1);
+            TimeSpan diff = target - now;
+            return $"Se ejecutará a las {target:HH:mm} (en {(int)diff.TotalHours}h {diff.Minutes}m)";
+        }
+    }
+
+    [ObservableProperty]
+    private decimal _inactivityMinutes = 15;
+
+    [ObservableProperty]
+    private bool _enableCpuThreshold = false;
+
+    [ObservableProperty]
+    private decimal _cpuThreshold = 8;
+
+    // --- CONFIGURACIÓN MANUAL: ACCIÓN TERMINAL Y MODIFICADORES ---
+    [ObservableProperty]
+    private int _selectedTerminalActionIndex = 0;
+
+    [ObservableProperty]
+    private bool _optForceClose = false;
+
+    [ObservableProperty]
+    private bool _optAudioFadeOut = true;
+
+    [ObservableProperty]
+    private bool _optGracePeriod = true;
+
+    [ObservableProperty]
+    private bool _optScreenshot = false;
+
+    public string StatusDotColor => IsTaskRunning ? "#00E676" : (IsKeepAliveActive ? "#00D2FF" : "#7D8390");
+    public string EngineStateText => IsTaskRunning ? "En ejecución" : (IsKeepAliveActive ? "Keep-Alive" : "Inactivo");
 
     public ObservableCollection<string> AvailableProcesses { get; } = [];
     public ObservableCollection<PresetDefinition> Presets { get; } = [];
@@ -366,6 +453,201 @@ public partial class MainViewModel : ObservableObject, IDisposable
             $"Apagado Rápido ({minutes}m)",
             TimeSpan.FromMinutes(minutes),
             TerminalActionType.Shutdown);
+    }
+
+    [RelayCommand]
+    public void AddCountdownMinutes(string minutesStr)
+    {
+        if (int.TryParse(minutesStr, out int mins))
+        {
+            int totalMins = (int)(CountdownHours * 60 + CountdownMinutes + mins);
+            if (totalMins < 0) totalMins = 0;
+            CountdownHours = Math.Clamp(totalMins / 60, 0, 23);
+            CountdownMinutes = Math.Clamp(totalMins % 60, 0, 59);
+        }
+    }
+
+    [RelayCommand]
+    public void ResetCountdown()
+    {
+        CountdownHours = 0;
+        CountdownMinutes = 0;
+        CountdownSeconds = 0;
+    }
+
+    [RelayCommand]
+    public void RefreshProcesses()
+    {
+        RefreshAvailableProcesses();
+    }
+
+    [RelayCommand]
+    public async Task StartManualTask()
+    {
+        string taskName;
+        TriggerDefinition trigger;
+
+        switch (SelectedTriggerTypeIndex)
+        {
+            case 1: // Hora Exacta
+                DateTime now = DateTime.Now;
+                var span = ExactTime ?? DateTime.Now.TimeOfDay.Add(TimeSpan.FromHours(1));
+                DateTime target = now.Date + span;
+                if (target <= now) target = target.AddDays(1);
+                int waitSeconds = (int)(target - now).TotalSeconds;
+                if (waitSeconds <= 0) waitSeconds = 5;
+                taskName = $"Hora Exacta ({target:HH:mm})";
+                trigger = new TriggerDefinition
+                {
+                    Type = TriggerType.Countdown,
+                    Parameters = new Dictionary<string, JsonElement>
+                    {
+                        ["durationSeconds"] = JsonSerializer.SerializeToElement(waitSeconds)
+                    }
+                };
+                break;
+
+            case 2: // Inactividad
+                int idleMins = (int)InactivityMinutes;
+                if (idleMins <= 0) idleMins = 1;
+                taskName = $"Inactividad ({idleMins} min)";
+                trigger = new TriggerDefinition
+                {
+                    Type = TriggerType.UserIdle,
+                    Parameters = new Dictionary<string, JsonElement>
+                    {
+                        ["idleMinutes"] = JsonSerializer.SerializeToElement(idleMins)
+                    }
+                };
+                break;
+
+            case 3: // Al Terminar Proceso
+                string proc = string.IsNullOrWhiteSpace(SelectedProcessName) ? "notepad.exe" : SelectedProcessName;
+                taskName = $"Vigilar {proc}";
+                if (EnableCpuThreshold)
+                {
+                    trigger = new TriggerDefinition
+                    {
+                        Type = TriggerType.SustainedLoad,
+                        Parameters = new Dictionary<string, JsonElement>
+                        {
+                            ["thresholdPercentage"] = JsonSerializer.SerializeToElement((double)CpuThreshold),
+                            ["durationSeconds"] = JsonSerializer.SerializeToElement(60)
+                        }
+                    };
+                }
+                else
+                {
+                    trigger = new TriggerDefinition
+                    {
+                        Type = TriggerType.ProcessExit,
+                        Parameters = new Dictionary<string, JsonElement>
+                        {
+                            ["processName"] = JsonSerializer.SerializeToElement(proc),
+                            ["debounceSeconds"] = JsonSerializer.SerializeToElement(5)
+                        }
+                    };
+                }
+                break;
+
+            case 0: // Cuenta Atrás
+            default:
+                int totalSeconds = (int)(CountdownHours * 3600 + CountdownMinutes * 60 + CountdownSeconds);
+                if (totalSeconds <= 0) totalSeconds = 60;
+                taskName = $"Cuenta Atrás ({TimeSpan.FromSeconds(totalSeconds):hh\\:mm\\:ss})";
+                trigger = new TriggerDefinition
+                {
+                    Type = TriggerType.Countdown,
+                    Parameters = new Dictionary<string, JsonElement>
+                    {
+                        ["durationSeconds"] = JsonSerializer.SerializeToElement(totalSeconds)
+                    }
+                };
+                break;
+        }
+
+        var pipeline = new List<PipelineStepDefinition>();
+        int stepOrder = 1;
+
+        if (OptScreenshot)
+        {
+            pipeline.Add(new PipelineStepDefinition
+            {
+                StepOrder = stepOrder++,
+                ActionType = ActionType.CaptureScreenshot,
+                IgnoreFailure = true
+            });
+        }
+
+        if (OptAudioFadeOut)
+        {
+            pipeline.Add(new PipelineStepDefinition
+            {
+                StepOrder = stepOrder++,
+                ActionType = ActionType.AudioFadeOut,
+                Parameters = new Dictionary<string, JsonElement>
+                {
+                    ["durationSeconds"] = JsonSerializer.SerializeToElement(15),
+                    ["targetVolumePercentage"] = JsonSerializer.SerializeToElement(0)
+                },
+                IgnoreFailure = true
+            });
+        }
+
+        TerminalActionType terminalType;
+        switch (SelectedTerminalActionIndex)
+        {
+            case 0:
+                terminalType = TerminalActionType.Shutdown;
+                break;
+            case 1:
+                terminalType = TerminalActionType.Sleep;
+                break;
+            case 2:
+                terminalType = TerminalActionType.Hibernate;
+                break;
+            case 3:
+                terminalType = TerminalActionType.Restart;
+                break;
+            case 4:
+                terminalType = TerminalActionType.LockStation;
+                break;
+            case 5:
+                pipeline.Add(new PipelineStepDefinition
+                {
+                    StepOrder = stepOrder++,
+                    ActionType = ActionType.TurnOffMonitors,
+                    IgnoreFailure = true
+                });
+                terminalType = TerminalActionType.None;
+                break;
+            default:
+                terminalType = TerminalActionType.Shutdown;
+                break;
+        }
+
+        int graceSeconds = OptGracePeriod ? 60 : 0;
+        var terminal = new TerminalActionDefinition
+        {
+            Type = terminalType,
+            Parameters = new Dictionary<string, JsonElement>
+            {
+                ["gracePeriodSeconds"] = JsonSerializer.SerializeToElement(graceSeconds),
+                ["forced"] = JsonSerializer.SerializeToElement(OptForceClose)
+            }
+        };
+
+        var preset = new PresetDefinition
+        {
+            Id = "manual_task_" + Guid.NewGuid().ToString("N")[..8],
+            Name = taskName,
+            Description = "Tarea configurada manualmente por el usuario.",
+            Trigger = trigger,
+            Pipeline = pipeline,
+            TerminalAction = terminal
+        };
+
+        await _workflowEngine.StartPresetAsync(preset);
     }
 
     [RelayCommand]
