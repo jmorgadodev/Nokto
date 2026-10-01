@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
@@ -68,44 +69,53 @@ public sealed class LanHttpServer : IDisposable
         _cts?.Cancel();
         _cts = new CancellationTokenSource();
 
-        _listener = new HttpListener();
-
-        // Intenta prefijo genérico o específico según permisos
         try
         {
-            _listener.Prefixes.Add($"http://*:{_settings.Port}/");
-            _listener.Start();
-        }
-        catch (HttpListenerException)
-        {
-            // Intento 2: con IP local + localhost + 127.0.0.1
-            _listener.Close();
             _listener = new HttpListener();
-            _listener.Prefixes.Add($"http://localhost:{_settings.Port}/");
-            _listener.Prefixes.Add($"http://127.0.0.1:{_settings.Port}/");
 
-            string localIp = GetLocalIpAddress();
-            if (localIp != "127.0.0.1")
-            {
-                _listener.Prefixes.Add($"http://{localIp}:{_settings.Port}/");
-            }
-
+            // Intenta prefijo genérico o específico según permisos
             try
             {
+                _listener.Prefixes.Add($"http://*:{_settings.Port}/");
                 _listener.Start();
             }
             catch (HttpListenerException)
             {
-                // Intento 3: fallback estricto a localhost y 127.0.0.1 (Windows no exige elevación ni urlacl)
+                // Intento 2: con IP local + localhost + 127.0.0.1
                 _listener.Close();
                 _listener = new HttpListener();
                 _listener.Prefixes.Add($"http://localhost:{_settings.Port}/");
                 _listener.Prefixes.Add($"http://127.0.0.1:{_settings.Port}/");
-                _listener.Start();
-            }
-        }
 
-        _listenerTask = Task.Run(() => ListenLoopAsync(_cts.Token));
+                string localIp = GetLocalIpAddress();
+                if (localIp != "127.0.0.1")
+                {
+                    _listener.Prefixes.Add($"http://{localIp}:{_settings.Port}/");
+                }
+
+                try
+                {
+                    _listener.Start();
+                }
+                catch (HttpListenerException)
+                {
+                    // Intento 3: fallback estricto a localhost y 127.0.0.1 (Windows no exige elevación ni urlacl)
+                    _listener.Close();
+                    _listener = new HttpListener();
+                    _listener.Prefixes.Add($"http://localhost:{_settings.Port}/");
+                    _listener.Prefixes.Add($"http://127.0.0.1:{_settings.Port}/");
+                    _listener.Start();
+                }
+            }
+
+            _listenerTask = Task.Run(() => ListenLoopAsync(_cts.Token));
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"No se pudo iniciar el microservidor LAN: {ex.Message}");
+            try { _listener?.Close(); } catch { }
+            _listener = null;
+        }
     }
 
     public void Stop()

@@ -15,6 +15,8 @@ namespace Nokto.UI;
 
 public partial class App : Application
 {
+    public static App? CurrentInstance { get; private set; }
+
     private ISystemAdapter? _systemAdapter;
     private MainViewModel? _mainViewModel;
     private MainWindow? _mainWindow;
@@ -23,6 +25,7 @@ public partial class App : Application
 
     public override void Initialize()
     {
+        CurrentInstance = this;
         AvaloniaXamlLoader.Load(this);
     }
 
@@ -35,10 +38,17 @@ public partial class App : Application
             var engine = new WorkflowEngine(_systemAdapter, persistence);
             _mainViewModel = new MainViewModel(_systemAdapter, engine, persistence);
 
-            var config = persistence.LoadConfig();
-            _lanServer = new LanHttpServer(engine, _systemAdapter, config.LanServer);
-            _lanServer.Start();
-            _mainViewModel.LanConnectionUrl = _lanServer.GetConnectionUrl();
+            try
+            {
+                var config = persistence.LoadConfig();
+                _lanServer = new LanHttpServer(engine, _systemAdapter, config.LanServer);
+                _lanServer.Start();
+                _mainViewModel.LanConnectionUrl = _lanServer.GetConnectionUrl();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Microservidor LAN no disponible: {ex.Message}");
+            }
 
             desktop.Exit += (s, e) =>
             {
@@ -130,11 +140,14 @@ public partial class App : Application
         }
     }
 
-    private void ShowMainWindow()
+    public void ShowMainWindow()
     {
         if (_mainWindow != null)
         {
-            _mainWindow.Show();
+            if (!_mainWindow.IsVisible)
+            {
+                _mainWindow.Show();
+            }
             _mainWindow.WindowState = WindowState.Normal;
             _mainWindow.Activate();
         }
