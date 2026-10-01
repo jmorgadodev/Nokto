@@ -1,0 +1,140 @@
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.ApplicationLifetimes;
+using Avalonia.Markup.Xaml;
+using Nokto.Core.Abstractions;
+using Nokto.Platform.Windows;
+using Nokto.UI.Tray;
+using Nokto.UI.ViewModels;
+using Nokto.UI.Views;
+
+namespace Nokto.UI;
+
+public partial class App : Application
+{
+    private ISystemAdapter? _systemAdapter;
+    private MainViewModel? _mainViewModel;
+    private MainWindow? _mainWindow;
+    private TrayIcon? _trayIcon;
+
+    public override void Initialize()
+    {
+        AvaloniaXamlLoader.Load(this);
+    }
+
+    public override void OnFrameworkInitializationCompleted()
+    {
+        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        {
+            DetectStorageMode();
+
+            _systemAdapter = new WindowsSystemAdapter();
+            _mainViewModel = new MainViewModel(_systemAdapter);
+
+            _mainWindow = new MainWindow();
+            _mainWindow.InitializeWithViewModel(_mainViewModel);
+            desktop.MainWindow = _mainWindow;
+
+            ConfigureTrayIcon(desktop);
+        }
+
+        base.OnFrameworkInitializationCompleted();
+    }
+
+    private static void DetectStorageMode()
+    {
+        string baseDir = AppDomain.CurrentDomain.BaseDirectory;
+        bool isPortable = File.Exists(Path.Combine(baseDir, "portable.lock")) ||
+                          File.Exists(Path.Combine(baseDir, "config.json"));
+
+        string dataDir = isPortable
+            ? Path.Combine(baseDir, "data")
+            : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Nokto");
+
+        if (!Directory.Exists(dataDir))
+        {
+            Directory.CreateDirectory(dataDir);
+        }
+    }
+
+    private void ConfigureTrayIcon(IClassicDesktopStyleApplicationLifetime desktop)
+    {
+        var menu = new NativeMenu();
+
+        var itemOpen = new NativeMenuItem("Abrir Nokto");
+        itemOpen.Click += (s, e) => ShowMainWindow();
+
+        var itemDisplays = new NativeMenuItem("🌙 Apagar Monitores Ahora");
+        itemDisplays.Click += async (s, e) =>
+        {
+            if (_systemAdapter != null)
+            {
+                await _systemAdapter.SetDisplayPowerAsync(false);
+            }
+        };
+
+        var itemPostpone = new NativeMenuItem("⏱ +15 Minutos");
+        itemPostpone.Click += (s, e) => _mainViewModel?.PostponeTask("15");
+
+        var itemAbort = new NativeMenuItem("⛔ Abortar Flujo Activo");
+        itemAbort.Click += (s, e) => _mainViewModel?.AbortTask();
+
+        var itemExit = new NativeMenuItem("Salir de Nokto");
+        itemExit.Click += (s, e) =>
+        {
+            _mainWindow?.ForceCloseApplication();
+            desktop.Shutdown();
+        };
+
+        menu.Items.Add(itemOpen);
+        menu.Items.Add(new NativeMenuItemSeparator());
+        menu.Items.Add(itemDisplays);
+        menu.Items.Add(itemPostpone);
+        menu.Items.Add(itemAbort);
+        menu.Items.Add(new NativeMenuItemSeparator());
+        menu.Items.Add(itemExit);
+
+        _trayIcon = new TrayIcon
+        {
+            ToolTipText = "Nokto — Sistema de Energía (Listo)",
+            Menu = menu,
+            IsVisible = true,
+            Icon = DynamicTrayIconRenderer.RenderTrayIcon(TrayIconVisualState.Idle)
+        };
+
+        _trayIcon.Clicked += (s, e) => ShowMainWindow();
+
+        var icons = new TrayIcons { _trayIcon };
+        TrayIcon.SetIcons(this, icons);
+
+        if (_mainViewModel != null)
+        {
+            _mainViewModel.RequestTrayIconUpdate += (state, progress, secondsRemaining, pulsePhase) =>
+            {
+                Avalonia.Threading.Dispatcher.UIThread.Post(() =>
+                {
+                    if (_trayIcon != null)
+                    {
+                        _trayIcon.Icon = DynamicTrayIconRenderer.RenderTrayIcon(state, progress, secondsRemaining, pulsePhase);
+                        _trayIcon.ToolTipText = state switch
+                        {
+                            TrayIconVisualState.InProgress => $"Nokto: {progress:F0}% ({secondsRemaining}s)",
+                            TrayIconVisualState.Completed => "Nokto: Tarea completada con éxito",
+                            _ => "Nokto — Sistema de Energía (Listo)"
+                        };
+                    }
+                });
+            };
+        }
+    }
+
+    private void ShowMainWindow()
+    {
+        if (_mainWindow != null)
+        {
+            _mainWindow.Show();
+            _mainWindow.WindowState = WindowState.Normal;
+            _mainWindow.Activate();
+        }
+    }
+}

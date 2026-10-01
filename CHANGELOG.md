@@ -4,6 +4,53 @@ Este documento registra de manera cronológica y detallada cada avance, fase del
 
 ---
 
+## [Fase 2: Interfaz de Escritorio Avalonia y Bandeja del Sistema] - 2026-10-01 18:32:00
+- **Fase del roadmap:** Fase 2 (Desktop UI & System Tray)
+- **Archivos creados o modificados:**
+  - `Nokto.sln`
+  - `src/Nokto.UI/Nokto.UI.csproj`
+  - `src/Nokto.UI/app.manifest`
+  - `src/Nokto.UI/App.axaml`
+  - `src/Nokto.UI/App.axaml.cs`
+  - `src/Nokto.UI/Program.cs`
+  - `src/Nokto.UI/Tray/DynamicTrayIconRenderer.cs`
+  - `src/Nokto.UI/ViewModels/MainViewModel.cs`
+  - `src/Nokto.UI/Views/MainWindow.axaml`
+  - `src/Nokto.UI/Views/MainWindow.axaml.cs`
+  - `src/Nokto.UI/Views/GraceOverlayWindow.axaml`
+  - `src/Nokto.UI/Views/GraceOverlayWindow.axaml.cs`
+  - `src/Nokto.UI/Views/QrModalWindow.axaml`
+  - `src/Nokto.UI/Views/QrModalWindow.axaml.cs`
+  - `CHANGELOG.md`
+- **Resumen técnico del cambio:**
+  1. **Configuración de Avalonia UI v11 y Arquitectura MVVM:**
+     - Integración del proyecto ejecutable `src/Nokto.UI` con `net8.0-windows10.0.19041.0`, FluentTheme en modo oscuro estricto (`RequestedThemeVariant="Dark"`), y fuentes Inter.
+     - `app.manifest` con soporte para PerMonitorV2 DPI awareness y compatibilidad con Windows 10/11.
+     - Implementación de `MainViewModel` mediante `CommunityToolkit.Mvvm` (`ObservableObject`, `[ObservableProperty]`, `[RelayCommand]`).
+  2. **Vista Simple (Modo Rápido 460x580 px) y Modo Studio (820x620 px):**
+     - Diseño neominimalista industrial respetando los tokens de color (`#0E0F12`, `#16181D`, `#262930`, `#00D2FF`, `#00E676`, `#FFB300`, `#FF4B4B`).
+     - Cuatro tarjetas operativas en Modo Rápido:
+       * **Modo Trabajo:** Mantiene activo Teams/Slack con botón dinámico verde (`Activo (Jitter ON)`) y cancelación.
+       * **Modo Dormir:** Temporizador de 45 minutos con activación automática de atenuación de volumen WASAPI (últimos 10 min) y corte de señal de monitor (últimos 5 min).
+       * **Fin de Tarea:** Selector desplegable de procesos activos del sistema (`Process.GetProcesses()`) con vigilancia y apagado automático al cierre.
+       * **Apagado Rápido:** Chips de selección inmediata (`30m`, `1h`, `2h`) y acción directa de apagado de monitores.
+     - Panel de Modo Studio expandible con catálogo de presets y editor secuencial de tuberías (Disparador -> Acción Intermedia -> Acción Terminal).
+     - Barra de telemetría inferior con monitor pasivo de CPU, RAM y Red en tiempo real.
+  3. **Ventana de Gracia Flotante (`GraceOverlayWindow`):**
+     - Ventana sin bordes de 380x110 px, `Topmost=true`, anclada en la esquina superior derecha.
+     - Cuenta regresiva visual con barra ámbar decreciente (`#FFB300`).
+     - Atajos de teclado: `Escape` para cancelar el apagado inmediatamente y `Espacio` para posponer 10 minutos (+600s).
+  4. **Renderizado Dinámico en System Tray ([`DynamicTrayIconRenderer`](file:///c:/Users/jorge/Proyectos/Nokto/src/Nokto.UI/Tray/DynamicTrayIconRenderer.cs)):**
+     - Generación de iconos en memoria de 32x32 píxeles con SkiaSharp sin necesidad de archivos `.ico` en disco.
+     - Modos visuales: Reposo (glifo de luna/círculo Nokto blanco), En Progreso (anillo con arco dinámico proporcional en cian/ámbar y punto pulsante central) y Completado (rombo sólido verde neón).
+     - Menú contextual nativo con opciones de abrir, apagar monitores, posponer 15 min, abortar y salir.
+     - Intercepción del cierre (`Closing` de `MainWindow`): minimiza a la bandeja del sistema en lugar de destruirse.
+- **Resultado de la compilación:**
+  - `dotnet build Nokto.sln`: 0 Advertencias, 0 Errores.
+  - Ejecución y arranque en memoria verificado con éxito.
+
+---
+
 ## [Fase 1: Core Headless & Windows System Adapter] - 2026-10-01 18:25:00
 - **Fase del roadmap:** Fase 1 (Motor Headless y Adaptadores de Sistema Operativo)
 - **Archivos creados o modificados:**

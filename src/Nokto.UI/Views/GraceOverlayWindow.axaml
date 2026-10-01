@@ -1,0 +1,78 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Nokto.UI.Views.GraceOverlayWindow"
+        Title="Nokto Grace Period"
+        Width="380" Height="110"
+        CanResize="False"
+        SystemDecorations="None"
+        ShowInTaskbar="False"
+        Topmost="True"
+        Background="Transparent"
+        TransparencyLevelHint="Transparent"
+        WindowStartupLocation="Manual">
+
+    <Border Background="#16181D"
+            BorderBrush="#FFB300"
+            BorderThickness="1.5"
+            CornerRadius="8"
+            Padding="14,10"
+            BoxShadow="0 8 24 0 #80000000">
+        <Grid RowDefinitions="Auto,Auto,Auto">
+            <!-- Header -->
+            <Grid Grid.Row="0" ColumnDefinitions="*,Auto">
+                <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="🌙" FontSize="15" VerticalAlignment="Center"/>
+                    <TextBlock x:Name="TxtCountdown"
+                               Text="Apagando en 00:60 s..."
+                               Foreground="#F0F2F5"
+                               FontWeight="SemiBold"
+                               FontSize="13"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+                <Button Grid.Column="1"
+                        x:Name="BtnClose"
+                        Content="✕"
+                        Background="Transparent"
+                        Foreground="#7D8390"
+                        Padding="6,2"
+                        FontSize="11"
+                        Click="OnCancelClicked"/>
+            </Grid>
+
+            <!-- Progress Bar -->
+            <ProgressBar Grid.Row="1"
+                         x:Name="ProgressBarGrace"
+                         Minimum="0" Maximum="60" Value="60"
+                         Height="4"
+                         Margin="0,10,0,10"
+                         Foreground="#FFB300"
+                         Background="#262930"/>
+
+            <!-- Action Buttons -->
+            <Grid Grid.Row="2" ColumnDefinitions="*,10,*">
+                <Button Grid.Column="0"
+                        x:Name="BtnPostpone"
+                        Content="+10 Min (Espacio)"
+                        Background="#262930"
+                        Foreground="#F0F2F5"
+                        FontSize="11"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Center"
+                        Padding="0,6"
+                        Click="OnPostponeClicked"/>
+
+                <Button Grid.Column="2"
+                        x:Name="BtnCancel"
+                        Content="Cancelar (Esc)"
+                        Background="#FF4B4B"
+                        Foreground="#FFFFFF"
+                        FontWeight="SemiBold"
+                        FontSize="11"
+                        HorizontalAlignment="Stretch"
+                        HorizontalContentAlignment="Center"
+                        Padding="0,6"
+                        Click="OnCancelClicked"/>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>
