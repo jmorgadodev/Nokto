@@ -150,6 +150,9 @@ public partial class App : Application
             }
             _mainWindow.WindowState = WindowState.Normal;
             _mainWindow.Activate();
+            _mainWindow.Topmost = true;
+            _mainWindow.Topmost = false;
+            _mainWindow.Focus();
         }
     }
 }
