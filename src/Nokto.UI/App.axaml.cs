@@ -58,6 +58,11 @@ public partial class App : Application
             };
 
             _mainWindow = new MainWindow();
+            try
+            {
+                _mainWindow.Icon = DynamicTrayIconRenderer.RenderAppWindowIcon();
+            }
+            catch { }
             _mainWindow.InitializeWithViewModel(_mainViewModel);
             desktop.MainWindow = _mainWindow;
 

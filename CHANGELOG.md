@@ -2,6 +2,32 @@
 
 Este documento registra de manera cronológica y detallada cada avance, fase del roadmap, archivos modificados y resultados de compilación del proyecto Nokto.
 
+## [Corrección de Icono en Barra de Título y Rediseño Ergonómico de Entradas Numéricas en Versión Portable] - 2026-10-01 20:18:00
+- **Fase del roadmap:** Post-Fase 6 (Experiencia de Usuario, Estabilidad Visual y Empaquetado Portable)
+- **Archivos creados o modificados:**
+  - `src/Nokto.UI/Tray/DynamicTrayIconRenderer.cs`: Añadido método de alta fidelidad `RenderAppWindowIcon()` (64x64 px) renderizado directamente en memoria con SkiaSharp para la ventana Win32.
+  - `src/Nokto.UI/Views/MainWindow.axaml.cs`: Asignación determinista de `Icon = DynamicTrayIconRenderer.RenderAppWindowIcon()` en el constructor de la ventana.
+  - `src/Nokto.UI/App.axaml.cs`: Configuración explícita de `_mainWindow.Icon` antes de mostrar la aplicación.
+  - `src/Nokto.UI/Views/MainWindow.axaml`: Actualizada URI del icono a `avares://Nokto/Assets/nokto.ico`. Rediseñado el panel de Cuenta Atrás con 3 tarjetas dedicadas (HORAS, MINUTOS, SEGUNDOS), cada una con botones paso a paso `[−]` y `[+]`, entradas numéricas con `ShowButtonSpinner="False"`, tipografía `Consolas` 18px en negrita, centrada y en color cian `#00D2FF`, eliminación de spinners comprimidos y barra de preajustes rápidos (+5m, +15m, +30m, +45m, +1h, +2h, Reset). Actualizados los paneles dinámicos de Inactividad, Al Terminar Proceso, Silencio de Audio y Batería con controles numéricos limpios y alias de binding.
+  - `src/Nokto.UI/ViewModels/MainViewModel.cs`: Migradas propiedades `CountdownHours`, `CountdownMinutes`, `CountdownSeconds` a `decimal?` para compatibilidad total con `NumericUpDown.Value`, añadida propiedad `FormattedCountdownText` con cálculo en tiempo real, implementados comandos `IncrementHoursCommand`, `DecrementHoursCommand`, `IncrementMinutesCommand`, `DecrementMinutesCommand`, `IncrementSecondsCommand`, `DecrementSecondsCommand`, y alias de compatibilidad (`IsTriggerIdle`, `IdleMinutesThreshold`, `SelectedExactTime`, `SelectedProcessToWatch`, `WaitForCpuDrop`).
+  - `artifacts/Nokto-Portable-x64/Nokto.exe`: Binario único portable re-publicado y actualizado al 100%.
+  - `artifacts/Nokto-v1.0.0-Portable-x64.zip`: Archivo comprimido portable actualizado.
+- **Resumen técnico del cambio:**
+  1. **Icono de la Barra de Título y Barra de Tareas (Win32 & Avalonia):**
+     - En Avalonia bajo empaquetado `SingleFile`, las rutas relativas `Icon="/Assets/nokto.ico"` intentan resolver en la raíz del disco físico (`C:\Assets\nokto.ico`), dejando `Window.Icon` en nulo y provocando que Windows muestre el icono genérico en blanco.
+     - Se reemplazó la referencia XAML por el esquema nativo de recursos de ensamblado `avares://Nokto/Assets/nokto.ico` y se implementó `RenderAppWindowIcon()` en `DynamicTrayIconRenderer.cs`, generando un bitmap RGBA de 64x64 px con el disco oscuro `#16181D`, arco cian neón `#00D2FF` y núcleo blanco `#F0F2F5` inyectado por código en `MainWindow.axaml.cs` y `App.axaml.cs`. El icono se visualiza de forma nítida en la barra de título, en la barra de tareas de Windows y en Alt-Tab.
+  2. **Rediseño Integral de la Entrada Numérica de Tiempo:**
+     - El control `NumericUpDown` estándar en FluentTheme comprimía el cuadro de texto a menos de 25px debido a los spinners verticales `^` y `v` en columnas de ancho restringido, provocando que los números quedaran ocultos y mostrando solo una ranura con cursor vertical `[ | ^ v ]`.
+     - Se eliminó el spinner integrado (`ShowButtonSpinner="False"`), otorgando el ancho completo a la caja de entrada numérica.
+     - Se dispuso una estructura de 3 tarjetas individuales para **HORAS (0-23)**, **MINUTOS (0-59)** y **SEGUNDOS (0-59)** con botones de incremento `[+]` y decremento `[−]` laterales ergonómicos, tipografía monoespaciada de 18px en negrita, centrado horizontal y vertical, y color cian neón `#00D2FF`. El usuario puede tanto hacer clic en `+` / `−` como teclear números libremente o pulsar flechas arriba/abajo en su teclado.
+     - Barra de botones chips con preajustes inmediatos: `+5m`, `+15m`, `+30m`, `+45m`, `+1h`, `+2h`, y `Reset`.
+  3. **Compilación y Empaquetado Portable:**
+     - Re-publicado `artifacts/Nokto-Portable-x64/Nokto.exe` (51.9 MB) y actualizado `artifacts/Nokto-v1.0.0-Portable-x64.zip` (46.3 MB) para reflejar de inmediato los cambios al usuario.
+- **Resultado de la compilación y pruebas:**
+  - `dotnet build Nokto.sln`: 0 Advertencias, 0 Errores.
+  - Suite de pruebas automatizadas: 10/10 tests superados (0 fallos).
+  - Verificación del ejecutable portable: Proceso iniciado y respondiendo con éxito.
+
 ## [Refinamiento Visual y Conectividad: Control Remoto LAN Robusto, PWA OLED en Reposo, Iconografía Vectorial Fluent e Icono Oficial .ico] - 2026-10-01 20:05:00
 - **Fase del roadmap:** Post-Fase 6 (Experiencia de Usuario, Estabilidad de Red LAN y Diseño Visual)
 - **Archivos creados o modificados:**

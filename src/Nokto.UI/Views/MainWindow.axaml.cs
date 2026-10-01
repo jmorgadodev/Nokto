@@ -13,6 +13,15 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         Closing += OnMainWindowClosing;
+
+        try
+        {
+            Icon = Nokto.UI.Tray.DynamicTrayIconRenderer.RenderAppWindowIcon();
+        }
+        catch
+        {
+            // Fallback ante entornos sin aceleración gráfica inicial
+        }
     }
 
     public void InitializeWithViewModel(MainViewModel viewModel)

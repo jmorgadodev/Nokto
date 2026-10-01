@@ -9,7 +9,7 @@
         MinWidth="820"
         MinHeight="580"
         WindowStartupLocation="CenterScreen"
-        Icon="/Assets/nokto.ico"
+        Icon="avares://Nokto/Assets/nokto.ico"
         Background="#0E0F12">
 
     <Grid RowDefinitions="Auto,*,Auto">
@@ -85,32 +85,117 @@
                                     </StackPanel>
 
                                     <!-- PANEL DINÁMICO 1: CUENTA ATRÁS -->
-                                    <Border IsVisible="{Binding IsTriggerCountdown}" Background="#0E0F12" BorderBrush="#262930" BorderThickness="1" CornerRadius="6" Padding="10">
-                                        <StackPanel Spacing="8">
-                                            <TextBlock Text="Establecer tiempo de espera:" Foreground="#7D8390" FontSize="11"/>
-                                            <Grid ColumnDefinitions="*,*,*">
-                                                <StackPanel Grid.Column="0" Margin="0,0,4,0">
-                                                    <TextBlock Text="Horas" FontSize="10" Foreground="#7D8390" Margin="0,0,0,2"/>
-                                                    <NumericUpDown Value="{Binding CountdownHours, Mode=TwoWay}" Minimum="0" Maximum="23" FormatString="00" Background="#16181D" Foreground="#F0F2F5"/>
-                                                </StackPanel>
-                                                <StackPanel Grid.Column="1" Margin="2,0,2,0">
-                                                    <TextBlock Text="Minutos" FontSize="10" Foreground="#7D8390" Margin="0,0,0,2"/>
-                                                    <NumericUpDown Value="{Binding CountdownMinutes, Mode=TwoWay}" Minimum="0" Maximum="59" FormatString="00" Background="#16181D" Foreground="#F0F2F5"/>
-                                                </StackPanel>
-                                                <StackPanel Grid.Column="2" Margin="4,0,0,0">
-                                                    <TextBlock Text="Segundos" FontSize="10" Foreground="#7D8390" Margin="0,0,0,2"/>
-                                                    <NumericUpDown Value="{Binding CountdownSeconds, Mode=TwoWay}" Minimum="0" Maximum="59" FormatString="00" Background="#16181D" Foreground="#F0F2F5"/>
-                                                </StackPanel>
+                                    <Border IsVisible="{Binding IsTriggerCountdown}" Background="#0E0F12" BorderBrush="#262930" BorderThickness="1" CornerRadius="6" Padding="12">
+                                        <StackPanel Spacing="10">
+                                            <Grid ColumnDefinitions="*,Auto">
+                                                <TextBlock Grid.Column="0" Text="Tiempo de espera:" Foreground="#7D8390" FontSize="11" VerticalAlignment="Center"/>
+                                                <TextBlock Grid.Column="1" Text="{Binding FormattedCountdownText}" Foreground="#00D2FF" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                             </Grid>
 
-                                            <!-- Botones rápidos de suma -->
-                                            <StackPanel Orientation="Horizontal" Spacing="6" Margin="0,2,0,0">
-                                                <TextBlock Text="Sumar:" Foreground="#7D8390" FontSize="10" VerticalAlignment="Center"/>
-                                                <Button Content="+15m" Command="{Binding AddCountdownMinutesCommand}" CommandParameter="15" Background="#262930" Foreground="#F0F2F5" FontSize="10" Padding="6,3"/>
-                                                <Button Content="+30m" Command="{Binding AddCountdownMinutesCommand}" CommandParameter="30" Background="#262930" Foreground="#F0F2F5" FontSize="10" Padding="6,3"/>
-                                                <Button Content="+1h" Command="{Binding AddCountdownMinutesCommand}" CommandParameter="60" Background="#262930" Foreground="#F0F2F5" FontSize="10" Padding="6,3"/>
-                                                <Button Content="Reset" Command="{Binding ResetCountdownCommand}" Background="#262930" Foreground="#FF4B4B" FontSize="10" Padding="6,3"/>
-                                            </StackPanel>
+                                            <!-- 3 CONTADORES ERGONÓMICOS: HORAS, MINUTOS, SEGUNDOS -->
+                                            <Grid ColumnDefinitions="*,*,*">
+                                                <!-- HORAS -->
+                                                <Border Grid.Column="0" Background="#16181D" BorderBrush="#262930" BorderThickness="1" CornerRadius="6" Padding="6" Margin="0,0,4,0">
+                                                    <StackPanel Spacing="4">
+                                                        <TextBlock Text="HORAS" FontSize="10" FontWeight="Bold" Foreground="#7D8390" HorizontalAlignment="Center"/>
+                                                        <Grid ColumnDefinitions="Auto,*,Auto">
+                                                            <Button Grid.Column="0" Content="−" Command="{Binding DecrementHoursCommand}"
+                                                                    Width="28" Height="32" Padding="0"
+                                                                    HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                                                                    Background="#222630" Foreground="#F0F2F5" FontWeight="Bold" FontSize="14"
+                                                                    ToolTip.Tip="Restar 1 hora"/>
+                                                            
+                                                            <NumericUpDown Grid.Column="1" Value="{Binding CountdownHours, Mode=TwoWay}"
+                                                                           Minimum="0" Maximum="23" FormatString="00" Watermark="00"
+                                                                           ShowButtonSpinner="False"
+                                                                           HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                                                                           TextAlignment="Center"
+                                                                           FontSize="18" FontWeight="Bold" FontFamily="Consolas, monospace"
+                                                                           Foreground="#00D2FF" Background="#0E0F12"
+                                                                           BorderBrush="#262930" BorderThickness="1"
+                                                                           CornerRadius="4" Height="32" Margin="4,0"/>
+
+                                                            <Button Grid.Column="2" Content="+" Command="{Binding IncrementHoursCommand}"
+                                                                    Width="28" Height="32" Padding="0"
+                                                                    HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                                                                    Background="#222630" Foreground="#F0F2F5" FontWeight="Bold" FontSize="14"
+                                                                    ToolTip.Tip="Sumar 1 hora"/>
+                                                        </Grid>
+                                                    </StackPanel>
+                                                </Border>
+
+                                                <!-- MINUTOS -->
+                                                <Border Grid.Column="1" Background="#16181D" BorderBrush="#262930" BorderThickness="1" CornerRadius="6" Padding="6" Margin="2,0,2,0">
+                                                    <StackPanel Spacing="4">
+                                                        <TextBlock Text="MINUTOS" FontSize="10" FontWeight="Bold" Foreground="#7D8390" HorizontalAlignment="Center"/>
+                                                        <Grid ColumnDefinitions="Auto,*,Auto">
+                                                            <Button Grid.Column="0" Content="−" Command="{Binding DecrementMinutesCommand}"
+                                                                    Width="28" Height="32" Padding="0"
+                                                                    HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                                                                    Background="#222630" Foreground="#F0F2F5" FontWeight="Bold" FontSize="14"
+                                                                    ToolTip.Tip="Restar 1 minuto"/>
+                                                            
+                                                            <NumericUpDown Grid.Column="1" Value="{Binding CountdownMinutes, Mode=TwoWay}"
+                                                                           Minimum="0" Maximum="59" FormatString="00" Watermark="00"
+                                                                           ShowButtonSpinner="False"
+                                                                           HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                                                                           TextAlignment="Center"
+                                                                           FontSize="18" FontWeight="Bold" FontFamily="Consolas, monospace"
+                                                                           Foreground="#00D2FF" Background="#0E0F12"
+                                                                           BorderBrush="#262930" BorderThickness="1"
+                                                                           CornerRadius="4" Height="32" Margin="4,0"/>
+
+                                                            <Button Grid.Column="2" Content="+" Command="{Binding IncrementMinutesCommand}"
+                                                                    Width="28" Height="32" Padding="0"
+                                                                    HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                                                                    Background="#222630" Foreground="#F0F2F5" FontWeight="Bold" FontSize="14"
+                                                                    ToolTip.Tip="Sumar 1 minuto"/>
+                                                        </Grid>
+                                                    </StackPanel>
+                                                </Border>
+
+                                                <!-- SEGUNDOS -->
+                                                <Border Grid.Column="2" Background="#16181D" BorderBrush="#262930" BorderThickness="1" CornerRadius="6" Padding="6" Margin="4,0,0,0">
+                                                    <StackPanel Spacing="4">
+                                                        <TextBlock Text="SEGUNDOS" FontSize="10" FontWeight="Bold" Foreground="#7D8390" HorizontalAlignment="Center"/>
+                                                        <Grid ColumnDefinitions="Auto,*,Auto">
+                                                            <Button Grid.Column="0" Content="−" Command="{Binding DecrementSecondsCommand}"
+                                                                    Width="28" Height="32" Padding="0"
+                                                                    HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                                                                    Background="#222630" Foreground="#F0F2F5" FontWeight="Bold" FontSize="14"
+                                                                    ToolTip.Tip="Restar 1 segundo"/>
+                                                            
+                                                            <NumericUpDown Grid.Column="1" Value="{Binding CountdownSeconds, Mode=TwoWay}"
+                                                                           Minimum="0" Maximum="59" FormatString="00" Watermark="00"
+                                                                           ShowButtonSpinner="False"
+                                                                           HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                                                                           TextAlignment="Center"
+                                                                           FontSize="18" FontWeight="Bold" FontFamily="Consolas, monospace"
+                                                                           Foreground="#00D2FF" Background="#0E0F12"
+                                                                           BorderBrush="#262930" BorderThickness="1"
+                                                                           CornerRadius="4" Height="32" Margin="4,0"/>
+
+                                                            <Button Grid.Column="2" Content="+" Command="{Binding IncrementSecondsCommand}"
+                                                                    Width="28" Height="32" Padding="0"
+                                                                    HorizontalContentAlignment="Center" VerticalContentAlignment="Center"
+                                                                    Background="#222630" Foreground="#F0F2F5" FontWeight="Bold" FontSize="14"
+                                                                    ToolTip.Tip="Sumar 1 segundo"/>
+                                                        </Grid>
+                                                    </StackPanel>
+                                                </Border>
+                                            </Grid>
+
+                                            <!-- Botones rápidos de suma (Chips) -->
+                                            <WrapPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                                <TextBlock Text="Añadir:" Foreground="#7D8390" FontSize="10" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                                <Button Content="+5m" Command="{Binding AddCountdownMinutesCommand}" CommandParameter="5" Background="#262930" Foreground="#F0F2F5" FontSize="10" Padding="8,4" Margin="2"/>
+                                                <Button Content="+15m" Command="{Binding AddCountdownMinutesCommand}" CommandParameter="15" Background="#262930" Foreground="#F0F2F5" FontSize="10" Padding="8,4" Margin="2"/>
+                                                <Button Content="+30m" Command="{Binding AddCountdownMinutesCommand}" CommandParameter="30" Background="#262930" Foreground="#F0F2F5" FontSize="10" Padding="8,4" Margin="2"/>
+                                                <Button Content="+45m" Command="{Binding AddCountdownMinutesCommand}" CommandParameter="45" Background="#262930" Foreground="#F0F2F5" FontSize="10" Padding="8,4" Margin="2"/>
+                                                <Button Content="+1h" Command="{Binding AddCountdownMinutesCommand}" CommandParameter="60" Background="#262930" Foreground="#F0F2F5" FontSize="10" Padding="8,4" Margin="2"/>
+                                                <Button Content="+2h" Command="{Binding AddCountdownMinutesCommand}" CommandParameter="120" Background="#262930" Foreground="#F0F2F5" FontSize="10" Padding="8,4" Margin="2"/>
+                                                <Button Content="Reset" Command="{Binding ResetCountdownCommand}" Background="#3A1C1C" Foreground="#FF6B6B" FontWeight="Bold" FontSize="10" Padding="8,4" Margin="6,2,2,2"/>
+                                            </WrapPanel>
                                         </StackPanel>
                                     </Border>
 
@@ -118,7 +203,7 @@
                                     <Border IsVisible="{Binding IsTriggerExactTime}" Background="#0E0F12" BorderBrush="#262930" BorderThickness="1" CornerRadius="6" Padding="10">
                                         <StackPanel Spacing="8">
                                             <TextBlock Text="Seleccionar hora de ejecución (reloj 24h):" Foreground="#7D8390" FontSize="11"/>
-                                            <TimePicker SelectedTime="{Binding SelectedExactTime, Mode=TwoWay}"
+                                            <TimePicker SelectedTime="{Binding ExactTime, Mode=TwoWay}"
                                                         ClockIdentifier="24HourClock"
                                                         HorizontalAlignment="Stretch"
                                                         Background="#16181D"
@@ -128,10 +213,15 @@
                                     </Border>
 
                                     <!-- PANEL DINÁMICO 3: INACTIVIDAD DE PERIFÉRICOS -->
-                                    <Border IsVisible="{Binding IsTriggerIdle}" Background="#0E0F12" BorderBrush="#262930" BorderThickness="1" CornerRadius="6" Padding="10">
+                                    <Border IsVisible="{Binding IsTriggerInactivity}" Background="#0E0F12" BorderBrush="#262930" BorderThickness="1" CornerRadius="6" Padding="10">
                                         <StackPanel Spacing="8">
                                             <TextBlock Text="Minutos continuos sin actividad de ratón ni teclado:" Foreground="#7D8390" FontSize="11"/>
-                                            <NumericUpDown Value="{Binding IdleMinutesThreshold, Mode=TwoWay}" Minimum="1" Maximum="1440" Background="#16181D" Foreground="#F0F2F5"/>
+                                            <NumericUpDown Value="{Binding InactivityMinutes, Mode=TwoWay}"
+                                                           Minimum="1" Maximum="1440"
+                                                           ShowButtonSpinner="False"
+                                                           TextAlignment="Center" HorizontalContentAlignment="Center"
+                                                           FontSize="16" FontWeight="Bold" FontFamily="Consolas, monospace"
+                                                           Foreground="#00D2FF" Background="#16181D" Height="34"/>
                                             <TextBlock Text="Se ejecutará la acción tras este periodo de reposo absoluto." Foreground="#7D8390" FontSize="10"/>
                                         </StackPanel>
                                     </Border>
@@ -144,12 +234,12 @@
                                                 <Button Grid.Column="1" Content="Refrescar" Command="{Binding RefreshProcessesCommand}" Background="#262930" Foreground="#00D2FF" FontSize="10" Padding="6,2"/>
                                             </Grid>
                                             <ComboBox ItemsSource="{Binding AvailableProcesses}"
-                                                      SelectedItem="{Binding SelectedProcessToWatch, Mode=TwoWay}"
+                                                      SelectedItem="{Binding SelectedProcessName, Mode=TwoWay}"
                                                       HorizontalAlignment="Stretch"
                                                       Background="#16181D"
                                                       Foreground="#F0F2F5"
                                                       FontSize="11"/>
-                                            <CheckBox IsChecked="{Binding WaitForCpuDrop, Mode=TwoWay}" Content="Esperar también que CPU baje de 5%" Foreground="#7D8390" FontSize="10"/>
+                                            <CheckBox IsChecked="{Binding EnableCpuThreshold, Mode=TwoWay}" Content="Esperar también que CPU baje de 5%" Foreground="#7D8390" FontSize="10"/>
                                         </StackPanel>
                                     </Border>
 
@@ -157,7 +247,12 @@
                                     <Border IsVisible="{Binding IsTriggerAudioSilence}" Background="#0E0F12" BorderBrush="#262930" BorderThickness="1" CornerRadius="6" Padding="10">
                                         <StackPanel Spacing="8">
                                             <TextBlock Text="Segundos continuos de silencio maestro (Peak &lt; 0.001):" Foreground="#7D8390" FontSize="11"/>
-                                            <NumericUpDown Value="{Binding AudioSilenceSeconds, Mode=TwoWay}" Minimum="1" Maximum="3600" Background="#16181D" Foreground="#F0F2F5"/>
+                                            <NumericUpDown Value="{Binding AudioSilenceSeconds, Mode=TwoWay}"
+                                                           Minimum="1" Maximum="3600"
+                                                           ShowButtonSpinner="False"
+                                                           TextAlignment="Center" HorizontalContentAlignment="Center"
+                                                           FontSize="16" FontWeight="Bold" FontFamily="Consolas, monospace"
+                                                           Foreground="#00D2FF" Background="#16181D" Height="34"/>
                                             <TextBlock Text="Muestreo en tiempo real mediante WASAPI IAudioMeterInformation." Foreground="#7D8390" FontSize="10"/>
                                         </StackPanel>
                                     </Border>
@@ -174,7 +269,12 @@
                                                       Foreground="#F0F2F5" FontSize="11"/>
                                             <Grid ColumnDefinitions="Auto,*" Margin="20,0,0,0" IsVisible="{Binding BatteryTriggerOnThreshold}">
                                                 <TextBlock Text="Porcentaje:" Foreground="#7D8390" FontSize="11" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                                                <NumericUpDown Grid.Column="1" Value="{Binding BatteryThresholdPercent, Mode=TwoWay}" Minimum="1" Maximum="100" Background="#16181D" Foreground="#F0F2F5"/>
+                                                <NumericUpDown Grid.Column="1" Value="{Binding BatteryThresholdPercent, Mode=TwoWay}"
+                                                               Minimum="1" Maximum="100"
+                                                               ShowButtonSpinner="False"
+                                                               TextAlignment="Center" HorizontalContentAlignment="Center"
+                                                               FontSize="16" FontWeight="Bold" FontFamily="Consolas, monospace"
+                                                               Foreground="#00D2FF" Background="#16181D" Height="34"/>
                                             </Grid>
                                         </StackPanel>
                                     </Border>

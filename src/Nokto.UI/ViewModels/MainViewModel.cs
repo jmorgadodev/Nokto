@@ -126,13 +126,33 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private decimal _batteryThresholdPercent = 20;
 
     [ObservableProperty]
-    private decimal _countdownHours = 0;
+    private decimal? _countdownHours = 0;
+
+    partial void OnCountdownHoursChanged(decimal? value) => OnPropertyChanged(nameof(FormattedCountdownText));
 
     [ObservableProperty]
-    private decimal _countdownMinutes = 30;
+    private decimal? _countdownMinutes = 30;
+
+    partial void OnCountdownMinutesChanged(decimal? value) => OnPropertyChanged(nameof(FormattedCountdownText));
 
     [ObservableProperty]
-    private decimal _countdownSeconds = 0;
+    private decimal? _countdownSeconds = 0;
+
+    partial void OnCountdownSecondsChanged(decimal? value) => OnPropertyChanged(nameof(FormattedCountdownText));
+
+    public string FormattedCountdownText
+    {
+        get
+        {
+            int h = (int)(CountdownHours ?? 0);
+            int m = (int)(CountdownMinutes ?? 0);
+            int s = (int)(CountdownSeconds ?? 0);
+            int totalSec = h * 3600 + m * 60 + s;
+            if (totalSec <= 0) return "00h 00m 00s (Sin tiempo fijado)";
+            var targetTime = DateTime.Now.AddSeconds(totalSec);
+            return $"{h:D2}h {m:D2}m {s:D2}s (Activará a las {targetTime:HH:mm:ss})";
+        }
+    }
 
     [ObservableProperty]
     private TimeSpan? _exactTime = DateTime.Now.TimeOfDay.Add(TimeSpan.FromHours(1));
@@ -140,6 +160,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     partial void OnExactTimeChanged(TimeSpan? value)
     {
         OnPropertyChanged(nameof(ExactTimeSummaryText));
+        OnPropertyChanged(nameof(SelectedExactTime));
     }
 
     public string ExactTimeSummaryText
@@ -163,6 +184,29 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
     [ObservableProperty]
     private decimal _cpuThreshold = 8;
+
+    // Propiedades de enlace compatibles / alias
+    public bool IsTriggerIdle => IsTriggerInactivity;
+    public decimal IdleMinutesThreshold
+    {
+        get => InactivityMinutes;
+        set => InactivityMinutes = value;
+    }
+    public TimeSpan? SelectedExactTime
+    {
+        get => ExactTime;
+        set => ExactTime = value;
+    }
+    public string SelectedProcessToWatch
+    {
+        get => SelectedProcessName;
+        set => SelectedProcessName = value;
+    }
+    public bool WaitForCpuDrop
+    {
+        get => EnableCpuThreshold;
+        set => EnableCpuThreshold = value;
+    }
 
     // --- CONFIGURACIÓN MANUAL: ACCIÓN TERMINAL Y MODIFICADORES ---
     [ObservableProperty]
@@ -472,11 +516,29 @@ public partial class MainViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
+    public void IncrementHours() => CountdownHours = Math.Min((CountdownHours ?? 0) + 1, 23);
+
+    [RelayCommand]
+    public void DecrementHours() => CountdownHours = Math.Max((CountdownHours ?? 0) - 1, 0);
+
+    [RelayCommand]
+    public void IncrementMinutes() => CountdownMinutes = Math.Min((CountdownMinutes ?? 0) + 1, 59);
+
+    [RelayCommand]
+    public void DecrementMinutes() => CountdownMinutes = Math.Max((CountdownMinutes ?? 0) - 1, 0);
+
+    [RelayCommand]
+    public void IncrementSeconds() => CountdownSeconds = Math.Min((CountdownSeconds ?? 0) + 1, 59);
+
+    [RelayCommand]
+    public void DecrementSeconds() => CountdownSeconds = Math.Max((CountdownSeconds ?? 0) - 1, 0);
+
+    [RelayCommand]
     public void AddCountdownMinutes(string minutesStr)
     {
         if (int.TryParse(minutesStr, out int mins))
         {
-            int totalMins = (int)(CountdownHours * 60 + CountdownMinutes + mins);
+            int totalMins = (int)((CountdownHours ?? 0) * 60 + (CountdownMinutes ?? 0) + mins);
             if (totalMins < 0) totalMins = 0;
             CountdownHours = Math.Clamp(totalMins / 60, 0, 23);
             CountdownMinutes = Math.Clamp(totalMins % 60, 0, 59);
@@ -597,7 +659,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
 
             case 0: // Cuenta Atrás
             default:
-                int totalSeconds = (int)(CountdownHours * 3600 + CountdownMinutes * 60 + CountdownSeconds);
+                int totalSeconds = (int)((CountdownHours ?? 0) * 3600 + (CountdownMinutes ?? 0) * 60 + (CountdownSeconds ?? 0));
                 if (totalSeconds <= 0) totalSeconds = 60;
                 taskName = $"Cuenta Atrás ({TimeSpan.FromSeconds(totalSeconds):hh\\:mm\\:ss})";
                 trigger = new TriggerDefinition

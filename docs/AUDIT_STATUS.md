@@ -161,9 +161,15 @@ Todas las llamadas a funciones del sistema operativo son **llamadas 100% reales 
 
 ### 2.3. Nokto.UI (Interfaz Avalonia Desktop, Iconografía y Calibración DPI)
 * **Arquitectura:** MVVM estricto mediante `CommunityToolkit.Mvvm` (`[ObservableProperty]`, `[RelayCommand]`).
-* **Icono Oficial del Ejecutable (`Assets/nokto.ico`):**
-  * Icono multirresolución con capas vectoriales de 16x16, 32x32, 48x48 y 256x256 px renderizadas con SkiaSharp.
-  * Incrustado en el ensamblado ejecutable mediante `<ApplicationIcon>Assets\nokto.ico</ApplicationIcon>` y vinculado a la ventana con `Icon="/Assets/nokto.ico"`.
+* **Icono Oficial del Ejecutable y de la Ventana (`RenderAppWindowIcon`):**
+  * Icono multirresolución con capas vectoriales de 16x16, 32x32, 48x48 y 256x256 px en `Assets/nokto.ico` incrustado en el ensamblado ejecutable mediante `<ApplicationIcon>`.
+  * Asignación determinista de icono de ventana mediante `DynamicTrayIconRenderer.RenderAppWindowIcon()` (bitmap SkiaSharp de 64x64 px en memoria) en el constructor de `MainWindow.axaml.cs` y en `App.axaml.cs`, garantizando la visualización del emblema Nokto (disco oscuro `#16181D`, arco cian neón `#00D2FF` y núcleo blanco `#F0F2F5`) en la barra de título nativa de Windows, en la barra de tareas y en Alt-Tab, resolviendo el problema de icono en blanco en despliegues `SingleFile`.
+* **Rediseño Ergonómico de Entradas Numéricas de Tiempo (Cuenta Atrás):**
+  * Superación de la limitación visual de `NumericUpDown` en FluentTheme (cuyo spinner integrado `^` / `v` colapsaba el ancho del texto a < 25px mostrando solo una ranura vacía con un cursor vertical `[ | ^ v ]`).
+  * Desactivación del spinner interno (`ShowButtonSpinner="False"`) y estructuración en 3 tarjetas independientes para **HORAS (0-23)**, **MINUTOS (0-59)** y **SEGUNDOS (0-59)**.
+  * Cada tarjeta incorpora botones de incremento `[+]` y decremento `[−]` laterales (ancho 28px, accesibles y táctiles), entrada numérica central con tipografía monoespaciada `Consolas` de 18px en negrita, centrado horizontal/vertical y color cian neón `#00D2FF`. Admite tanto clic en botones como escritura manual directa con teclado o uso de flechas arriba/abajo.
+  * Indicador de tiempo dinámico en tiempo real (`FormattedCountdownText`): muestra el desglose exacto y la hora de ejecución programada (ej. `00h 30m 00s (Activará a las 21:30:00)`).
+  * Fila de chips de preajuste inmediato: `+5m`, `+15m`, `+30m`, `+45m`, `+1h`, `+2h`, y `Reset`.
 * **Calibración de Dimensiones y Escalado DPI:**
   * Ventana calibrada a `Width="880"`, `Height="640"`, `MinWidth="820"`, `MinHeight="580"`, `WindowStartupLocation="CenterScreen"`.
   * Padding generoso de `24,16,24,16` con `ScrollViewer` vertical pasivo para garantizar visualización holgada en escalados al 125% o 150% sin ocultar el botón verde "[ ▶ INICIAR TAREA ]".

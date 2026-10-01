@@ -19,6 +19,68 @@ public static class DynamicTrayIconRenderer
 {
     private const int IconSize = 32;
 
+    /// <summary>
+    /// Genera un WindowIcon de 64x64 px de alta fidelidad con el emblema de Nokto (disco oscuro, arco cian luminoso y núcleo blanco)
+    /// directamente en memoria sin depender de lectura de archivos en disco ni converters XAML.
+    /// </summary>
+    public static WindowIcon RenderAppWindowIcon()
+    {
+        const int size = 64;
+        using var bitmap = new SKBitmap(size, size, SKColorType.Bgra8888, SKAlphaType.Premul);
+        using var canvas = new SKCanvas(bitmap);
+        canvas.Clear(SKColors.Transparent);
+
+        // 1. Placa circular oscura (#16181D) con halo cian sutil
+        var plateRect = new SKRect(3, 3, size - 3, size - 3);
+        using var platePaint = new SKPaint
+        {
+            Color = new SKColor(0x16, 0x18, 0x1D),
+            IsAntialias = true,
+            Style = SKPaintStyle.Fill
+        };
+        canvas.DrawOval(plateRect, platePaint);
+
+        using var borderPaint = new SKPaint
+        {
+            Color = new SKColor(0x00, 0xD2, 0xFF, 0x88),
+            IsAntialias = true,
+            Style = SKPaintStyle.Stroke,
+            StrokeWidth = 2f
+        };
+        canvas.DrawOval(plateRect, borderPaint);
+
+        // 2. Arco técnico en color Cian Neón (#00D2FF)
+        var arcRect = new SKRect(13, 13, size - 13, size - 13);
+        using var arcPaint = new SKPaint
+        {
+            Color = new SKColor(0x00, 0xD2, 0xFF),
+            IsAntialias = true,
+            Style = SKPaintStyle.Stroke,
+            StrokeWidth = 4.5f,
+            StrokeCap = SKStrokeCap.Round
+        };
+        canvas.DrawArc(arcRect, 45, 270, false, arcPaint);
+
+        // 3. Núcleo central blanco brillante (#F0F2F5)
+        float center = size / 2f;
+        using var dotPaint = new SKPaint
+        {
+            Color = new SKColor(0xF0, 0xF2, 0xF5),
+            IsAntialias = true,
+            Style = SKPaintStyle.Fill
+        };
+        canvas.DrawCircle(center, center, 4.5f, dotPaint);
+
+        using var image = SKImage.FromBitmap(bitmap);
+        using var data = image.Encode(SKEncodedImageFormat.Png, 100);
+        using var stream = new MemoryStream();
+        data.SaveTo(stream);
+        stream.Seek(0, SeekOrigin.Begin);
+
+        var avaloniaBitmap = new Bitmap(stream);
+        return new WindowIcon(avaloniaBitmap);
+    }
+
     public static WindowIcon RenderTrayIcon(
         TrayIconVisualState state,
         double progressPercentage = 0,
