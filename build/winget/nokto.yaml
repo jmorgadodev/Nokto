@@ -1,0 +1,23 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.singleton.1.6.0.schema.json
+PackageIdentifier: Nokto.Nokto
+PackageVersion: 1.0.0
+PackageName: Nokto
+Publisher: Nokto Project
+License: MIT
+ShortDescription: Gestor de estados de energía, tareas encadenadas y mantenimiento de actividad para Windows.
+Moniker: nokto
+Tags:
+  - shutdown
+  - sleep
+  - timer
+  - keep-alive
+  - automation
+  - productivity
+Installers:
+  - Architecture: x64
+    InstallerType: inno
+    InstallerUrl: https://github.com/nokto/nokto/releases/download/v1.0.0/Nokto-Setup-x64.exe
+    InstallerSha256: PEGAR_AQUI_EL_HASH_SHA256_DEL_INSTALADOR
+    UpgradeBehavior: install
+ManifestType: singleton
+ManifestVersion: 1.6.0

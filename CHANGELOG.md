@@ -2,6 +2,36 @@
 
 Este documento registra de manera cronológica y detallada cada avance, fase del roadmap, archivos modificados y resultados de compilación del proyecto Nokto.
 
+## [Fase 5: Empaquetado, CI/CD y Distribución] - 2026-10-01 18:50:00
+- **Fase del roadmap:** Fase 5 (Packaging, CI/CD & Distribution)
+- **Archivos creados o modificados:**
+  - `src/Nokto.UI/Nokto.UI.csproj`
+  - `build/inno-setup/nokto-setup.iss`
+  - `.github/workflows/release.yml`
+  - `build/winget/nokto.yaml`
+  - `CHANGELOG.md`
+- **Resumen técnico del cambio:**
+  1. **Configuración de Binario Único Portable ([`Nokto.UI.csproj`](file:///c:/Users/jorge/Proyectos/Nokto/src/Nokto.UI/Nokto.UI.csproj)):**
+     - Ajuste de nombre de ensamblado a `Nokto` (`<AssemblyName>Nokto</AssemblyName>`).
+     - Habilitación de publicación en archivo único auto-contenido (`PublishSingleFile=true`, `SelfContained=true`, `IncludeNativeLibrariesForSelfExtract=true`, `EnableCompressionInSingleFile=true`, `TieredCompilation=true`).
+     - Generación validada de `Nokto.exe` (51.8 MB) sin dependencias de runtimes o librerías externas en el equipo host.
+  2. **Script de Instalador Formal con Inno Setup ([`nokto-setup.iss`](file:///c:/Users/jorge/Proyectos/Nokto/build/inno-setup/nokto-setup.iss)):**
+     - Empaquetador nativo para Windows x64 con compresión `lzma2/ultra64` sólida.
+     - Tareas para crear acceso directo en el escritorio y configurar inicio automático con Windows (`startup`).
+     - Soporte multiidioma (español e inglés) e instalación en espacio de usuario sin requerir privilegios de administrador (`PrivilegesRequired=lowest`).
+  3. **Pipeline de Integración y Entrega Continua ([`release.yml`](file:///c:/Users/jorge/Proyectos/Nokto/.github/workflows/release.yml)):**
+     - Workflow de GitHub Actions activado por etiquetas de versión `v*.*.*` o ejecución manual (`workflow_dispatch`).
+     - Pasos automatizados: Checkout, Setup .NET SDK 8, compilación y publicación de binario único, generación del marcador `portable.lock`, empaquetado del archivo comprimido `.zip` portable, compilación del instalador `.exe` con `Minionguyjpro/Inno-Setup-Action@v1.2.2`, y publicación automática del Release en GitHub con todos los artefactos adjuntos.
+  4. **Manifiesto de Distribución para Windows Package Manager ([`nokto.yaml`](file:///c:/Users/jorge/Proyectos/Nokto/build/winget/nokto.yaml)):**
+     - Especificación singleton acorde al esquema 1.6.0 de Winget (`PackageIdentifier: Nokto.Nokto`).
+     - Configuración de tipo de instalador Inno y soporte de actualización silenciosa.
+- **Resultado de la compilación:**
+  - `dotnet build Nokto.sln`: 0 Advertencias, 0 Errores.
+  - `dotnet publish src/Nokto.UI/Nokto.UI.csproj`: 0 Errores, generación exitosa de `publish/win-x64/Nokto.exe`.
+  - Verificación automatizada con `dotnet run --project tests/Nokto.ConsoleTest -- --verify`: 10 de 10 pruebas exitosas.
+
+---
+
 ## [Fase 4: Microservidor LAN, PWA Embebida y Control Remoto Web] - 2026-10-01 18:48:00
 - **Fase del roadmap:** Fase 4 (Local LAN Control & Mobile PWA)
 - **Archivos creados o modificados:**
