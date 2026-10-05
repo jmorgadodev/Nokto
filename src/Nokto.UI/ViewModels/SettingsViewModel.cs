@@ -185,4 +185,39 @@ public partial class SettingsViewModel : ObservableObject
             });
         }
     }
+
+    [RelayCommand]
+    public void OpenLinkedIn()
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "https://www.linkedin.com/in/jorge-morgado/",
+                UseShellExecute = true
+            });
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[SettingsViewModel] Error opening LinkedIn: {ex.Message}");
+        }
+    }
+
+    [RelayCommand]
+    public void OpenGitHub()
+    {
+        try
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = "https://github.com/nokto/nokto",
+                UseShellExecute = true
+            });
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[SettingsViewModel] Error opening GitHub: {ex.Message}");
+        }
+    }
 }
+

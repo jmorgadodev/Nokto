@@ -37,4 +37,7 @@ public partial class MainViewModel
 
     public IAsyncRelayCommand CheckForUpdatesCommand => SettingsVm.CheckForUpdatesCommand;
     public IAsyncRelayCommand DownloadAndInstallUpdateCommand => SettingsVm.DownloadAndInstallUpdateCommand;
+    public IRelayCommand OpenLinkedInCommand => SettingsVm.OpenLinkedInCommand;
+    public IRelayCommand OpenGitHubCommand => SettingsVm.OpenGitHubCommand;
 }
+

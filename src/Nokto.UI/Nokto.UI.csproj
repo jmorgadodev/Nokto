@@ -7,7 +7,9 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>Nokto</AssemblyName>
-    <Version>1.0.5</Version>
+    <Version>1.0.0</Version>
+    <AssemblyVersion>1.0.0</AssemblyVersion>
+    <FileVersion>1.0.0</FileVersion>
     <AssemblyTitle>Consola local de operaciones matutinas, telemetría y automatización de escritorio</AssemblyTitle>
     <Description>Consola local de operaciones matutinas, telemetría y automatización de escritorio</Description>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>

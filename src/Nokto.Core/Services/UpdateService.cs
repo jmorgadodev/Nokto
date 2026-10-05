@@ -72,7 +72,7 @@ public class UpdateService : IUpdateService
     {
         var asm = Assembly.GetEntryAssembly() ?? typeof(UpdateService).Assembly;
         var version = asm.GetName().Version;
-        return version != null ? new Version(version.Major, version.Minor, Math.Max(version.Build, 0)) : new Version(1, 0, 4);
+        return version != null ? new Version(version.Major, version.Minor, Math.Max(version.Build, 0)) : new Version(1, 0, 0);
     }
 
     public static string GetExecutablePath()
