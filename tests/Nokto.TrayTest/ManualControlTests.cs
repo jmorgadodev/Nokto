@@ -38,7 +38,7 @@ internal static class ManualControlTests
             window.Show(); Pump();
             var energy = view.FindControl<ComboBox>("ManualEnergyPicker")!;
             Require(energy.TranslatePoint(new Point(0, energy.Bounds.Height), view) is { Y: < 500 } &&
-                !view.FindControl<Expander>("ManualApplicationsExpander")!.IsExpanded, "Energía está accesible sin desplegar opciones de aplicaciones.");
+                view.FindControl<Expander>("ManualApplicationsExpander")!.IsExpanded, "Energía y aplicaciones están accesibles de inmediato.");
             Require(model.CountdownMinutes == 30 && model.ManualGraceSeconds == 60 && model.ManualGracePeriodEnabled &&
                 !model.ManualAudioFadeEnabled && !model.CanStartManualTask, "Valores iniciales: 30 min, aviso 60 s y ninguna acción implícita.");
             var check = view.FindControl<Button>("VerifyManualTaskButton")!;

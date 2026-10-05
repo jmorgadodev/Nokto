@@ -16,8 +16,9 @@
       <Style.Animations><Animation Duration="0:0:0.16" FillMode="Forward"><KeyFrame Cue="0%"><Setter Property="Opacity" Value="0"/></KeyFrame><KeyFrame Cue="100%"><Setter Property="Opacity" Value="1"/></KeyFrame></Animation></Style.Animations>
     </Style>
   </UserControl.Styles>
-  <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-    <StackPanel Spacing="16">
+  <Grid RowDefinitions="Auto,*,Auto">
+    <!-- ROW 0: CABECERA Y DISPARADOR -->
+    <StackPanel Grid.Row="0" Spacing="12" Margin="0,0,0,10">
       <StackPanel Spacing="6">
         <TextBlock Classes="section" Text="CONFIGURADOR DE RUTINA"/>
         <TextBox Text="{Binding StudioPresetName, Mode=TwoWay}" Watermark="Nombre de la rutina" FontSize="16" FontWeight="SemiBold"/>
@@ -72,80 +73,96 @@
           <TextBlock Classes="hint" IsVisible="{Binding IsStudioTriggerManual}" Text="La secuencia comienza inmediatamente al pulsar Iniciar rutina."/>
         </StackPanel>
       </Border>
-      <TextBlock Classes="section" Text="ACCIONES SECUENCIALES"/>
-      <TextBlock Classes="hint" Text="{Binding InstalledAppsStatusText}"/>
-      <Button x:Name="AddProgramActionButton" Content="+ Elegir aplicación o script" Command="{Binding AddStudioStepCommand}" CommandParameter="LaunchApp" HorizontalAlignment="Left"/>
-      <ItemsControl x:Name="RoutineActionsList" ItemsSource="{Binding StudioPipelineSteps}">
-        <ItemsControl.ItemTemplate>
-          <DataTemplate x:DataType="vm:StudioStepItem">
-            <Border Classes="action">
-              <StackPanel Spacing="10">
-                <Grid ColumnDefinitions="Auto,*,Auto">
-                  <TextBlock Text="{Binding DisplayOrderText}" Foreground="{DynamicResource ThemeAccent}" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                  <TextBlock Grid.Column="1" Text="{Binding DisplayName}" FontWeight="SemiBold" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,8,0"/>
-                  <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4">
-                    <Button Content="▲" Command="{Binding MoveUpCommand}" ToolTip.Tip="Mover arriba" Padding="7,4"/>
-                    <Button Content="▼" Command="{Binding MoveDownCommand}" ToolTip.Tip="Mover abajo" Padding="7,4"/>
-                    <Button Content="✕" Command="{Binding RemoveCommand}" ToolTip.Tip="Eliminar acción" Foreground="#FF5252" Padding="7,4"/>
-                  </StackPanel>
-                </Grid>
-                <StackPanel IsVisible="{Binding IsLaunchApp}" Spacing="8">
-                  <TextBox Text="{Binding AppSearchText, Mode=TwoWay}" Watermark="Buscar aplicación instalada…"/>
-                  <ComboBox ItemsSource="{Binding FilteredInstalledApps}" SelectedItem="{Binding SelectedInstalledApp, Mode=TwoWay}" PlaceholderText="Seleccionar aplicación">
-                    <ComboBox.ItemTemplate><DataTemplate x:DataType="vm:InstalledAppInfo"><Grid ColumnDefinitions="24,*"><Image Source="{Binding Icon}" Width="24" Height="24"/><TextBlock Grid.Column="1" Text="{Binding Name}" Margin="10,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/></Grid></DataTemplate></ComboBox.ItemTemplate>
-                  </ComboBox>
-                  <TextBox x:Name="LaunchExecutableInput" Text="{Binding LaunchExecutablePath, Mode=TwoWay}" Watermark="Ruta del ejecutable o script personalizado" ToolTip.Tip="{Binding LaunchExecutablePath}"/>
-                  <ComboBox SelectedIndex="{Binding LaunchModeIndex, Mode=TwoWay}"><ComboBoxItem Content="Ventana normal"/><ComboBoxItem Content="Maximizada"/><ComboBoxItem Content="Minimizada"/></ComboBox>
-                  <CheckBox Content="No iniciar si el programa ya está abierto" IsChecked="{Binding SkipIfAlreadyRunning, Mode=TwoWay}"/>
-                  <Button Content="Seleccionar ejecutable o script (.exe / .bat / .ps1)…" Command="{Binding BrowseAppCommand}" HorizontalAlignment="Left" FontSize="11"/>
-                  <TextBox Text="{Binding LaunchArguments, Mode=TwoWay}" Watermark="Argumentos opcionales"/>
-                </StackPanel>
-                <StackPanel IsVisible="{Binding IsAudioConfig}" Spacing="8">
-                  <Grid ColumnDefinitions="*,110"><TextBlock Classes="hint" Text="Volumen maestro" VerticalAlignment="Center"/><NumericUpDown Grid.Column="1" Value="{Binding AudioVolumePercent, Mode=TwoWay}" Minimum="0" Maximum="100" FormatString="0 '%'"/></Grid>
-                  <WrapPanel><CheckBox Content="Silenciar salida" IsChecked="{Binding MuteOutput, Mode=TwoWay}" Margin="0,0,16,0"/><CheckBox Content="Silenciar micrófono" IsChecked="{Binding MuteMicrophone, Mode=TwoWay}"/></WrapPanel>
-                </StackPanel>
-                <ComboBox IsVisible="{Binding IsMediaControl}" SelectedIndex="{Binding MediaModeIndex, Mode=TwoWay}"><ComboBoxItem Content="Pausar reproducción"/><ComboBoxItem Content="Reanudar reproducción"/></ComboBox>
-                <WrapPanel IsVisible="{Binding IsWaitDelay}"><NumericUpDown Value="{Binding DelayAmount, Mode=TwoWay}" Minimum="0" Maximum="86400" FormatString="0" Margin="0,0,10,0"/><ComboBox SelectedIndex="{Binding DelayUnitIndex, Mode=TwoWay}" MinWidth="120"><ComboBoxItem Content="Segundos"/><ComboBoxItem Content="Minutos"/></ComboBox></WrapPanel>
-                <StackPanel IsVisible="{Binding IsPowerAction}" Spacing="8">
-                  <ComboBox SelectedIndex="{Binding PowerActionIndex, Mode=TwoWay}"><ComboBoxItem Content="Apagar PC"/><ComboBoxItem Content="Suspender"/><ComboBoxItem Content="Hibernar"/><ComboBoxItem Content="Reiniciar"/><ComboBoxItem Content="Bloquear sesión"/><ComboBoxItem Content="Cerrar sesión"/><ComboBoxItem Content="Apagar monitores"/></ComboBox>
-                  <Grid ColumnDefinitions="*,110"><TextBlock Classes="hint" Text="Aviso previo (0–300 segundos)" VerticalAlignment="Center"/><NumericUpDown x:Name="ActionGracePeriodInput" Grid.Column="1" Value="{Binding GracePeriodSeconds, Mode=TwoWay}" Minimum="0" Maximum="300" Increment="5" FormatString="0 s"/></Grid>
-                  <CheckBox Content="Forzar cierre sin diálogo de guardado" IsChecked="{Binding ForceClose, Mode=TwoWay}"/>
-                  <TextBlock Classes="hint" Text="Esta acción puede interrumpir tu sesión. Finalizar cancela el aviso y las acciones pendientes."/>
-                </StackPanel>
-                <StackPanel IsVisible="{Binding IsCommand}" Spacing="6"><TextBox Text="{Binding CommandExecutable, Mode=TwoWay}" Watermark="Ejecutable del comando"/><TextBox Text="{Binding CommandArguments, Mode=TwoWay}" Watermark="Argumentos"/><WrapPanel><StackPanel Margin="0,0,12,0"><TextBlock Classes="hint" Text="Timeout (s)"/><NumericUpDown Value="{Binding CommandTimeoutSeconds, Mode=TwoWay}" Minimum="1" Maximum="86400"/></StackPanel><StackPanel><TextBlock Classes="hint" Text="Código de salida esperado"/><NumericUpDown Value="{Binding ExpectedExitCode, Mode=TwoWay}" Minimum="-2147483648" Maximum="2147483647"/></StackPanel></WrapPanel></StackPanel>
-                <WrapPanel IsVisible="{Binding IsAudioFade}"><StackPanel Margin="0,0,12,0"><TextBlock Classes="hint" Text="Duración (s)"/><NumericUpDown Value="{Binding FadeDurationSeconds, Mode=TwoWay}" Minimum="1" Maximum="300"/></StackPanel><StackPanel><TextBlock Classes="hint" Text="Volumen final (%)"/><NumericUpDown Value="{Binding TargetVolumePercentage, Mode=TwoWay}" Minimum="0" Maximum="100"/></StackPanel></WrapPanel>
-                <WrapPanel IsVisible="{Binding IsKeepAlive}"><TextBlock Classes="hint" Text="Mantener actividad durante (horas)" VerticalAlignment="Center" Margin="0,0,10,0"/><NumericUpDown Value="{Binding KeepAliveHours, Mode=TwoWay}" Minimum="0.01" Maximum="24" Increment="0.5"/></WrapPanel>
-                <TextBlock Classes="hint" IsVisible="{Binding IsScreenshot}" Text="La evidencia se guarda localmente en data/snapshots."/>
-                <TextBlock Classes="hint" IsVisible="{Binding IsMonitorsOff}" Text="Apaga la señal de las pantallas y continúa con la siguiente acción."/>
-                <CheckBox Content="Continuar si falla esta acción" IsChecked="{Binding IgnoreFailure, Mode=TwoWay}" FontSize="11"/>
-              </StackPanel>
-            </Border>
-          </DataTemplate>
-        </ItemsControl.ItemTemplate>
-      </ItemsControl>
-      <Button x:Name="AddWorkflowActionButton" Content="+ Agregar acción al flujo" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center">
-        <Button.Flyout><Flyout><StackPanel Spacing="4" MinWidth="250">
-          <Button Content="Ejecutar programa / script" Click="OnAddActionClick" Command="{Binding AddStudioStepCommand}" CommandParameter="LaunchApp"/>
-          <Button Content="Configurar volumen y silencio" Click="OnAddActionClick" Command="{Binding AddStudioStepCommand}" CommandParameter="AudioConfig"/>
-          <Button Content="Pausar / reanudar medios" Click="OnAddActionClick" Command="{Binding AddStudioStepCommand}" CommandParameter="MediaControl"/>
-          <Button Content="Esperar tiempo" Click="OnAddActionClick" Command="{Binding AddStudioStepCommand}" CommandParameter="WaitDelay"/>
-          <Button Content="Apagar monitores" Click="OnAddActionClick" Command="{Binding AddStudioStepCommand}" CommandParameter="MonitorsOff"/>
-          <Button Content="Bloquear sesión" Click="OnAddActionClick" Command="{Binding AddStudioStepCommand}" CommandParameter="LockWorkstation"/>
-          <Button Content="Energía (apagado / suspensión…)" Click="OnAddActionClick" Command="{Binding AddStudioStepCommand}" CommandParameter="PowerAction"/>
-          <Button Content="Captura de evidencia" Click="OnAddActionClick" Command="{Binding AddStudioStepCommand}" CommandParameter="Screenshot"/>
-          <Button Content="Bajar volumen gradualmente" Click="OnAddActionClick" Command="{Binding AddStudioStepCommand}" CommandParameter="AudioFade"/>
-          <Button Content="Mantener equipo activo" Click="OnAddActionClick" Command="{Binding AddStudioStepCommand}" CommandParameter="KeepAlive"/>
-          <Button Content="Comando con código de salida" Click="OnAddActionClick" Command="{Binding AddStudioStepCommand}" CommandParameter="Command"/>
-        </StackPanel></Flyout></Button.Flyout>
-      </Button>
-      <TextBlock Classes="hint" Text="Sin una acción de energía, el equipo continuará encendido al terminar la rutina."/>
-      <Border IsVisible="{Binding IsRoutineCheckVisible}" BorderBrush="{Binding RoutineCheckStatusColor}" BorderThickness="1" CornerRadius="6" Padding="10"><TextBlock Text="{Binding RoutineCheckStatusMessage}" Foreground="{Binding RoutineCheckStatusColor}" TextWrapping="Wrap"/></Border>
-      <WrapPanel>
-        <Button Content="▶ Iniciar rutina" Command="{Binding RunCurrentStudioPipelineCommand}" IsEnabled="{Binding CanStartSelectedRoutine}" Margin="0,0,8,8"/>
-        <Button Content="■ Finalizar" Command="{Binding FinishSelectedRoutineCommand}" IsEnabled="{Binding IsSelectedRoutineRunning}" Foreground="#FF5252" Margin="0,0,8,8"/>
-        <Button Content="Guardar rutina" Command="{Binding SaveCurrentStudioPipelineCommand}" Margin="0,0,8,8"/>
-        <Button Content="Verificar" Command="{Binding VerifyRoutineCommand}" Foreground="{DynamicResource ThemeAccentWarning}" Margin="0,0,0,8"/>
-      </WrapPanel>
+      <Grid ColumnDefinitions="*,Auto" Margin="0,4,0,0">
+        <StackPanel VerticalAlignment="Center">
+          <TextBlock Classes="section" Text="ACCIONES SECUENCIALES"/>
+          <TextBlock Classes="hint" Text="{Binding InstalledAppsStatusText}"/>
+        </StackPanel>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="8">
+          <Button x:Name="AddProgramActionButton" Content="+ Elegir aplicación o script" Command="{Binding AddStudioStepCommand}" CommandParameter="LaunchApp"/>
+          <Button x:Name="AddWorkflowActionButton" Content="+ Agregar acción" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center">
+            <Button.Flyout><Flyout><StackPanel Spacing="4" MinWidth="250">
+              <Button Content="Ejecutar programa / script" Click="OnAddActionClick" Command="{Binding AddStudioStepCommand}" CommandParameter="LaunchApp"/>
+              <Button Content="Configurar volumen y silencio" Click="OnAddActionClick" Command="{Binding AddStudioStepCommand}" CommandParameter="AudioConfig"/>
+              <Button Content="Pausar / reanudar medios" Click="OnAddActionClick" Command="{Binding AddStudioStepCommand}" CommandParameter="MediaControl"/>
+              <Button Content="Esperar tiempo" Click="OnAddActionClick" Command="{Binding AddStudioStepCommand}" CommandParameter="WaitDelay"/>
+              <Button Content="Apagar monitores" Click="OnAddActionClick" Command="{Binding AddStudioStepCommand}" CommandParameter="MonitorsOff"/>
+              <Button Content="Bloquear sesión" Click="OnAddActionClick" Command="{Binding AddStudioStepCommand}" CommandParameter="LockWorkstation"/>
+              <Button Content="Energía (apagado / suspensión…)" Click="OnAddActionClick" Command="{Binding AddStudioStepCommand}" CommandParameter="PowerAction"/>
+              <Button Content="Captura de evidencia" Click="OnAddActionClick" Command="{Binding AddStudioStepCommand}" CommandParameter="Screenshot"/>
+              <Button Content="Bajar volumen gradualmente" Click="OnAddActionClick" Command="{Binding AddStudioStepCommand}" CommandParameter="AudioFade"/>
+              <Button Content="Mantener equipo activo" Click="OnAddActionClick" Command="{Binding AddStudioStepCommand}" CommandParameter="KeepAlive"/>
+              <Button Content="Comando con código de salida" Click="OnAddActionClick" Command="{Binding AddStudioStepCommand}" CommandParameter="Command"/>
+            </StackPanel></Flyout></Button.Flyout>
+          </Button>
+        </StackPanel>
+      </Grid>
     </StackPanel>
-  </ScrollViewer>
+
+    <!-- ROW 1: LISTA SECUENCIAL DE TARJETAS DE ACCIONES -->
+    <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Margin="0,0,0,10">
+      <StackPanel Spacing="10">
+        <ItemsControl x:Name="RoutineActionsList" ItemsSource="{Binding StudioPipelineSteps}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="vm:StudioStepItem">
+              <Border Classes="action">
+                <StackPanel Spacing="10">
+                  <Grid ColumnDefinitions="Auto,*,Auto">
+                    <TextBlock Text="{Binding DisplayOrderText}" Foreground="{DynamicResource ThemeAccent}" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <TextBlock Grid.Column="1" Text="{Binding DisplayName}" FontWeight="SemiBold" VerticalAlignment="Center" TextWrapping="Wrap" Margin="0,0,8,0"/>
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4">
+                      <Button Content="▲" Command="{Binding MoveUpCommand}" ToolTip.Tip="Mover arriba" Padding="7,4"/>
+                      <Button Content="▼" Command="{Binding MoveDownCommand}" ToolTip.Tip="Mover abajo" Padding="7,4"/>
+                      <Button Content="✕" Command="{Binding RemoveCommand}" ToolTip.Tip="Eliminar acción" Foreground="#FF5252" Padding="7,4"/>
+                    </StackPanel>
+                  </Grid>
+                  <StackPanel IsVisible="{Binding IsLaunchApp}" Spacing="8">
+                    <TextBox Text="{Binding AppSearchText, Mode=TwoWay}" Watermark="Buscar aplicación instalada…"/>
+                    <ComboBox ItemsSource="{Binding FilteredInstalledApps}" SelectedItem="{Binding SelectedInstalledApp, Mode=TwoWay}" PlaceholderText="Seleccionar aplicación">
+                      <ComboBox.ItemTemplate><DataTemplate x:DataType="vm:InstalledAppInfo"><Grid ColumnDefinitions="24,*"><Image Source="{Binding Icon}" Width="24" Height="24"/><TextBlock Grid.Column="1" Text="{Binding Name}" Margin="10,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/></Grid></DataTemplate></ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <TextBox x:Name="LaunchExecutableInput" Text="{Binding LaunchExecutablePath, Mode=TwoWay}" Watermark="Ruta del ejecutable o script personalizado" ToolTip.Tip="{Binding LaunchExecutablePath}"/>
+                    <ComboBox SelectedIndex="{Binding LaunchModeIndex, Mode=TwoWay}"><ComboBoxItem Content="Ventana normal"/><ComboBoxItem Content="Maximizada"/><ComboBoxItem Content="Minimizada"/></ComboBox>
+                    <CheckBox Content="No iniciar si el programa ya está abierto" IsChecked="{Binding SkipIfAlreadyRunning, Mode=TwoWay}"/>
+                    <Button Content="Seleccionar ejecutable o script (.exe / .bat / .ps1)…" Command="{Binding BrowseAppCommand}" HorizontalAlignment="Left" FontSize="11"/>
+                    <TextBox Text="{Binding LaunchArguments, Mode=TwoWay}" Watermark="Argumentos opcionales"/>
+                  </StackPanel>
+                  <StackPanel IsVisible="{Binding IsAudioConfig}" Spacing="8">
+                    <Grid ColumnDefinitions="*,110"><TextBlock Classes="hint" Text="Volumen maestro" VerticalAlignment="Center"/><NumericUpDown Grid.Column="1" Value="{Binding AudioVolumePercent, Mode=TwoWay}" Minimum="0" Maximum="100" FormatString="0 '%'"/></Grid>
+                    <WrapPanel><CheckBox Content="Silenciar salida" IsChecked="{Binding MuteOutput, Mode=TwoWay}" Margin="0,0,16,0"/><CheckBox Content="Silenciar micrófono" IsChecked="{Binding MuteMicrophone, Mode=TwoWay}"/></WrapPanel>
+                  </StackPanel>
+                  <ComboBox IsVisible="{Binding IsMediaControl}" SelectedIndex="{Binding MediaModeIndex, Mode=TwoWay}"><ComboBoxItem Content="Pausar reproducción"/><ComboBoxItem Content="Reanudar reproducción"/></ComboBox>
+                  <WrapPanel IsVisible="{Binding IsWaitDelay}"><NumericUpDown Value="{Binding DelayAmount, Mode=TwoWay}" Minimum="0" Maximum="86400" FormatString="0" Margin="0,0,10,0"/><ComboBox SelectedIndex="{Binding DelayUnitIndex, Mode=TwoWay}" MinWidth="120"><ComboBoxItem Content="Segundos"/><ComboBoxItem Content="Minutos"/></ComboBox></WrapPanel>
+                  <StackPanel IsVisible="{Binding IsPowerAction}" Spacing="8">
+                    <ComboBox SelectedIndex="{Binding PowerActionIndex, Mode=TwoWay}"><ComboBoxItem Content="Apagar PC"/><ComboBoxItem Content="Suspender"/><ComboBoxItem Content="Hibernar"/><ComboBoxItem Content="Reiniciar"/><ComboBoxItem Content="Bloquear sesión"/><ComboBoxItem Content="Cerrar sesión"/><ComboBoxItem Content="Apagar monitores"/></ComboBox>
+                    <Grid ColumnDefinitions="*,110"><TextBlock Classes="hint" Text="Aviso previo (0–300 segundos)" VerticalAlignment="Center"/><NumericUpDown x:Name="ActionGracePeriodInput" Grid.Column="1" Value="{Binding GracePeriodSeconds, Mode=TwoWay}" Minimum="0" Maximum="300" Increment="5" FormatString="0 s"/></Grid>
+                    <CheckBox Content="Forzar cierre sin diálogo de guardado" IsChecked="{Binding ForceClose, Mode=TwoWay}"/>
+                    <TextBlock Classes="hint" Text="Esta acción puede interrumpir tu sesión. Finalizar cancela el aviso y las acciones pendientes."/>
+                  </StackPanel>
+                  <StackPanel IsVisible="{Binding IsCommand}" Spacing="6"><TextBox Text="{Binding CommandExecutable, Mode=TwoWay}" Watermark="Ejecutable del comando"/><TextBox Text="{Binding CommandArguments, Mode=TwoWay}" Watermark="Argumentos"/><WrapPanel><StackPanel Margin="0,0,12,0"><TextBlock Classes="hint" Text="Timeout (s)"/><NumericUpDown Value="{Binding CommandTimeoutSeconds, Mode=TwoWay}" Minimum="1" Maximum="86400"/></StackPanel><StackPanel><TextBlock Classes="hint" Text="Código de salida esperado"/><NumericUpDown Value="{Binding ExpectedExitCode, Mode=TwoWay}" Minimum="-2147483648" Maximum="2147483647"/></StackPanel></WrapPanel></StackPanel>
+                  <WrapPanel IsVisible="{Binding IsAudioFade}"><StackPanel Margin="0,0,12,0"><TextBlock Classes="hint" Text="Duración (s)"/><NumericUpDown Value="{Binding FadeDurationSeconds, Mode=TwoWay}" Minimum="1" Maximum="300"/></StackPanel><StackPanel><TextBlock Classes="hint" Text="Volumen final (%)"/><NumericUpDown Value="{Binding TargetVolumePercentage, Mode=TwoWay}" Minimum="0" Maximum="100"/></StackPanel></WrapPanel>
+                  <WrapPanel IsVisible="{Binding IsKeepAlive}"><TextBlock Classes="hint" Text="Mantener actividad durante (horas)" VerticalAlignment="Center" Margin="0,0,10,0"/><NumericUpDown Value="{Binding KeepAliveHours, Mode=TwoWay}" Minimum="0.01" Maximum="24" Increment="0.5"/></WrapPanel>
+                  <TextBlock Classes="hint" IsVisible="{Binding IsScreenshot}" Text="La evidencia se guarda localmente en data/snapshots."/>
+                  <TextBlock Classes="hint" IsVisible="{Binding IsMonitorsOff}" Text="Apaga la señal de las pantallas y continúa con la siguiente acción."/>
+                  <CheckBox Content="Continuar si falla esta acción" IsChecked="{Binding IgnoreFailure, Mode=TwoWay}" FontSize="11"/>
+                </StackPanel>
+              </Border>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+        <TextBlock Classes="hint" Text="Sin una acción de energía, el equipo continuará encendido al terminar la rutina."/>
+        <Border IsVisible="{Binding IsRoutineCheckVisible}" BorderBrush="{Binding RoutineCheckStatusColor}" BorderThickness="1" CornerRadius="6" Padding="10"><TextBlock Text="{Binding RoutineCheckStatusMessage}" Foreground="{Binding RoutineCheckStatusColor}" TextWrapping="Wrap"/></Border>
+      </StackPanel>
+    </ScrollViewer>
+
+    <!-- ROW 2: PANEL FIJO INFERIOR (STICKY FOOTER) -->
+    <Border Grid.Row="2" Background="{DynamicResource ThemeCardBackground}" BorderBrush="{DynamicResource ThemeCardBorder}" BorderThickness="0,1,0,0" Padding="0,12,0,0">
+      <WrapPanel>
+        <Button Content="▶ INICIAR RUTINA" Command="{Binding RunCurrentStudioPipelineCommand}" IsEnabled="{Binding CanStartSelectedRoutine}" Background="{DynamicResource ThemeAccentSuccess}" Foreground="#0E1015" FontWeight="Bold" Padding="16,8" Margin="0,0,8,0"/>
+        <Button Content="⏹ FINALIZAR" Command="{Binding FinishSelectedRoutineCommand}" IsEnabled="{Binding IsSelectedRoutineRunning}" Background="#3A1A1E" Foreground="#FF5252" FontWeight="Bold" Padding="14,8" Margin="0,0,8,0"/>
+        <Button Content="💾 Guardar Rutina" Command="{Binding SaveCurrentStudioPipelineCommand}" Background="{DynamicResource ThemeInputBackground}" Foreground="{DynamicResource ThemeAccent}" FontWeight="SemiBold" Padding="14,8" Margin="0,0,8,0"/>
+        <Button Content="Verificar" Command="{Binding VerifyRoutineCommand}" Foreground="{DynamicResource ThemeAccentWarning}" Padding="12,8" Margin="0,0,0,0"/>
+      </WrapPanel>
+    </Border>
+  </Grid>
 </UserControl>

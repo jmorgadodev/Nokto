@@ -121,7 +121,7 @@
       <TextBlock Text="Energía" FontWeight="SemiBold"/>
       <ComboBox Name="ManualEnergyPicker" ItemsSource="{Binding ManualPowerActionOptions}" SelectedIndex="{Binding ManualPowerActionIndex, Mode=TwoWay}"/>
 
-      <Expander Name="ManualApplicationsExpander" Header="Aplicaciones" IsExpanded="False" HorizontalAlignment="Stretch">
+      <Expander Name="ManualApplicationsExpander" Header="Aplicaciones" IsExpanded="True" HorizontalAlignment="Stretch">
        <StackPanel Spacing="8" Margin="0,8,0,0">
         <TextBlock Text="Abrir aplicaciones" FontWeight="SemiBold"/>
         <TextBox Text="{Binding ManualAppSearch, Mode=TwoWay}" Watermark="Buscar en aplicaciones detectadas"/>
@@ -155,7 +155,7 @@
         </ItemsControl>
        </StackPanel>
       </Expander>
-      <Expander Header="Audio, pantalla y sesión" HorizontalAlignment="Stretch">
+      <Expander Header="Audio, pantalla y sesión" IsExpanded="True" HorizontalAlignment="Stretch">
        <StackPanel Spacing="4" Margin="0,6,0,0">
         <CheckBox Content="Silenciar salida de audio" IsChecked="{Binding ManualMuteOutput, Mode=TwoWay}"/>
         <CheckBox Content="Silenciar micrófono" IsChecked="{Binding ManualMuteMicrophone, Mode=TwoWay}"/>

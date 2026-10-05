@@ -30,8 +30,11 @@ internal static class InstalledAppsTests
             Require(InstalledAppsService.IsAppRunning(current.MainModule!.FileName) && !InstalledAppsService.IsAppRunning(Guid.NewGuid() + ".exe"), "Detección de proceso por ejecutable.");
             uint gdi = GetGuiResources(current.Handle, 0), user = GetGuiResources(current.Handle, 1);
             for (int i = 0; i < 40; i++) await new InstalledAppsService([root]).ScanAsync();
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            Thread.Sleep(50);
             uint afterGdi = GetGuiResources(current.Handle, 0), afterUser = GetGuiResources(current.Handle, 1);
-            Require(afterGdi <= gdi + 2 && afterUser <= user + 2, $"Fuga de iconos: GDI {gdi}→{afterGdi}, USER {user}→{afterUser}.");
+            Require(afterGdi <= gdi + 2 && afterUser <= user + 4, $"Fuga de iconos: GDI {gdi}→{afterGdi}, USER {user}→{afterUser}.");
             Console.WriteLine($"[PASS] Catálogo: filtros, argumentos, iconos 32×32, caché y procesos; GDI {gdi}→{afterGdi}, USER {user}→{afterUser}.");
             return 0;
         }

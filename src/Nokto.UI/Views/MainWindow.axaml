@@ -219,12 +219,54 @@
                 <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="20,14">
                     <StackPanel Spacing="16">
 
-                        <!-- SECCIÓN 1: IDIOMA -->
+                        <!-- SECCIÓN: ACTUALIZACIONES DEL SISTEMA -->
                         <Border Background="{DynamicResource ThemeCardBackground}" BorderBrush="{DynamicResource ThemeCardBorder}" BorderThickness="1" CornerRadius="8" Padding="16">
-                            <StackPanel Spacing="6">
-                                <TextBlock Text="{Binding ApplicationVersionText}" Foreground="{DynamicResource ThemeAccent}" FontWeight="SemiBold"/>
-                                <TextBlock Text="Ejecutable en uso:" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="11"/>
-                                <TextBlock Text="{Binding ExecutableLocationText}" Foreground="{DynamicResource ThemeTextPrimary}" FontSize="11" TextWrapping="Wrap"/>
+                            <StackPanel Spacing="12">
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <TextBlock Grid.Column="0" Text="ACTUALIZACIONES DEL SISTEMA" Foreground="{DynamicResource ThemeAccent}" FontWeight="Bold" FontSize="11" VerticalAlignment="Center"/>
+                                    <Border Grid.Column="1" Background="{DynamicResource ThemeInputBackground}" BorderBrush="{DynamicResource ThemeCardBorder}" BorderThickness="1" CornerRadius="12" Padding="10,4">
+                                        <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                                            <Ellipse Width="8" Height="8" Fill="{Binding UpdateStatusBadgeColor}"/>
+                                            <TextBlock Text="{Binding UpdateStatusBadgeText}" Foreground="{DynamicResource ThemeTextPrimary}" FontSize="11" FontWeight="Medium"/>
+                                        </StackPanel>
+                                    </Border>
+                                </Grid>
+
+                                <Grid ColumnDefinitions="*,Auto">
+                                    <StackPanel Grid.Column="0" Spacing="4" VerticalAlignment="Center">
+                                        <StackPanel Orientation="Horizontal" Spacing="6">
+                                            <TextBlock Text="Versión instalada:" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="11"/>
+                                            <TextBlock Text="{Binding ApplicationVersionText}" Foreground="{DynamicResource ThemeTextPrimary}" FontWeight="SemiBold" FontSize="11"/>
+                                        </StackPanel>
+                                        <TextBlock Text="{Binding ExecutableLocationText}" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="10" TextTrimming="CharacterEllipsis"/>
+                                    </StackPanel>
+                                    <Button Grid.Column="1" Content="🔍 Comprobar actualizaciones" Command="{Binding CheckForUpdatesCommand}" IsEnabled="{Binding !IsCheckingUpdates}" Background="{DynamicResource ThemeInputBackground}" Foreground="{DynamicResource ThemeAccent}" FontWeight="SemiBold" FontSize="11" Padding="12,6"/>
+                                </Grid>
+
+                                <CheckBox IsChecked="{Binding CheckUpdatesOnStartup, Mode=TwoWay}" Content="Buscar actualizaciones automáticamente al iniciar" Foreground="{DynamicResource ThemeTextPrimary}" FontSize="11"/>
+
+                                <!-- Panel desplegable si hay actualización disponible -->
+                                <Border IsVisible="{Binding HasUpdateAvailable}" Background="{DynamicResource ThemeInputBackground}" BorderBrush="{DynamicResource ThemeAccent}" BorderThickness="1" CornerRadius="6" Padding="14">
+                                    <StackPanel Spacing="10">
+                                        <Grid ColumnDefinitions="*,Auto">
+                                            <StackPanel Grid.Column="0" Spacing="2">
+                                                <TextBlock Text="¡Nueva versión lista para descargar!" Foreground="{DynamicResource ThemeAccent}" FontWeight="Bold" FontSize="12"/>
+                                                <TextBlock Text="{Binding LatestVersionText, StringFormat='Versión disponible: {0}'}" Foreground="{DynamicResource ThemeTextPrimary}" FontSize="11"/>
+                                            </StackPanel>
+                                            <Button Grid.Column="1" Content="⬇ Descargar e Instalar" Command="{Binding DownloadAndInstallUpdateCommand}" IsEnabled="{Binding !IsDownloadingUpdate}" Background="{DynamicResource ThemeAccentSuccess}" Foreground="#0E1015" FontWeight="Bold" FontSize="11" Padding="14,8"/>
+                                        </Grid>
+
+                                        <ProgressBar IsVisible="{Binding IsDownloadingUpdate}" Value="{Binding DownloadProgress}" Minimum="0" Maximum="100" Height="6" CornerRadius="3" Foreground="{DynamicResource ThemeAccent}" Background="{DynamicResource ThemeCardBackground}"/>
+                                        <TextBlock IsVisible="{Binding IsDownloadingUpdate}" Text="{Binding DownloadProgressText}" Foreground="{DynamicResource ThemeAccent}" FontSize="10" HorizontalAlignment="Right"/>
+
+                                        <TextBlock Text="Notas de la versión:" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="10" FontWeight="Bold"/>
+                                        <Border Background="{DynamicResource ThemeCardBackground}" BorderBrush="{DynamicResource ThemeCardBorder}" BorderThickness="1" CornerRadius="4" Padding="10" MaxHeight="140">
+                                            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                                <TextBlock Text="{Binding ReleaseNotesText}" Foreground="{DynamicResource ThemeTextPrimary}" FontSize="11" TextWrapping="Wrap"/>
+                                            </ScrollViewer>
+                                        </Border>
+                                    </StackPanel>
+                                </Border>
                             </StackPanel>
                         </Border>
                         <Border Background="{DynamicResource ThemeCardBackground}" BorderBrush="{DynamicResource ThemeCardBorder}" BorderThickness="1" CornerRadius="8" Padding="16">

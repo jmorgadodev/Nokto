@@ -206,7 +206,16 @@ internal static class RoutineUiTests
         Require(app.RequestedThemeVariant == Avalonia.Styling.ThemeVariant.Light, "El tema Día sigue disponible.");
         model.SelectedThemeModeIndex = 3; Pump();
         Require(app.RequestedThemeVariant == Avalonia.Styling.ThemeVariant.Dark && model.ManualPowerActionOptions[0] == "Finalizar sin apagar ni suspender", "Tema Noche y texto manual claro.");
-        Console.WriteLine("[PASS] Pánico: registro configurable, conflictos, persistencia y cancelación de todas las rutinas. Tema intermedio verificado.");
+
+        // Verificación de tarjeta de Actualizaciones en Ajustes
+        Require(model.UpdateStatusBadgeText == "Al día" || model.UpdateStatusBadgeText.Contains("Comprobando"), "Estado inicial del badge de actualizaciones coherente.");
+        Require(model.CheckUpdatesOnStartup, "La búsqueda de actualizaciones al iniciar está habilitada por defecto.");
+        model.CheckUpdatesOnStartup = false;
+        Require(!persistence.LoadConfig().Settings.CheckUpdatesOnStartup, "Desactivar búsqueda automática de actualizaciones persiste en configuración.");
+        model.CheckUpdatesOnStartup = true;
+        Require(persistence.LoadConfig().Settings.CheckUpdatesOnStartup, "Reactivar búsqueda automática de actualizaciones persiste en configuración.");
+
+        Console.WriteLine("[PASS] Pánico: registro configurable, conflictos, persistencia y cancelación de todas las rutinas. Tema intermedio y módulo de actualizaciones verificados.");
     }
 
     private static void VerifyLinearEditor(MainWindow window, MainViewModel model, PersistenceService persistence)

@@ -1,7 +1,8 @@
-## .NET Build Artifacts
+## .NET Build & Publishing Artifacts
 [Bb]in/
 [Oo]bj/
 [Pp]ublish/
+publish/
 artifacts/
 TestResults/
 
@@ -12,6 +13,14 @@ TestResults/
 *.suo
 *.userosscache
 *.sln.docstates
+
+## Internal Audit, QA & Handoff Documents
+docs/QA_REPORT_ANTIGRAVITY.md
+docs/QA_ANTIGRAVITY_PLAN.md
+docs/CODEX_HANDOFF.md
+docs/AUDIT_STATUS.md
+docs/*_stress*
+docs/*_STRESS*
 
 ## Avalonia & UI Generated
 Generated/
