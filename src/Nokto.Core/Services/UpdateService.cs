@@ -72,7 +72,7 @@ public class UpdateService : IUpdateService
     {
         var asm = Assembly.GetEntryAssembly() ?? typeof(UpdateService).Assembly;
         var version = asm.GetName().Version;
-        return version != null ? new Version(version.Major, version.Minor, Math.Max(version.Build, 0)) : new Version(1, 0, 0);
+        return version != null ? new Version(version.Major, version.Minor, Math.Max(version.Build, 0)) : new Version(1, 0, 1);
     }
 
     public static string GetExecutablePath()
@@ -109,7 +109,7 @@ public class UpdateService : IUpdateService
 
     public async Task<UpdateReleaseInfo?> CheckForUpdatesAsync(string? owner = null, string? repo = null, CancellationToken cancellationToken = default)
     {
-        string targetOwner = string.IsNullOrWhiteSpace(owner) ? "nokto" : owner;
+        string targetOwner = string.IsNullOrWhiteSpace(owner) || owner.Equals("nokto", StringComparison.OrdinalIgnoreCase) ? "jmorgadodev" : owner;
         string targetRepo = string.IsNullOrWhiteSpace(repo) ? "Nokto" : repo;
         string url = $"https://api.github.com/repos/{targetOwner}/{targetRepo}/releases/latest";
 

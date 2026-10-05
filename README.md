@@ -1,83 +1,90 @@
-# Nokto ◐
+# Nokto 🌒
 
-> **Consola Determinista de Energía, Telemetría y Automatización de Escritorio**
+> **Consola de Operaciones, Telemetría y Automatización de Escritorio Local**
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Platform: Windows](https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011%20x64-0078D6.svg)](https://microsoft.com/windows)
-[![.NET: 8.0](https://img.shields.io/badge/.NET-8.0-512BD4.svg)](https://dotnet.microsoft.com/)
+[![GitHub Release](https://img.shields.io/github/v/release/jmorgadodev/Nokto?color=00D2FF&label=Release)](https://github.com/jmorgadodev/Nokto/releases/latest)
+[![Platform](https://img.shields.io/badge/Platform-Windows%2011%20%7C%2010%20(x64)-0078D6)](https://github.com/jmorgadodev/Nokto)
+[![Runtime](https://img.shields.io/badge/.NET-8.0-512BD4)](https://dotnet.microsoft.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Privacy](https://img.shields.io/badge/Telemetr%C3%ADa%20Externa-0%25%20(100%25%20Offline)-success)](https://github.com/jmorgadodev/Nokto)
 
-Nokto es una suite determinista de alto rendimiento para Windows diseñada para automatizar el ciclo de vida del equipo, supervisar telemetría de hardware y cuotas locales de herramientas de IA, ejecutar rutinas encadenadas y gestionar tareas manuales con total seguridad y control.
-
----
-
-## 🌟 Características Principales
-
-### 1. Cabina de Control Diario (Inicio)
-- **Telemetría en Vivo:** Supervisión continua y ligera de CPU (usuario/kernel), memoria RAM, GPUs híbridas (dedicada/integrada), I/O de disco y tráfico de red.
-- **Detección de Hardware y Red:** Resolución de adaptadores de red, IP local, túneles VPN y perfil de hardware nativo.
-- **Audio WASAPI y Periféricos:** Medición de picos de audio, silenciamiento bidireccional y monitor de inactividad de periféricos (`GetLastInputInfo`).
-- **Radar de Herramientas IA:** Inspección pasiva local en disco de cuotas y estado de entornos como Antigravity IDE, Codex y OpenCode.
-
-### 2. Control Manual Inmediato
-- **Disparadores Directos:** Ejecución inmediata, temporizador regresivo, hora fija, inactividad, salida de proceso o desconexión de alimentación.
-- **Gestión de Aplicaciones:** Selección rápida de programas instalados en el menú Inicio, argumentos, carpetas de trabajo y cierre limpio de ventanas/aplicaciones.
-- **Control de Audio, Pantalla y Sesión:** Desvanecimiento gradual de volumen, pausa multimedia, bloqueo de estación y apagado de monitores.
-- **Aviso Previo Cancelable (Grace Overlay):** Cuenta atrás visual antes de la acción final con opción de posponer 10 minutos o cancelar.
-
-### 3. Configurador de Rutinas (Pipeline Determinista)
-- **Constructor de Flujos:** Disparadores configurables (horario semanal recurrente, silencio prolongado de audio, inactividad de descargas de red, etc.).
-- **Secuencia de Acciones Reordenables:** Apertura de programas, scripts (`.exe`, `.bat`, `.ps1`), control de volumen, espera, comandos y evidencias.
-- **Sticky Footer Ergonómico:** Panel fijo inferior con botones directos `[ ▶ INICIAR RUTINA ]`, `[ ⏹ FINALIZAR ]` y `[ 💾 Guardar Rutina ]`.
-
-### 4. Módulo de Actualizaciones del Sistema
-- **Actualización Semver:** Consulta automática y asíncrona de releases públicas desde GitHub.
-- **Detección Automática de Entorno:**
-  - *Versión Instalable:* Descarga de `Nokto-Setup-x64.exe` y ejecución asistida.
-  - *Versión Portable:* Mecanismo de swap en caliente sin bloqueo de archivo mediante script por lotes temporal desacoplado.
-
-### 5. Control Remoto LAN Móvil
-- **Microservidor Local Ligero:** Interfaz web PWA responsiva con diseño optimizado para OLED, accesible desde cualquier teléfono o tablet en la misma red Wi-Fi/LAN mediante código QR sin salir a internet.
+**Nokto** es una consola de operaciones local para Windows diseñada para desarrolladores y estaciones de trabajo. Unifica en una sola cabina el monitoreo de telemetría de hardware en tiempo real, la gestión de audio y micrófonos de baja latencia (WASAPI), la orquestación de rutinas automatizadas concurrentes y el control remoto desde dispositivos móviles a través de tu red Wi-Fi local, con **cero dependencias en la nube y total respeto a la privacidad**.
 
 ---
 
-## 📦 Distribución
+## ⚡ Instalación Rápida por Línea de Comandos (PowerShell)
 
-Nokto se distribuye en dos formatos oficiales de 64 bits:
+Abre **PowerShell** y ejecuta el comando según tu preferencia de distribución:
 
-1. **Portable (Standalone):**
-   - Ejecutable autocontenido único (`Nokto.exe`) en `artifacts/Nokto-Portable-x64/`.
-   - Cero dependencias externas requeridas en el sistema de destino.
-   - Datos y configuración guardados junto al ejecutable (`./data`).
+### Opción A: Descargar y ejecutar la Versión Portable (Single-File)
+Descarga el ejecutable autocontenido directamente en tu carpeta de descargas y lo inicia:
+```powershell
+irm https://github.com/jmorgadodev/Nokto/releases/latest/download/Nokto-Portable-x64.exe -OutFile "$HOME\Downloads\Nokto.exe"; Start-Process "$HOME\Downloads\Nokto.exe"
+```
 
-2. **Instalador de Windows:**
-   - Asistente de instalación estándar (`Nokto-Setup-x64.exe`) en `artifacts/Nokto-Installer-x64/`.
-   - Integración con el menú Inicio y registro en Aplicaciones y características.
+### Opción B: Instalación silenciosa desatendida (Windows Installer)
+Descarga el instalador oficial y lo instala de fondo en el sistema sin cuadros de diálogo:
+```powershell
+$setup = "$env:TEMP\Nokto-Setup.exe"; irm https://github.com/jmorgadodev/Nokto/releases/latest/download/Nokto-Setup-x64.exe -OutFile $setup; Start-Process $setup -ArgumentList "/VERYSILENT /NORESTART" -Wait; Remove-Item $setup
+```
 
 ---
 
-## 🛠️ Compilación y Pruebas
+## 📦 Descarga Manual Directa
 
-### Requisitos de desarrollo:
-- Windows 10/11 x64 (Build 19041 o superior)
-- .NET 8.0 SDK
+| Formato | Enlace de Descarga | Descripción |
+| :--- | :--- | :--- |
+| **Portable (x64)** | [⬇ Nokto-Portable-x64.exe](https://github.com/jmorgadodev/Nokto/releases/latest/download/Nokto-Portable-x64.exe) | Ejecutable único (~65 MB). Cero instalación; ideal para pendrives o uso aislado. |
+| **Instalador (x64)** | [⬇ Nokto-Setup-x64.exe](https://github.com/jmorgadodev/Nokto/releases/latest/download/Nokto-Setup-x64.exe) | Asistente de instalación estándar con accesos directos y desinstalador limpio. |
 
-### Ejecutar pruebas:
-```powershell
-dotnet test Nokto.sln -c Release
-```
+---
 
-### Publicar binario portable (Single-File):
-```powershell
-dotnet publish src\Nokto.UI\Nokto.UI.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o artifacts\Nokto-Portable-x64\
-```
+## 🛠 Características Principales
 
-### Publicar binario para instalador:
-```powershell
-dotnet publish src\Nokto.UI\Nokto.UI.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=false -o artifacts\Nokto-Installer-x64\App\
-```
+### 1. Cabina de Operaciones y Telemetría de Hardware
+- **Métricas en tiempo real:** Supervisión pasiva de CPU (usuario/kernel), memoria RAM, GPU híbrida (NVIDIA + Intel Iris Xe) y tasa de transferencia de red sin impacto en rendimiento.
+- **Control WASAPI de Audio y Micrófonos:** Conmutación instantánea de dispositivos predeterminados, control maestro de volumen y silenciamiento de micrófono con atajos globales (`Ctrl+Shift+M` / `Ctrl+Shift+S`).
+- **Radar de Herramientas IA:** Detección de entornos locales de desarrollo (Codex Desktop, Antigravity IDE, Claude, OpenCode) y monitoreo de cuotas locales en disco.
+
+### 2. Control Manual y Tareas Concurrentes
+- **Temporización multivariable:** Lanzamiento de acciones por cuenta regresiva, hora fija o tras periodos de inactividad de periféricos.
+- **Motor Concurrente:** Ejecuta múltiples temporizadores en paralelo sin bloqueos mutuos; cada tarea viva cuenta con su propia cápsula interactiva y botón de cancelación en tiempo real.
+- **Aviso previo (Grace Overlay):** Alerta flotante personalizable en pantalla antes de ejecutar acciones críticas con opción de posponer o abortar.
+
+### 3. Configurador de Rutinas (Pipeline Secuencial)
+- **Constructor de Flujos:** Diseña secuencias lineales sin pasos obligatorios: arrancar herramientas de trabajo, reconfigurar audio, pausar medios, apagar pantallas o hibernar.
+- **Catálogo Visual de Aplicaciones:** Detección automática de los accesos directos del Menú Inicio de Windows con extracción de iconos oficiales en resolución nativa.
+- **Disparadores ampliados:** Ejecución al cerrar o abrir procesos específicos, horarios fijos por días de la semana, umbrales de inactividad o tráfico de red (fin de descargas).
+
+### 4. Control Remoto Móvil LAN (100% Offline)
+- **Microservidor HTTP Embebido:** Servidor ultraligero que opera estrictamente dentro de tu subred privada (ej. `http://192.168.1.X:4884`).
+- **Live Snapshot de Pantalla:** Captura el estado de tus pantallas bajo demanda o en modo auto-vigilancia directamente en tu teléfono móvil para supervisar renders o tareas largas.
+- **Emparejamiento por QR:** Escanea el código QR nativo generado en la pantalla para abrir la interfaz táctil sin necesidad de instalar apps adicionales.
+
+### 5. Actualizador Integrado y Resiliente
+- Comprobación automática contra la API de GitHub Releases.
+- Soporte de Hot-Swap en caliente para la versión portable: descarga la nueva versión y reemplaza el ejecutable en uso sin requerir extracción manual.
+
+---
+
+## 🔒 Privacidad y Arquitectura
+- **0% Telemetría Externa:** Nokto no realiza llamadas a servicios de analítica de terceros ni almacena datos en servidores externos.
+- **Conexión Local Exclusiva:** El servidor móvil solo responde a peticiones originadas dentro de la red LAN (`192.168.x.x`, `10.x.x.x`, `127.0.0.1`).
+- **Persistencia Aislada:** Las configuraciones se guardan localmente en formato JSON dentro del directorio de la aplicación (`data/`).
+
+---
+
+## 💻 Desarrollo y Compilación
+Para instrucciones sobre cómo clonar el repositorio, ejecutar las pruebas y compilar los binarios localmente desde el código fuente, consulta el archivo [CONTRIBUTING.md](CONTRIBUTING.md).
+
+---
+
+## 👤 Autor
+Desarrollado por **Jorge Morgado**  
+- LinkedIn: [in/jorge-morgado](https://www.linkedin.com/in/jorge-morgado/)  
+- GitHub: [@jmorgadodev](https://github.com/jmorgadodev)
 
 ---
 
 ## 📄 Licencia
-
-Este proyecto está bajo la Licencia [MIT](LICENSE).
+Este proyecto está bajo la Licencia MIT. Consulta el archivo [LICENSE](LICENSE) para más detalles.

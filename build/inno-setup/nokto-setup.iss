@@ -1,10 +1,10 @@
 [Setup]
 AppId={{C8E1D942-7F3A-4B2E-9D1B-8A7E4F2C1B0D}
 AppName=Nokto
-AppVersion=1.0.0
+AppVersion=1.0.1
 AppPublisher=Nokto Project
-AppPublisherURL=https://github.com/nokto/nokto
-AppSupportURL=https://github.com/nokto/nokto/issues
+AppPublisherURL=https://github.com/jmorgadodev/Nokto
+AppSupportURL=https://github.com/jmorgadodev/Nokto/issues
 DefaultDirName={autopf}\Nokto
 DefaultGroupName=Nokto
 DisableProgramGroupPage=yes

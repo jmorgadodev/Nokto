@@ -210,7 +210,7 @@ public partial class SettingsViewModel : ObservableObject
         {
             Process.Start(new ProcessStartInfo
             {
-                FileName = "https://github.com/nokto/nokto",
+                FileName = "https://github.com/jmorgadodev/Nokto",
                 UseShellExecute = true
             });
         }

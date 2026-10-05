@@ -40,7 +40,7 @@ public record AppSettings
     public List<string> HiddenAiEnvironmentIds { get; set; } = [];
     public List<string> AiEnvironmentOrder { get; set; } = ["codex"];
     public bool CheckUpdatesOnStartup { get; set; } = true;
-    public string UpdateRepositoryOwner { get; set; } = "nokto";
+    public string UpdateRepositoryOwner { get; set; } = "jmorgadodev";
     public string UpdateRepositoryName { get; set; } = "Nokto";
     // Keep existing portable configurations and older clients compatible.
     public bool ShowAiRadarInHome { get => ShowAiRadarCardInHome; set => ShowAiRadarCardInHome = value; }

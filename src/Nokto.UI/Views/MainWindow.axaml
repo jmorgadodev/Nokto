@@ -27,7 +27,7 @@
                         <TextBlock Text="◐" Foreground="{DynamicResource ThemeAccent}" FontSize="15" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
                     <TextBlock Text="Nokto" Foreground="{DynamicResource ThemeTextPrimary}" FontWeight="Bold" FontSize="16" VerticalAlignment="Center"/>
-                    <TextBlock Text="{Binding ApplicationVersionText, FallbackValue='v1.0.0'}" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="11" VerticalAlignment="Center" Margin="4,2,0,0"/>
+                    <TextBlock Text="{Binding ApplicationVersionText, FallbackValue='v1.0.1'}" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="11" VerticalAlignment="Center" Margin="4,2,0,0"/>
                 </StackPanel>
 
                 <!-- Status Badge -->
@@ -236,7 +236,7 @@
                                     <StackPanel Grid.Column="0" Spacing="4" VerticalAlignment="Center">
                                         <StackPanel Orientation="Horizontal" Spacing="6">
                                             <TextBlock Text="Versión instalada:" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="11"/>
-                                            <TextBlock Text="{Binding ApplicationVersionText, FallbackValue='v1.0.0'}" Foreground="{DynamicResource ThemeTextPrimary}" FontWeight="SemiBold" FontSize="11"/>
+                                            <TextBlock Text="{Binding ApplicationVersionText, FallbackValue='v1.0.1'}" Foreground="{DynamicResource ThemeTextPrimary}" FontWeight="SemiBold" FontSize="11"/>
                                         </StackPanel>
                                         <TextBlock Text="{Binding ExecutableLocationText}" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="10" TextTrimming="CharacterEllipsis"/>
                                     </StackPanel>
@@ -490,7 +490,7 @@
                                 <Grid ColumnDefinitions="*,Auto">
                                     <TextBlock Grid.Column="0" Text="ACERCA DE NOKTO" Foreground="{DynamicResource ThemeAccent}" FontWeight="Bold" FontSize="11" VerticalAlignment="Center"/>
                                     <Border Grid.Column="1" Background="{DynamicResource ThemeInputBackground}" BorderBrush="{DynamicResource ThemeCardBorder}" BorderThickness="1" CornerRadius="12" Padding="10,4">
-                                        <TextBlock Text="{Binding ApplicationVersionText, FallbackValue='v1.0.0'}" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="10" FontWeight="SemiBold"/>
+                                        <TextBlock Text="{Binding ApplicationVersionText, FallbackValue='v1.0.1'}" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="10" FontWeight="SemiBold"/>
                                     </Border>
                                 </Grid>
 
@@ -502,8 +502,8 @@
                                 <StackPanel Orientation="Horizontal" Spacing="10" Margin="0,4,0,0">
                                     <Button x:Name="LinkedInButton" Content="🌐 LinkedIn / Perfil Profesional" Command="{Binding OpenLinkedInCommand}" Click="OnOpenLinkedInClick" Background="{DynamicResource ThemeInputBackground}" Foreground="{DynamicResource ThemeAccent}" FontWeight="SemiBold" FontSize="11" Padding="14,7" CornerRadius="6" Cursor="Hand" ToolTip.Tip="https://www.linkedin.com/in/jorge-morgado/"/>
 
-                                    <!-- Espacio preparado para enlace GitHub (Oculto en v1.0.0 para prueba de verificación en v1.0.1) -->
-                                    <Button x:Name="GitHubButton" Content="🐙 GitHub / Código Fuente" Command="{Binding OpenGitHubCommand}" Click="OnOpenGitHubClick" IsVisible="False" Background="{DynamicResource ThemeInputBackground}" Foreground="{DynamicResource ThemeTextPrimary}" FontSize="11" Padding="14,7" CornerRadius="6" Cursor="Hand" ToolTip.Tip="https://github.com/nokto/nokto"/>
+                                    <!-- Enlace interactivo al repositorio oficial de GitHub -->
+                                    <Button x:Name="GitHubButton" Content="🐙 Repositorio GitHub" Command="{Binding OpenGitHubCommand}" Click="OnOpenGitHubClick" IsVisible="True" Background="{DynamicResource ThemeInputBackground}" Foreground="{DynamicResource ThemeTextPrimary}" FontWeight="SemiBold" FontSize="11" Padding="14,7" CornerRadius="6" Cursor="Hand" ToolTip.Tip="https://github.com/jmorgadodev/Nokto"/>
                                 </StackPanel>
                             </StackPanel>
                         </Border>

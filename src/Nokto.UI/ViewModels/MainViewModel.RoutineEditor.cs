@@ -12,7 +12,7 @@ namespace Nokto.UI.ViewModels;
 
 public partial class MainViewModel
 {
-    public string ApplicationVersionText => $"v{typeof(MainViewModel).Assembly.GetName().Version?.ToString(3) ?? "1.0.0"}";
+    public string ApplicationVersionText => $"v{typeof(MainViewModel).Assembly.GetName().Version?.ToString(3) ?? "1.0.1"}";
     public string ExecutableLocationText => Environment.ProcessPath ?? AppContext.BaseDirectory;
     public ObservableCollection<InstalledAppInfo> InstalledApps { get; } = [];
     public ObservableCollection<WeekdaySelectionItem> StudioWeekdays { get; } =
