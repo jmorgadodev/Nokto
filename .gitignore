@@ -1,3 +1,11 @@
+## Internal Documentation & Specs
+docs/
+CHANGELOG.md
+
+## Logs, Telemetry & Temporary
+*.log
+*.jsonl
+
 ## .NET Build & Publishing Artifacts
 [Bb]in/
 [Oo]bj/
@@ -14,21 +22,12 @@ TestResults/
 *.userosscache
 *.sln.docstates
 
-## Internal Audit, QA & Handoff Documents
-docs/QA_REPORT_ANTIGRAVITY.md
-docs/QA_ANTIGRAVITY_PLAN.md
-docs/CODEX_HANDOFF.md
-docs/AUDIT_STATUS.md
-docs/*_stress*
-docs/*_STRESS*
-
 ## Avalonia & UI Generated
 Generated/
 
 ## Nokto Runtime / Local State
 data/snapshots/*
 !data/snapshots/.gitkeep
-data/audit.jsonl
 portable.lock
 
 ## OS Generated
