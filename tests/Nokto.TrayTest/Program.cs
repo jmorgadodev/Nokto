@@ -22,6 +22,11 @@ internal static class Program
                 return AppBuilder.Configure<ManualWindowProbeApp>().UsePlatformDetect().StartWithClassicDesktopLifetime(args);
             }
             AppBuilder.Configure<App>().UsePlatformDetect().SetupWithoutStarting();
+            if (args.Contains("--generate-screenshots"))
+            {
+                ScreenshotGenerator.Run();
+                return 0;
+            }
             ManualControlTests.Run();
             ManualWindowTests.Run();
             if (args.Contains("--manual-control-test")) return 0;

@@ -16,6 +16,10 @@
 
 **Nokto** is an offline-first Windows operations console engineered for power users, developers, and workstation monitoring. It centralizes real-time hardware telemetry, low-latency WASAPI audio management, concurrent routine workflows, and local LAN mobile remote control into a single unified cockpit—with **zero cloud dependencies and absolute privacy**.
 
+<p align="center">
+  <img src="assets/screenshots/01_cockpit_telemetria.png" alt="Nokto Operations Cockpit" width="100%">
+</p>
+
 ---
 
 ## ⚡ Quick CLI Installation (PowerShell)
@@ -52,24 +56,54 @@ $setup = "$env:TEMP\Nokto-Setup.exe"; irm https://github.com/jmorgadodev/Nokto/r
 - **Low-Latency WASAPI Audio & Microphone Switcher:** Instant default endpoint switching, master volume slider, and global mute shortcuts (`Ctrl+Shift+M` for mic / `Ctrl+Shift+S` for output).
 - **AI Dev Radar:** Automatically detects local development environments (Codex Desktop, Antigravity IDE, Claude, OpenCode) and reads local token quota usage on disk without credentials.
 
+<p align="center">
+  <img src="assets/screenshots/01_cockpit_telemetria.png" alt="Operations Cockpit and Telemetry" width="100%">
+</p>
+
 ### 2. Immediate Manual Control & Concurrent Tasks
 - **Multi-Condition Triggers:** Fire one-off actions via Countdown timers, specific timestamps, or peripheral idle detection.
 - **Concurrent Execution Engine:** Run multiple tasks simultaneously without interference; each active countdown gets its own live capsule with an instant cancel button.
 - **Grace Overlay:** Customizable on-screen warning window before executing critical power actions (shutdown, sleep, lock) with options to snooze or abort.
+
+<p align="center">
+  <img src="assets/screenshots/02_control_manual.png" alt="Immediate Manual Control and Multi-Variable Triggers" width="100%">
+</p>
 
 ### 3. Routine Configurator (Sequential Pipeline)
 - **Block-Based Pipeline:** Chain automated actions without forced shutdown steps (launch apps, adjust audio levels, pause playback, turn off displays, or hibernate).
 - **Native Start Menu App Discovery:** Automatically scans Windows Start Menu shortcuts, extracting official 32×32 high-res application icons for rapid selection.
 - **Advanced Triggers:** Trigger workflows upon process exit (e.g., render completion), scheduled times (recurring day selector), peripheral idle, or network traffic drops.
 
-### 4. Offline Mobile LAN Remote Control
+<p align="center">
+  <img src="assets/screenshots/03_rutinas_pipeline.png" alt="Routine Configurator and Sequential Pipeline" width="100%">
+</p>
+
+### 4. Offline Mobile LAN Remote Control & Evidence Gallery
 - **Embedded Lightweight HTTP Server:** Operates strictly within your private local network (e.g., `http://192.168.1.X:4884`).
 - **Live Screen Snapshots:** View low-latency desktop screen captures directly from your smartphone browser to monitor long-running builds or renders remotely.
 - **Instant QR Pairing:** Scan the native QR code generated on the desktop to launch the mobile web UI without installing any phone apps.
+- **Evidence Audit Gallery:** Automated screen captures before executing destructive or power routines, with instant in-app gallery review.
 
-### 5. Resilient Auto-Update Engine
-- Automated version checks against GitHub Releases API.
-- Hot-Swap Support for Portable Mode: Atomically replaces the locked .exe file in place via a transient process script without requiring manual extraction.
+<p align="center">
+  <img src="assets/screenshots/07_control_remoto_evidencias.png" alt="Mobile LAN Remote Control and Evidence Gallery" width="100%">
+</p>
+
+### 5. System Settings, Hardware Guardian & AI Prioritization
+- **Auto-Update Engine & Visual Themes:** Native GitHub release verification with changelog review, hot-swapping portable updater, language switching (ES/EN), and ergonomic Day/Night visual themes.
+- **Panic Hotkey & Battery Guardian:** System-wide panic abort hotkey (`Pause`) and automated smart battery protection (10% critical threshold with zero-drain hibernation).
+- **Audio Switcher & AI Environment Manager:** Low-latency WASAPI input/output device selector, global mute hotkeys, and custom priority ordering for local AI development tools.
+
+<p align="center">
+  <img src="assets/screenshots/04_ajustes_actualizaciones_apariencia.png" alt="System Updates, Visual Appearance and Startup Settings" width="100%">
+</p>
+
+<p align="center">
+  <img src="assets/screenshots/05_ajustes_guardian_modularidad.png" alt="Panic Hotkey, Laptop Battery Guardian and Modularity" width="100%">
+</p>
+
+<p align="center">
+  <img src="assets/screenshots/06_ajustes_audio_herramientas_ia.png" alt="WASAPI Audio Configuration and Local AI Dev Tools Manager" width="100%">
+</p>
 
 ---
 

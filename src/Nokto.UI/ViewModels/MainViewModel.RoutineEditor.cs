@@ -13,7 +13,8 @@ namespace Nokto.UI.ViewModels;
 public partial class MainViewModel
 {
     public string ApplicationVersionText => $"v{typeof(MainViewModel).Assembly.GetName().Version?.ToString(3) ?? "1.0.1"}";
-    public string ExecutableLocationText => Environment.ProcessPath ?? AppContext.BaseDirectory;
+    public string? OverrideExecutableLocation { get; set; }
+    public string ExecutableLocationText => OverrideExecutableLocation ?? Environment.ProcessPath ?? AppContext.BaseDirectory;
     public ObservableCollection<InstalledAppInfo> InstalledApps { get; } = [];
     public ObservableCollection<WeekdaySelectionItem> StudioWeekdays { get; } =
     [new("L", "Lunes", 1), new("M", "Martes", 2), new("X", "Miércoles", 3), new("J", "Jueves", 4), new("V", "Viernes", 5), new("S", "Sábado", 6), new("D", "Domingo", 0)];
