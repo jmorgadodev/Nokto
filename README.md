@@ -1,6 +1,8 @@
-<div align="center">
-  [ 🇬🇧 **Read in English** ](README.md) | [ 🇪🇸 Leer en Español ](README.es.md)
-</div>
+<p align="center">
+  <b>🌐 Language:</b> &nbsp;
+  <b>English</b> &nbsp;|&nbsp;
+  <a href="README.es.md">Español</a>
+</p>
 
 # Nokto 🌒
 
