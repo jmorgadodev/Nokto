@@ -1,90 +1,94 @@
+<div align="center">
+  [ 🇬🇧 **Read in English** ](README.md) | [ 🇪🇸 Leer en Español ](README.es.md)
+</div>
+
 # Nokto 🌒
 
-> **Consola de Operaciones, Telemetría y Automatización de Escritorio Local**
+> **Local Desktop Operations, Telemetry, and Automation Console**
 
 [![GitHub Release](https://img.shields.io/github/v/release/jmorgadodev/Nokto?color=00D2FF&label=Release)](https://github.com/jmorgadodev/Nokto/releases/latest)
 [![Platform](https://img.shields.io/badge/Platform-Windows%2011%20%7C%2010%20(x64)-0078D6)](https://github.com/jmorgadodev/Nokto)
 [![Runtime](https://img.shields.io/badge/.NET-8.0-512BD4)](https://dotnet.microsoft.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Privacy](https://img.shields.io/badge/Telemetr%C3%ADa%20Externa-0%25%20(100%25%20Offline)-success)](https://github.com/jmorgadodev/Nokto)
+[![Privacy](https://img.shields.io/badge/External%20Telemetry-0%25%20(100%25%20Offline)-success)](https://github.com/jmorgadodev/Nokto)
 
-**Nokto** es una consola de operaciones local para Windows diseñada para desarrolladores y estaciones de trabajo. Unifica en una sola cabina el monitoreo de telemetría de hardware en tiempo real, la gestión de audio y micrófonos de baja latencia (WASAPI), la orquestación de rutinas automatizadas concurrentes y el control remoto desde dispositivos móviles a través de tu red Wi-Fi local, con **cero dependencias en la nube y total respeto a la privacidad**.
+**Nokto** is an offline-first Windows operations console engineered for power users, developers, and workstation monitoring. It centralizes real-time hardware telemetry, low-latency WASAPI audio management, concurrent routine workflows, and local LAN mobile remote control into a single unified cockpit—with **zero cloud dependencies and absolute privacy**.
 
 ---
 
-## ⚡ Instalación Rápida por Línea de Comandos (PowerShell)
+## ⚡ Quick CLI Installation (PowerShell)
 
-Abre **PowerShell** y ejecuta el comando según tu preferencia de distribución:
+Open **PowerShell** and run the one-liner command for your preferred distribution:
 
-### Opción A: Descargar y ejecutar la Versión Portable (Single-File)
-Descarga el ejecutable autocontenido directamente en tu carpeta de descargas y lo inicia:
+### Option A: Portable Standalone Executable (Single-File)
+Downloads the self-contained executable directly to your Downloads folder and starts it:
 ```powershell
 irm https://github.com/jmorgadodev/Nokto/releases/latest/download/Nokto-Portable-x64.exe -OutFile "$HOME\Downloads\Nokto.exe"; Start-Process "$HOME\Downloads\Nokto.exe"
 ```
 
-### Opción B: Instalación silenciosa desatendida (Windows Installer)
-Descarga el instalador oficial y lo instala de fondo en el sistema sin cuadros de diálogo:
+### Option B: Unattended Silent Installation (Windows Installer)
+Downloads the signed installer and installs it silently in the background:
 ```powershell
 $setup = "$env:TEMP\Nokto-Setup.exe"; irm https://github.com/jmorgadodev/Nokto/releases/latest/download/Nokto-Setup-x64.exe -OutFile $setup; Start-Process $setup -ArgumentList "/VERYSILENT /NORESTART" -Wait; Remove-Item $setup
 ```
 
 ---
 
-## 📦 Descarga Manual Directa
+## 📦 Direct Downloads
 
-| Formato | Enlace de Descarga | Descripción |
+| Format | Download Link | Description |
 | :--- | :--- | :--- |
-| **Portable (x64)** | [⬇ Nokto-Portable-x64.exe](https://github.com/jmorgadodev/Nokto/releases/latest/download/Nokto-Portable-x64.exe) | Ejecutable único (~65 MB). Cero instalación; ideal para pendrives o uso aislado. |
-| **Instalador (x64)** | [⬇ Nokto-Setup-x64.exe](https://github.com/jmorgadodev/Nokto/releases/latest/download/Nokto-Setup-x64.exe) | Asistente de instalación estándar con accesos directos y desinstalador limpio. |
+| **Portable (x64)** | [⬇ Nokto-Portable-x64.exe](https://github.com/jmorgadodev/Nokto/releases/latest/download/Nokto-Portable-x64.exe) | Single standalone binary (~65 MB). Zero installation required; ideal for USB drives or isolated testing. |
+| **Installer (x64)** | [⬇ Nokto-Setup-x64.exe](https://github.com/jmorgadodev/Nokto/releases/latest/download/Nokto-Setup-x64.exe) | Standard Windows setup wizard with Start Menu shortcuts and a clean uninstaller. |
 
 ---
 
-## 🛠 Características Principales
+## 🛠 Key Features
 
-### 1. Cabina de Operaciones y Telemetría de Hardware
-- **Métricas en tiempo real:** Supervisión pasiva de CPU (usuario/kernel), memoria RAM, GPU híbrida (NVIDIA + Intel Iris Xe) y tasa de transferencia de red sin impacto en rendimiento.
-- **Control WASAPI de Audio y Micrófonos:** Conmutación instantánea de dispositivos predeterminados, control maestro de volumen y silenciamiento de micrófono con atajos globales (`Ctrl+Shift+M` / `Ctrl+Shift+S`).
-- **Radar de Herramientas IA:** Detección de entornos locales de desarrollo (Codex Desktop, Antigravity IDE, Claude, OpenCode) y monitoreo de cuotas locales en disco.
+### 1. Operations Cockpit & Hardware Telemetry
+- **Real-Time Passive Metrics:** Continuous kernel/user CPU monitoring, RAM allocation, dual-GPU utilization (NVIDIA + Intel Iris Xe), and network throughput with near-zero overhead.
+- **Low-Latency WASAPI Audio & Microphone Switcher:** Instant default endpoint switching, master volume slider, and global mute shortcuts (`Ctrl+Shift+M` for mic / `Ctrl+Shift+S` for output).
+- **AI Dev Radar:** Automatically detects local development environments (Codex Desktop, Antigravity IDE, Claude, OpenCode) and reads local token quota usage on disk without credentials.
 
-### 2. Control Manual y Tareas Concurrentes
-- **Temporización multivariable:** Lanzamiento de acciones por cuenta regresiva, hora fija o tras periodos de inactividad de periféricos.
-- **Motor Concurrente:** Ejecuta múltiples temporizadores en paralelo sin bloqueos mutuos; cada tarea viva cuenta con su propia cápsula interactiva y botón de cancelación en tiempo real.
-- **Aviso previo (Grace Overlay):** Alerta flotante personalizable en pantalla antes de ejecutar acciones críticas con opción de posponer o abortar.
+### 2. Immediate Manual Control & Concurrent Tasks
+- **Multi-Condition Triggers:** Fire one-off actions via Countdown timers, specific timestamps, or peripheral idle detection.
+- **Concurrent Execution Engine:** Run multiple tasks simultaneously without interference; each active countdown gets its own live capsule with an instant cancel button.
+- **Grace Overlay:** Customizable on-screen warning window before executing critical power actions (shutdown, sleep, lock) with options to snooze or abort.
 
-### 3. Configurador de Rutinas (Pipeline Secuencial)
-- **Constructor de Flujos:** Diseña secuencias lineales sin pasos obligatorios: arrancar herramientas de trabajo, reconfigurar audio, pausar medios, apagar pantallas o hibernar.
-- **Catálogo Visual de Aplicaciones:** Detección automática de los accesos directos del Menú Inicio de Windows con extracción de iconos oficiales en resolución nativa.
-- **Disparadores ampliados:** Ejecución al cerrar o abrir procesos específicos, horarios fijos por días de la semana, umbrales de inactividad o tráfico de red (fin de descargas).
+### 3. Routine Configurator (Sequential Pipeline)
+- **Block-Based Pipeline:** Chain automated actions without forced shutdown steps (launch apps, adjust audio levels, pause playback, turn off displays, or hibernate).
+- **Native Start Menu App Discovery:** Automatically scans Windows Start Menu shortcuts, extracting official 32×32 high-res application icons for rapid selection.
+- **Advanced Triggers:** Trigger workflows upon process exit (e.g., render completion), scheduled times (recurring day selector), peripheral idle, or network traffic drops.
 
-### 4. Control Remoto Móvil LAN (100% Offline)
-- **Microservidor HTTP Embebido:** Servidor ultraligero que opera estrictamente dentro de tu subred privada (ej. `http://192.168.1.X:4884`).
-- **Live Snapshot de Pantalla:** Captura el estado de tus pantallas bajo demanda o en modo auto-vigilancia directamente en tu teléfono móvil para supervisar renders o tareas largas.
-- **Emparejamiento por QR:** Escanea el código QR nativo generado en la pantalla para abrir la interfaz táctil sin necesidad de instalar apps adicionales.
+### 4. Offline Mobile LAN Remote Control
+- **Embedded Lightweight HTTP Server:** Operates strictly within your private local network (e.g., `http://192.168.1.X:4884`).
+- **Live Screen Snapshots:** View low-latency desktop screen captures directly from your smartphone browser to monitor long-running builds or renders remotely.
+- **Instant QR Pairing:** Scan the native QR code generated on the desktop to launch the mobile web UI without installing any phone apps.
 
-### 5. Actualizador Integrado y Resiliente
-- Comprobación automática contra la API de GitHub Releases.
-- Soporte de Hot-Swap en caliente para la versión portable: descarga la nueva versión y reemplaza el ejecutable en uso sin requerir extracción manual.
-
----
-
-## 🔒 Privacidad y Arquitectura
-- **0% Telemetría Externa:** Nokto no realiza llamadas a servicios de analítica de terceros ni almacena datos en servidores externos.
-- **Conexión Local Exclusiva:** El servidor móvil solo responde a peticiones originadas dentro de la red LAN (`192.168.x.x`, `10.x.x.x`, `127.0.0.1`).
-- **Persistencia Aislada:** Las configuraciones se guardan localmente en formato JSON dentro del directorio de la aplicación (`data/`).
+### 5. Resilient Auto-Update Engine
+- Automated version checks against GitHub Releases API.
+- Hot-Swap Support for Portable Mode: Atomically replaces the locked .exe file in place via a transient process script without requiring manual extraction.
 
 ---
 
-## 💻 Desarrollo y Compilación
-Para instrucciones sobre cómo clonar el repositorio, ejecutar las pruebas y compilar los binarios localmente desde el código fuente, consulta el archivo [CONTRIBUTING.md](CONTRIBUTING.md).
+## 🔒 Privacy & Architecture
+- **0% External Telemetry:** Nokto never transmits diagnostic metrics, analytics, or credentials to external cloud services.
+- **Strict LAN Scoping:** The mobile remote control server binds solely to private subnets (`192.168.x.x`, `10.x.x.x`, `127.0.0.1`) and enforces local origin boundaries.
+- **Isolated Persistence:** All presets, user settings, and audit logs are stored locally as standard JSON files inside the application's `data/` directory.
 
 ---
 
-## 👤 Autor
-Desarrollado por **Jorge Morgado**  
+## 💻 Development & Building
+For build prerequisites, automated test execution, and compilation from source code, please refer to [CONTRIBUTING.md](CONTRIBUTING.md).
+
+---
+
+## 👤 Author
+Developed by **Jorge Morgado**  
 - LinkedIn: [in/jorge-morgado](https://www.linkedin.com/in/jorge-morgado/)  
 - GitHub: [@jmorgadodev](https://github.com/jmorgadodev)
 
 ---
 
-## 📄 Licencia
-Este proyecto está bajo la Licencia MIT. Consulta el archivo [LICENSE](LICENSE) para más detalles.
+## 📄 License
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
