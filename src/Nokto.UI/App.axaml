@@ -23,6 +23,10 @@
                     <SolidColorBrush x:Key="ThemeCardHover" Color="#46505E"/>
                     <SolidColorBrush x:Key="ThemeHeaderBackground" Color="#333B47"/>
                     <SolidColorBrush x:Key="ThemeFooterBackground" Color="#333B47"/>
+                    <SolidColorBrush x:Key="CardBackgroundBrush" Color="#39414D"/>
+                    <SolidColorBrush x:Key="CardBorderBrush" Color="#596575"/>
+                    <SolidColorBrush x:Key="TextPrimaryBrush" Color="#F1F5F9"/>
+                    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#BAC5D3"/>
                 </ResourceDictionary>
                 <!-- TEMA OSCURO (DEFAULT TÉCNICO NOKTO) -->
                 <ResourceDictionary x:Key="Dark">
@@ -39,6 +43,10 @@
                     <SolidColorBrush x:Key="ThemeCardHover" Color="#1D2027"/>
                     <SolidColorBrush x:Key="ThemeHeaderBackground" Color="#121418"/>
                     <SolidColorBrush x:Key="ThemeFooterBackground" Color="#121418"/>
+                    <SolidColorBrush x:Key="CardBackgroundBrush" Color="#16181D"/>
+                    <SolidColorBrush x:Key="CardBorderBrush" Color="#252830"/>
+                    <SolidColorBrush x:Key="TextPrimaryBrush" Color="#F0F2F5"/>
+                    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#7D8390"/>
                 </ResourceDictionary>
 
                 <!-- TEMA CLARO (SOFT SLATE / GRIS TÉCNICO ERGONÓMICO) -->
@@ -56,6 +64,10 @@
                     <SolidColorBrush x:Key="ThemeCardHover" Color="#E2E8F0"/>
                     <SolidColorBrush x:Key="ThemeHeaderBackground" Color="#E5E9EE"/>
                     <SolidColorBrush x:Key="ThemeFooterBackground" Color="#E5E9EE"/>
+                    <SolidColorBrush x:Key="CardBackgroundBrush" Color="#F4F6F9"/>
+                    <SolidColorBrush x:Key="CardBorderBrush" Color="#CBD5E1"/>
+                    <SolidColorBrush x:Key="TextPrimaryBrush" Color="#0F172A"/>
+                    <SolidColorBrush x:Key="TextSecondaryBrush" Color="#475569"/>
                 </ResourceDictionary>
             </ResourceDictionary.ThemeDictionaries>
 

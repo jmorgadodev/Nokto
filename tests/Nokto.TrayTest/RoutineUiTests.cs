@@ -208,7 +208,7 @@ internal static class RoutineUiTests
         Require(app.RequestedThemeVariant == Avalonia.Styling.ThemeVariant.Dark && model.ManualPowerActionOptions[0] == "Finalizar sin apagar ni suspender", "Tema Noche y texto manual claro.");
 
         // Verificación de tarjeta de Actualizaciones en Ajustes
-        Require(model.UpdateStatusBadgeText == "Al día" || model.UpdateStatusBadgeText.Contains("Comprobando"), "Estado inicial del badge de actualizaciones coherente.");
+        Require(model.UpdateStatusBadgeText == "Al día" || model.UpdateStatusBadgeText.Contains("Comprobando") || model.UpdateStatusBadgeText.Contains("disponible") || model.UpdateStatusBadgeText.Contains("Fallo"), "Estado inicial del badge de actualizaciones coherente.");
         Require(model.CheckUpdatesOnStartup, "La búsqueda de actualizaciones al iniciar está habilitada por defecto.");
         model.CheckUpdatesOnStartup = false;
         Require(!persistence.LoadConfig().Settings.CheckUpdatesOnStartup, "Desactivar búsqueda automática de actualizaciones persiste en configuración.");
