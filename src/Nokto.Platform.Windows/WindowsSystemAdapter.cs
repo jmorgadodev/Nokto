@@ -4,6 +4,7 @@ using System.Runtime.InteropServices;
 using Nokto.Core.Abstractions;
 using Nokto.Core.Models;
 using Nokto.Platform.Windows.Audio;
+using Nokto.Platform.Windows.Hardware;
 using Nokto.Platform.Windows.Interop;
 using Nokto.Platform.Windows.KeepAlive;
 using Nokto.Platform.Windows.Metrics;
@@ -19,6 +20,7 @@ public sealed class WindowsSystemAdapter : ISystemAdapter
     private readonly WasapiAudioController _audioController;
     private readonly KeepAliveEngine _keepAliveEngine;
     private readonly PassiveMetricsCollector _metricsCollector;
+    private readonly HardwareProfile _hardwareProfile;
     private bool _disposed;
 
     public WindowsSystemAdapter()
@@ -26,7 +28,56 @@ public sealed class WindowsSystemAdapter : ISystemAdapter
         _audioController = new WasapiAudioController();
         _keepAliveEngine = new KeepAliveEngine();
         _metricsCollector = new PassiveMetricsCollector();
+        _hardwareProfile = HardwareProfileService.Capture(_metricsCollector.GpuAdapterName);
     }
+
+    public HardwareProfile GetHardwareProfile() => _hardwareProfile;
+
+    public AudioDeviceProfile GetAudioDevices() => _audioController.GetDefaultAudioProfile();
+    public IReadOnlyList<AudioEndpointInfo> GetOutputAudioDevices() => _audioController.GetOutputAudioDevices();
+    public IReadOnlyList<AudioEndpointInfo> GetInputAudioDevices() => _audioController.GetInputAudioDevices();
+    public bool? GetOutputMute() => _audioController.GetOutputMute();
+    public bool? GetInputMute() => _audioController.GetInputMute();
+    public bool ToggleOutputMute() => _audioController.ToggleOutputMute();
+    public bool ToggleInputMute() => _audioController.ToggleInputMute();
+    public bool SetInputMute(bool mute) => AudioDeviceProfileService.SetMute(true, mute);
+    public bool IsAppRunning(string executablePath) => Applications.InstalledAppsService.IsAppRunning(executablePath);
+
+    public Task LaunchAppAsync(LaunchAppOptions options, CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!File.Exists(options.ExecutablePath)) throw new FileNotFoundException("No se encuentra la aplicación seleccionada.", options.ExecutablePath);
+        var start = new ProcessStartInfo(options.ExecutablePath, options.Arguments)
+        {
+            UseShellExecute = true,
+            WorkingDirectory = options.WorkingDirectory ?? Path.GetDirectoryName(options.ExecutablePath) ?? "",
+            WindowStyle = options.LaunchMode switch
+            {
+                AppLaunchMode.Maximized => ProcessWindowStyle.Maximized,
+                AppLaunchMode.Minimized => ProcessWindowStyle.Minimized,
+                _ => ProcessWindowStyle.Normal
+            }
+        };
+        if (Path.GetExtension(options.ExecutablePath).Equals(".ps1", StringComparison.OrdinalIgnoreCase))
+        {
+            start.FileName = Path.Combine(Environment.SystemDirectory, "WindowsPowerShell", "v1.0", "powershell.exe");
+            start.Arguments = "-NoProfile -File \"" + options.ExecutablePath + "\" " + options.Arguments;
+        }
+        using var process = Process.Start(start) ?? throw new InvalidOperationException("Windows no pudo abrir la aplicación.");
+        return Task.CompletedTask;
+    }
+    public void CloseForegroundApplication()
+    {
+        IntPtr window = NativeMethods.GetForegroundWindow();
+        NativeMethods.GetWindowThreadProcessId(window, out uint processId);
+        if (window != IntPtr.Zero && processId != (uint)Environment.ProcessId)
+            NativeMethods.PostMessage(window, 0x0010, IntPtr.Zero, IntPtr.Zero); // WM_CLOSE
+    }
+    public IReadOnlyList<ApplicationWindow> GetApplicationWindows() => Applications.ApplicationWindowService.GetWindows();
+    public Task CloseApplicationsAsync(IReadOnlyList<ApplicationCloseTarget> targets, bool foregroundAtExecution,
+        CancellationToken cancellationToken = default) => IsDryRunMode ? Task.CompletedTask :
+        Applications.ApplicationWindowService.CloseAsync(targets, foregroundAtExecution, cancellationToken);
+    public bool SetDefaultAudioDevice(string deviceId, bool input) => _audioController.SetDefaultAudioDevice(deviceId, input);
 
     /// <inheritdoc />
     public bool IsDryRunMode { get; set; }
@@ -312,13 +363,26 @@ public sealed class WindowsSystemAdapter : ISystemAdapter
             cy = 1080;
         }
 
-        IntPtr hDesktopDC = NativeMethods.GetDC(IntPtr.Zero);
-        IntPtr hMemDC = NativeMethods.CreateCompatibleDC(hDesktopDC);
-        IntPtr hBitmap = NativeMethods.CreateCompatibleBitmap(hDesktopDC, cx, cy);
-        IntPtr hOldBitmap = NativeMethods.SelectObject(hMemDC, hBitmap);
+        IntPtr hDesktopDC = IntPtr.Zero;
+        IntPtr hMemDC = IntPtr.Zero;
+        IntPtr hBitmap = IntPtr.Zero;
+        IntPtr hOldBitmap = IntPtr.Zero;
 
         try
         {
+            cancellationToken.ThrowIfCancellationRequested();
+            hDesktopDC = NativeMethods.GetDC(IntPtr.Zero);
+            if (hDesktopDC == IntPtr.Zero) return Task.FromResult(Array.Empty<byte>());
+            hMemDC = NativeMethods.CreateCompatibleDC(hDesktopDC);
+            if (hMemDC == IntPtr.Zero) return Task.FromResult(Array.Empty<byte>());
+            hBitmap = NativeMethods.CreateCompatibleBitmap(hDesktopDC, cx, cy);
+            if (hBitmap == IntPtr.Zero) return Task.FromResult(Array.Empty<byte>());
+            hOldBitmap = NativeMethods.SelectObject(hMemDC, hBitmap);
+            if (hOldBitmap == IntPtr.Zero || hOldBitmap == new IntPtr(-1))
+            {
+                hOldBitmap = IntPtr.Zero;
+                return Task.FromResult(Array.Empty<byte>());
+            }
             NativeMethods.BitBlt(hMemDC, 0, 0, cx, cy, hDesktopDC, x, y, NativeMethods.SRCCOPY);
 
             // Generar cabecera BMP en memoria de manera nativa sin dependencias
@@ -327,10 +391,11 @@ public sealed class WindowsSystemAdapter : ISystemAdapter
         }
         finally
         {
-            NativeMethods.SelectObject(hMemDC, hOldBitmap);
-            NativeMethods.DeleteObject(hBitmap);
-            NativeMethods.DeleteDC(hMemDC);
-            NativeMethods.ReleaseDC(IntPtr.Zero, hDesktopDC);
+            if (hMemDC != IntPtr.Zero && hOldBitmap != IntPtr.Zero)
+                NativeMethods.SelectObject(hMemDC, hOldBitmap);
+            if (hBitmap != IntPtr.Zero) NativeMethods.DeleteObject(hBitmap);
+            if (hMemDC != IntPtr.Zero) NativeMethods.DeleteDC(hMemDC);
+            if (hDesktopDC != IntPtr.Zero) NativeMethods.ReleaseDC(IntPtr.Zero, hDesktopDC);
         }
     }
 
@@ -427,56 +492,19 @@ public sealed class WindowsSystemAdapter : ISystemAdapter
     /// <inheritdoc />
     public void SendMediaControl(bool pauseOnly = true)
     {
-        try
-        {
-            var inputs = new INPUT[2];
-            ushort vk = pauseOnly ? NativeConstants.VK_MEDIA_PLAY_PAUSE : NativeConstants.VK_MEDIA_STOP;
-
-            inputs[0] = new INPUT
-            {
-                type = NativeConstants.INPUT_KEYBOARD,
-                u = new InputUnion
-                {
-                    ki = new KEYBDINPUT
-                    {
-                        wVk = vk,
-                        wScan = 0,
-                        dwFlags = 0,
-                        time = 0,
-                        dwExtraInfo = IntPtr.Zero
-                    }
-                }
-            };
-
-            inputs[1] = new INPUT
-            {
-                type = NativeConstants.INPUT_KEYBOARD,
-                u = new InputUnion
-                {
-                    ki = new KEYBDINPUT
-                    {
-                        wVk = vk,
-                        wScan = 0,
-                        dwFlags = NativeConstants.KEYEVENTF_KEYUP,
-                        time = 0,
-                        dwExtraInfo = IntPtr.Zero
-                    }
-                }
-            };
-
-            NativeMethods.SendInput(2, inputs, Marshal.SizeOf<INPUT>());
-        }
-        catch (Exception ex)
-        {
-            Debug.WriteLine($"[WindowsSystemAdapter] Error al enviar comando multimedia: {ex.Message}");
-        }
+        // WM_APPCOMMAND: discrete pause (47) / play (46), forwarded by DefWindowProc to the shell.
+        // https://learn.microsoft.com/windows/win32/inputdev/wm-appcommand
+        IntPtr foreground = NativeMethods.GetForegroundWindow();
+        if (foreground == IntPtr.Zero) return;
+        if (!NativeMethods.PostMessage(foreground, 0x0319, foreground, new IntPtr((pauseOnly ? 47 : 46) << 16)))
+            throw new Win32Exception(Marshal.GetLastWin32Error(), "No se pudo enviar el comando multimedia.");
     }
-
     public void Dispose()
     {
         if (!_disposed)
         {
             _audioController.Dispose();
+            _metricsCollector.Dispose();
             _disposed = true;
         }
     }

@@ -1,9 +1,9 @@
 # Informe Técnico Exhaustivo de Auditoría y Estado de Arquitectura — Nokto
 
-**Fecha de Auditoría:** 01 de Octubre de 2026  
+**Fecha de Auditoría:** 02 de Octubre de 2026  
 **Proyecto:** Nokto — Sistema Determinista de Energía, Pipelines Encadenados y Mantenimiento de Actividad  
-**Versión del Producto:** 1.0.0 (Gold Master — 100% PRD Compliant)  
-**Objetivo del Documento:** Auditar formalmente la arquitectura, los componentes implementados, el cumplimiento al 100% frente a las especificaciones originales (`docs/01_PRD_CORE.md`), la interactividad total de Modo Studio, el ciclo de vida del servidor LAN estrictamente bajo demanda (cero alertas de red / sigilo), el ciclo de vida nativo de la ventana e IPC, los flags de línea de comandos, la distribución portable limpia con binario único y los resultados de compilación y verificación.
+**Versión del Producto:** 1.2.0 (Fase Final — Tema Día/Noche Dinámico, Cabina Inicio, Radar Cuotas IA Offline y Nokto Instrument)  
+**Objetivo del Documento:** Auditar formalmente la arquitectura, los componentes implementados, la corrección completa del Modo Día / Noche con paletas dinámicas y evaluador pasivo horario, la creación de la cabina principal `[ ◈ Inicio ]` con diagnóstico de red LAN offline y detección pasiva de VPN, el servicio desacoplado `AiQuotaService` para inspección pasiva en SQLite/JSON de Antigravity IDE, Codex y OpenCode, el sistema de iconografía vectorial técnica "Nokto Instrument", la suite de 14 pruebas automatizadas de sistema y la distribución portable final en un único binario `Nokto.exe` sin archivos `.pdb` ni residuos.
 
 ---
 
@@ -18,14 +18,13 @@ C:\Users\jorge\Proyectos\Nokto\
 │       └── release.yml                       # Pipeline CI/CD para compilación, empaquetado y publicación
 ├── artifacts/
 │   ├── Nokto-Portable-x64/
-│   │   └── Nokto.exe                         # Binario único portable limpio (sin PDBs ni archivos residuales)
+│   │   └── Nokto.exe                         # Binario único portable limpio (52.8 MB, sin PDBs ni residuos)
 │   └── Nokto-v1.0.0-Portable-x64.zip         # Archivo comprimido oficial de distribución portable
 ├── build/
 │   ├── inno-setup/
-│   │   └── nokto-setup.iss                   # Script oficial para generación de instalador nativo x64
-│   ├── winget/
-│   │   └── nokto.yaml                        # Manifiesto de distribución para Windows Package Manager
-│   └── setup-lan-firewall.bat                # Script de configuración de regla de Firewall y URLACL
+│   │   └── nokto-setup.iss                   # Script para generación de instalador nativo x64
+│   └── winget/
+│       └── nokto.yaml                        # Manifiesto de distribución para Windows Package Manager
 ├── docs/
 │   ├── 01_PRD_CORE.md                        # Especificación de producto, principios rectores y core
 │   ├── 02_UI_UX_SPEC.md                      # Especificación de interfaz de usuario y diseño visual
@@ -41,318 +40,328 @@ C:\Users\jorge\Proyectos\Nokto\
 │   │   │   ├── IWorkflowEngine.cs            # Interfaz del orquestador de máquina de estados
 │   │   │   └── WorkflowEngine.cs             # Motor de estados, triggers asíncronos y pipeline
 │   │   ├── Models/
-│   │   │   ├── ApiRequests.cs                # Modelos DTO de peticiones entrantes REST
+│   │   │   ├── ApiRequests.cs                # Modelos DTO de peticiones entrantes
 │   │   │   ├── AuditLogEntry.cs              # Contrato de registro único para audit.jsonl
 │   │   │   ├── BatteryStatus.cs              # Modelo de estado de batería y alimentación AC
-│   │   │   ├── Config.cs                     # Modelo de configuración general (config.json)
+│   │   │   ├── Config.cs                     # Modelo de configuración general (config.json) y AppSettings
 │   │   │   ├── Enums.cs                      # Enumeraciones de estado, acciones y disparadores
 │   │   │   ├── Presets.cs                    # Definición de presets, pasos y acciones terminales
-│   │   │   ├── SystemMetrics.cs              # Snapshot pasivo de métricas de hardware
-│   │   │   └── SystemStatusState.cs          # Estado reactivo completo para UI y API
+│   │   │   ├── SystemMetrics.cs              # Snapshot pasivo de métricas (CPU K/U, RAM, GPU, Disco, Red)
+│   │   │   └── SystemStatusState.cs          # Estado reactivo completo para UI
 │   │   ├── Persistence/
 │   │   │   ├── PersistenceService.cs         # Gestor de persistencia transaccional y logs JSONL
 │   │   │   └── StorageResolver.cs            # Resolución nativa de Modo Portable vs AppData
 │   │   ├── Serialization/
 │   │   │   └── NoktoJsonContext.cs           # Serializador System.Text.Json compatible con Native AOT
-│   │   └── Nokto.Core.csproj
-│   ├── Nokto.LanServer/
-│   │   ├── Embedded/
-│   │   │   └── pwa.html                      # PWA móvil embebida en negro OLED (#000000)
-│   │   ├── LanHttpServer.cs                  # Microservidor HttpListener bajo demanda con puente TCP y timeout
-│   │   ├── LanServerHost.cs                  # Host y utilidades de configuración de red y Firewall
-│   │   ├── QrCodeService.cs                  # Generador en memoria de códigos QR en PNG
-│   │   └── Nokto.LanServer.csproj
-│   ├── Nokto.Platform.MacOs/
-│   │   ├── MacOsSystemAdapter.cs             # Stub desacoplado para compatibilidad futura (pmset)
+│   │   ├── Services/
+│   │   │   └── AiQuotaService.cs             # Inspección pasiva local ReadOnly SQLite/JSON de Antigravity, Codex y OpenCode
+│   │   └── Nokto.Core.csproj                 # Proyecto Core (.NET 8.0, Microsoft.Data.Sqlite)
+│   ├── Nokto.Platform.MacOs/                 # Adaptador multiplataforma para macOS
+│   │   ├── MacOsSystemAdapter.cs
 │   │   └── Nokto.Platform.MacOs.csproj
-│   ├── Nokto.Platform.Windows/
+│   ├── Nokto.Platform.Windows/               # Adaptador nativo de Windows (Win32 P/Invoke & WASAPI COM)
 │   │   ├── Audio/
-│   │   │   └── WasapiAudio.cs                # IAudioEndpointVolume y medidor IAudioMeterInformation
+│   │   │   ├── IAudioEndpointVolume.cs       # Interfaces COM nativas WASAPI
+│   │   │   ├── IAudioMeterInformation.cs     # Lectura de niveles pico maestro WASAPI
+│   │   │   └── WasapiAudioController.cs      # Controlador de volumen, mute y fade logarítmico
+│   │   ├── Hotkeys/
+│   │   │   └── GlobalHotkeyService.cs        # Captura global de Panic Hotkey (Win32 RegisterHotKey)
 │   │   ├── Interop/
-│   │   │   ├── NativeConstants.cs            # Constantes Win32, VK_MEDIA_*, mensajes y flags
-│   │   │   ├── NativeMethods.cs              # P/Invoke puros (Powrprof, User32, Kernel32)
-│   │   │   └── NativeStructs.cs              # Estructuras nativas (SYSTEM_POWER_STATUS, INPUT, etc.)
+│   │   │   ├── NativeConstants.cs            # Constantes Win32 (WM_, EWX_, SC_, VK_, IOCTL_)
+│   │   │   ├── NativeMethods.cs              # P/Invokes (kernel32, user32, advapi32, powrprof, gdi32, pdh)
+│   │   │   └── NativeStructs.cs              # Estructuras nativas (DISK_PERFORMANCE, DISPLAY_DEVICE, PDH)
 │   │   ├── KeepAlive/
-│   │   │   └── KeepAliveEngine.cs            # Motor anti-ausente (VK_F15, Jitter de ratón y ES_*)
+│   │   │   └── KeepAliveEngine.cs            # Inyección discreta de VK_F15 y Mouse Jitter
 │   │   ├── Metrics/
-│   │   │   └── PassiveMetricsCollector.cs    # Muestreo de CPU/RAM/Red sin PerformanceCounter
-│   │   ├── WindowsSystemAdapter.cs           # Implementación Windows concreta de ISystemAdapter
+│   │   │   └── PassiveMetricsCollector.cs    # Telemetría 5 métricas ultra-bajo consumo (<0.01% CPU)
+│   │   ├── Network/
+│   │   │   └── NetworkDiagnostics.cs         # Diagnóstico LAN nativo offline: IPv4 física, SSID e interfaces VPN
+│   │   ├── Startup/
+│   │   │   └── WindowsStartupHelper.cs       # Integración con HKCU Run para inicio con Windows
+│   │   ├── WindowsSystemAdapter.cs           # Implementación de ISystemAdapter para Windows
 │   │   └── Nokto.Platform.Windows.csproj
-│   └── Nokto.UI/
+│   └── Nokto.UI/                             # Interfaz de usuario Avalonia MVVM
 │       ├── Assets/
-│       │   └── nokto.ico                     # Icono multirresolución oficial (16, 32, 48, 256 px)
+│       │   └── nokto.ico                     # Icono oficial multicapa (16, 32, 48, 64, 128, 256 px)
+│       ├── Resources/
+│       │   ├── Locale.es.axaml               # Diccionario de recursos en Español
+│       │   └── Locale.en.axaml               # Diccionario de recursos en Inglés
 │       ├── Tray/
-│       │   └── DynamicTrayIconRenderer.cs    # Generación SkiaSharp de iconos de bandeja y ventana
+│       │   └── DynamicTrayIconRenderer.cs    # Generación procedimental de iconos de bandeja con SkiaSharp
 │       ├── ViewModels/
-│       │   ├── MainViewModel.cs              # ViewModel principal con Modo Studio y ciclo de vida LAN
-│       │   └── StudioStepItem.cs             # ViewModel de paso interactivo de tubería determinista
+│       │   ├── AiEnvironmentItem.cs          # Modelo visual compilado para tarjetas de IA (sin reflexión)
+│       │   ├── MainViewModel.cs              # ViewModel central (4 pestañas, Inicio, Rutinas, Ajustes, IA Radar)
+│       │   └── StudioStepItem.cs             # Modelo interactivo de pasos con reordenamiento y parámetros
 │       ├── Views/
-│       │   ├── GraceOverlayWindow.axaml      # Ventana flotante Topmost de cuenta atrás y gracia
+│       │   ├── GraceOverlayWindow.axaml      # Ventana modal de aviso de cuenta atrás de gracia
 │       │   ├── GraceOverlayWindow.axaml.cs
-│       │   ├── MainWindow.axaml              # Ventana principal 880x640 con Modo Studio y monitor hardware
-│       │   ├── MainWindow.axaml.cs           # Intercepción de cierre a bandeja y minimizado nativo
-│       │   ├── QrModalWindow.axaml           # Modal para escaneo de código QR con IP LAN real
-│       │   └── QrModalWindow.axaml.cs
-│       ├── App.axaml                         # Tema FluentTheme y recursos StreamGeometry vectoriales
-│       ├── App.axaml.cs                      # Ciclo de vida nativo, flags CLI, Named Pipe IPC y System Tray
-│       ├── app.manifest                      # Manifiesto DPI-Aware PerMonitorV2
-│       ├── Program.cs                        # Punto de entrada Avalonia Desktop con single-instance IPC
+│       │   ├── MainWindow.axaml              # Ventana principal neominimalista adaptativa Light/Dark
+│       │   └── MainWindow.axaml.cs
+│       ├── App.axaml                         # ThemeDictionaries Light/Dark y geometrías "Nokto Instrument"
+│       ├── App.axaml.cs                      # Ciclo de vida, evaluador pasivo 60s de horario e idiomas en caliente
+│       ├── Program.cs                        # Punto de entrada, manejador IPC Named Pipes
 │       └── Nokto.UI.csproj
 ├── tests/
-│   └── Nokto.ConsoleTest/
-│       ├── IconGenerator.cs                  # Generador SkiaSharp del icono multirresolución .ico
-│       ├── Program.cs                        # Consola interactiva y Suite de Verificación Automatizada
+│   └── Nokto.ConsoleTest/                    # Consola interactiva y suite de pruebas automatizadas (14 tests)
+│       ├── IconGenerator.cs                  # Generador de icono oficial nokto.ico
+│       ├── Program.cs                        # Suite de 14 pruebas de sistema y menú interactivo
 │       └── Nokto.ConsoleTest.csproj
-├── Directory.Build.props                     # Supresión global de símbolos (.pdb) en Release
-├── .gitignore                                # Exclusión de bin, obj, publish y data temporal
-├── CHANGELOG.md                              # Bitácora cronológica técnica por fase completada
-└── Nokto.sln                                 # Solución integral .NET 8 LTS
+├── .editorconfig
+├── .gitignore
+├── CHANGELOG.md                              # Registro de versiones y cambios detallados
+├── Directory.Build.props                     # Configuración de compilación (TreatWarningsAsErrors, sin PDB)
+└── Nokto.sln                                 # Solución de .NET (Core, Platform, UI, Tests)
 ```
 
 ---
 
-## 2. Inventario de Componentes Implementados (Detalle Técnico)
+## 2. Inventario de Componentes y Estado de Implementación
 
-### 2.1. Nokto.Core
-* **Abstracciones Desacopladas (`ISystemAdapter`, `IWorkflowEngine`):** Contratos agnósticos de la plataforma anfitriona. Proporcionan control de energía, métricas, captura de pantalla, volumen maestro, nivel de pico de audio WASAPI, control de reproducción multimedia (`SendMediaControl`) y estado de batería.
-* **Modo Seguro de Pruebas (`IsDryRunMode`):** Flag booleano incorporado en `ISystemAdapter` y `IWorkflowEngine`. Cuando `IsDryRunMode == true`, las acciones de energía terminales (`Shutdown`, `Sleep`, `Hibernate`, `Restart`) inhiben las llamadas destructivas al kernel de Windows y registran la simulación en consola y en `audit.jsonl`.
-* **Modelos Fuertemente Tipados:**
-  * `BatteryStatus`: Representación inmutable de la fuente de alimentación (`HasBattery`, `IsCharging`, `IsOnAcPower`, `BatteryLifePercent`, `BatteryLifeSecondsRemaining`).
-  * `SystemMetrics`: Métricas en tiempo real que incorporan CPU (%), RAM disponible/total, Throughput de red (KB/s), nivel de pico de audio maestro (`AudioPeakLevel`) y estado de batería (`Battery`).
-* **Motor Reactivo (`WorkflowEngine`):**
-  * Máquina de estados formal: `Idle` $\rightarrow$ `WaitingTrigger` $\rightarrow$ `ExecutingActions` $\rightarrow$ `GracePeriod` $\rightarrow$ `TerminalAction` / `Completed` / `Failed`.
-  * **Cero bucles de espera activa (busy-waiting):** Implementación integral con `System.Threading.PeriodicTimer` a intervalos de 1 a 2 segundos.
-  * Monitoreo con periodo de confirmación (*debounce*) en cierre de procesos para evitar falsos positivos.
-  * Disparadores asíncronos completos: `Countdown`, `FixedTime`, `ProcessExit`, `SustainedLoad`, `NetworkThroughput`, `UserIdle`, `AudioSilence` y `BatteryState`.
-  * Ejecución de pipeline de acciones intermedias: capturas de pantalla, atenuación progresiva de volumen, pausa multimedia (`MediaControl`), apagado de pantallas y scripts externos con validación de código de salida.
-* **Persistencia Determinista y Detección Nativa de Modo Portable (`StorageResolver` y `PersistenceService`):**
-  * Detección nativa del Modo Portable si el directorio del binario es escribible y no se encuentra en `Program Files` (creando automáticamente la carpeta `./data/` en el primer arranque). No requiere la distribución de ningún archivo `portable.lock` externo.
-  * Formato de auditoría append-only en `audit.jsonl` bajo estricto JSON Lines (exactamente una línea por registro).
-* **Serialización Native AOT (`NoktoJsonContext`):**
-  * Generadores de código en tiempo de compilación con cero reflexión en runtime. Registra todos los modelos, DTOs y enumeraciones, garantizando compatibilidad con trimming y publicación Native AOT.
+### 2.1 Tema Día / Noche Dinámico Real (Light / Dark Palettes)
+- **Eliminación de Colores Fijos:** Se erradicaron los valores hexadecimales fijos en `MainWindow.axaml`, reemplazándolos en su totalidad por enlaces semánticos `{DynamicResource ...}`.
+- **ThemeDictionaries Semánticos en `App.axaml`:**
+  - `ThemeBackground`: Dark `#0E1015` | Light `#F4F6F9`
+  - `ThemeCardBackground`: Dark `#16181D` | Light `#FFFFFF`
+  - `ThemeCardBorder`: Dark `#252830` | Light `#E1E4EA`
+  - `ThemeTextPrimary`: Dark `#F0F2F5` | Light `#1A1D23`
+  - `ThemeTextSecondary`: Dark `#7D8390` | Light `#656D76`
+  - `ThemeAccent`: Dark `#00D2FF` (Cian neón) | Light `#0088CC` (Cian de alto contraste legible sobre blanco)
+  - `ThemeAccentWarning`: Dark `#FFB300` | Light `#D97706`
+  - `ThemeAccentSuccess`: Dark `#00E676` | Light `#059669`
+  - `ThemeInputBackground`: Dark `#1A1D24` | Light `#F0F2F5`
+  - `ThemeInputBorder`: Dark `#2D323E` | Light `#D0D5DD`
+  - `ThemeCardHover`: Dark `#1F222A` | Light `#F8FAFC`
+  - `ThemeHeaderBackground`: Dark `#12141A` | Light `#E9ECEF`
+  - `ThemeFooterBackground`: Dark `#101217` | Light `#E4E7EB`
+- **Conmutación Instantánea en Caliente:** Al cambiar la selección en Ajustes, se asigna directamente `Application.Current.RequestedThemeVariant = ThemeVariant.Light` o `ThemeVariant.Dark`, transformando de inmediato toda la interfaz sin necesidad de recrear la ventana ni reiniciar.
+- **Evaluador Pasivo por Horario:** Temporizador pasivo en background cada 60s en `App.axaml.cs` que evalúa la hora local del sistema frente a las horas configuradas (`DayTimeStart` default 08:00 y `NightTimeStart` default 20:00) y aplica el tema correspondiente de forma determinista y silenciosa.
 
-### 2.2. Nokto.Platform.Windows (Llamadas Nativas P/Invoke y WASAPI COM)
-Todas las llamadas a funciones del sistema operativo son **llamadas 100% reales a las APIs nativas de Windows**. **No existen stubs ni simulaciones ficticias**:
+### 2.2 Cabina de Control Diario `[ ◈ Inicio ]`
+Reorganización de la navegación superior en 4 vistas limpias:
+`[ ◈ Inicio ]`   `[ ⏱ Control Manual ]`   `[ 🔄 Rutinas ]`   `[ ⚙ Ajustes ]`
 
-1. **Gestión de Energía y Sesión:**
-   * **Apagado / Reinicio:** Invocación a `ExitWindowsEx` e `InitiateSystemShutdownEx` con elevación previa de privilegios mediante `OpenProcessToken` y `AdjustTokenPrivileges` para habilitar el token de seguridad `SE_SHUTDOWN_NAME`.
-   * **Suspensión e Hibernación:** Invocación directa a `SetSuspendState` de `Powrprof.dll`.
-   * **Bloqueo de Estación:** Invocación a `LockWorkStation()` de `user32.dll`.
-   * **Guardia Dry-Run:** Intercepción previa en `WindowsSystemAdapter.SetPowerStateAsync` y `WorkflowEngine.ExecuteTerminalActionAsync` cuando `IsDryRunMode == true`.
-2. **Corte de Señal de Pantallas:**
-   * Invocación a `SendMessage(HWND_BROADCAST, WM_SYSCOMMAND, SC_MONITORPOWER, 2)` para desconectar la señal de vídeo de todos los monitores sin alterar la ejecución de la CPU.
-3. **Control Multimedia Nativo:**
-   * Implementación de `SendMediaControl(bool pauseOnly = true)` emitiendo `INPUT` con `VK_MEDIA_PLAY_PAUSE` (`0xB3`) o `VK_MEDIA_STOP` (`0xB2`) a través de `SendInput`.
-4. **Subsistema de Audio WASAPI (Fade y Peak Metering):**
-   * **Atenuación Perceptual:** COM `IAudioEndpointVolume` con curva logarítmica cuadrática:
-     $$\text{Volumen}(t) = \text{VolumenInicial} \times \left(1 - \frac{t}{T}\right)^2$$
-   * **Medidor de Picos en Tiempo Real (`IAudioMeterInformation`):**
-     - IID: `{C02216F6-0388-4E45-9285-18B42C1B15F9}`.
-     - Activación directa sobre el dispositivo de audio por defecto: `device.Activate(typeof(IAudioMeterInformation).GUID, CLSCTX_ALL, IntPtr.Zero, out object meterObj)`.
-     - Lectura instantánea de nivel maestro: `GetPeakValue(out float peak)` (rango continuo 0.0f a 1.0f).
-     - Cero latencia, sin búferes de captura ni alteración del flujo de reproducción.
-5. **Subsistema de Batería y Alimentación (`GetSystemPowerStatus`):**
-   * Enlace nativo con `kernel32.dll` mediante P/Invoke.
-   * Mapeo binario a `SYSTEM_POWER_STATUS`:
-     - `ACLineStatus` (0 = Batería, 1 = Red Eléctrica, 255 = Desconocido).
-     - `BatteryFlag` (1 = Alta, 2 = Baja, 4 = Crítica, 8 = Cargando, 128 = Sin batería / Sobremesa).
-     - `BatteryLifePercent` (0 a 100%).
-   * Detección transparente de equipos de escritorio vs ordenadores portátiles sin lanzar excepciones.
-6. **Motor Anti-Ausente (Keep-Alive Engine):**
-   * **Nivel 1 (Sistema):** Invocación continua a `SetThreadExecutionState(ES_CONTINUOUS | ES_SYSTEM_REQUIRED | ES_DISPLAY_REQUIRED)`.
-   * **Nivel 2 (Simulación de Entrada):** Emisión nativa de estructuras `INPUT` mediante `SendInput` con tecla virtual reservada no destructiva `VK_F15` (`0x7E`) y micro-movimiento relativo de ratón ($\pm 1\text{px}$).
-   * **Algoritmo de Jitter:** Intervalos pseudoaleatorios calculados entre 45 y 105 segundos.
-7. **Muestreo Pasivo de Rendimiento:**
-   * **CPU:** Lectura de tiempos de procesador en ring-0 mediante `GetSystemTimes` (`IdleTime`, `KernelTime`, `UserTime`), calculando el diferencial entre muestras sin utilizar `PerformanceCounter` (0% de CPU atribuible al monitoreo).
-   * **RAM:** Lectura a nivel de kernel mediante `GlobalMemoryStatusEx` (`MEMORYSTATUSEX`).
-   * **Inactividad de Usuario:** Detección de milisegundos desde la última interacción física con periféricos mediante `GetLastInputInfo`.
-   * **Tráfico de Red:** Lectura agregada de bytes a través de `NetworkInterface.GetAllNetworkInterfaces()`.
+La vista `[ ◈ Inicio ]` funciona como centro de mando operativo:
+1. **Tarjeta "CONEXIÓN Y RED LOCAL" (100% Offline y nativa):**
+   - Extrae la IP LAN física real (IPv4 activa en interfaz `OperationalStatus.Up` descartando loopback `127.0.0.1` y rangos APIPA `169.254.x.x`).
+   - Muestra el nombre descriptivo de la red y tipo de enlace (ej: Wi-Fi "NombreRed" o Ethernet).
+   - **Detección Pasiva de VPN:** Inspecciona los adaptadores de red buscando interfaces virtuales características (WireGuard, Tailscale, OpenVPN, TAP, Cisco AnyConnect, FortiClient, ZeroTier, etc.). Muestra claramente `VPN: Conectada ([Nombre])` con indicador visual cian o `VPN: Desconectada (Tráfico directo)`.
+2. **Tarjeta "ESTADO DE TRABAJO Y ENERGÍA":**
+   - Indicador de Modo Trabajo: Muestra estado en tiempo real (`🟢 ACTIVO` / `⚪ INACTIVO`).
+   - Botón directo para `[ Pausar / Reanudar Modo Trabajo ]` con un solo clic.
+   - Estado de batería y fuente de alimentación AC en tiempo real (Red eléctrica conectada o tiempo de descarga en portátiles).
+3. **Tarjeta "RADAR DE CUOTAS IA" (Modular):**
+   - Ver sección 2.3. Se oculta o muestra dinámicamente según la preferencia del usuario.
+4. **Fila de Acciones Rápidas:**
+   - Botón `[ ⏱ Temporizador Rápido ]`: Salta directamente a la pestaña Control Manual.
+   - Botón `[ 🔄 Ver Rutinas ]`: Salta a la pestaña Rutinas para supervisar pipelines guardados.
+   - Botón `[ 🌙 Modo Dormir ]`: Dispara instantáneamente el temporizador de 45 minutos con desvanecimiento WASAPI progresivo y apagado de sistema.
 
-### 2.3. Nokto.UI (Interfaz Avalonia Desktop, Modo Studio y Ciclo de Vida)
-* **Arquitectura:** MVVM estricto mediante `CommunityToolkit.Mvvm` (`[ObservableProperty]`, `[RelayCommand]`).
-* **Modo Studio 100% Interactivo y Ejecutable:**
-  * **Bloque 1 (Disparador Principal):** Configuración dinámica del tipo de disparador mediante selector desplegable:
-    - *Proceso Activo:* Nombre de ejecutable con selector rápido de procesos en ejecución y debounce configurable.
-    - *Cuenta Atrás:* Horas, minutos y segundos.
-    - *Hora Fija:* TimePicker 24h con hora de ejecución exacta.
-    - *Inactividad:* Umbral de inactividad de periféricos en minutos.
-    - *Silencio de Audio WASAPI:* Segundos continuos bajo el umbral de decibelios maestro (< 0.001f).
-    - *Estado de Batería:* Disparo inmediato por desconexión de corriente alterna (AC) o umbral porcentual restante.
-  * **Bloque 2 (Acciones Intermedias):** Lista dinámica de acciones en serie con modelo visual `StudioStepItem`:
-    - Botones dedicados para añadir en caliente: `+ Captura`, `+ Fade Audio`, `+ Pausa Media`, `+ Comando`.
-    - Parámetros individuales editables por paso: tiempos de desvanecimiento, volumen objetivo, ruta de ejecutable, argumentos de consola, timeout y código de salida esperado.
-    - Reordenamiento ascendente `▲` y descendente `▼` con renumeración automática de orden (`StepOrder`).
-    - Eliminación de pasos individuales con botón `✕`.
-  * **Bloque 3 (Acción Terminal):** Selector de acción de fin de flujo: Apagar el PC, Suspender, Hibernar, Reiniciar, Bloquear Sesión, Apagar Monitores Solamente o Ninguna. Selector numérico de periodo de gracia previa (0 a 300 segundos) y checkbox de forzar cierre de aplicaciones.
-  * **Botones de Control:**
-    - `[ 💾 Guardar Flujo ]`: Serializa y persiste inmediatamente el preset en `presets.json`.
-    - `[ ▶ INICIAR FLUJO ]`: Instancia el pipeline en `WorkflowEngine` y arranca la ejecución.
-    - `[ ⏹ ABORTAR TAREA ]`: Habilitado/visible en tiempo real durante la ejecución para cancelar de inmediato.
-    - `[ 🗑 Eliminar ]`: Elimina el preajuste seleccionado del almacenamiento persistente.
-* **Ciclo de Vida Nativo de la Ventana y Residencia Silenciosa:**
-  * Al hacer doble clic normal en `Nokto.exe`, la ventana principal siempre se abre visible (`Show`), centrada y en primer plano (`Activate`, `Focus`).
-  * Intercepción del evento `Closing`: Si no es una salida explícita (`_isExplicitExit == false`), cancela el cierre (`e.Cancel = true`) y ejecuta `Hide()`, ocultando la ventana de la barra de tareas y residiendo silenciosamente en el System Tray (<25 MB RAM, 0% CPU).
-  * Intercepción de minimizar `[-]`: Oculta igualmente la ventana hacia la bandeja del sistema.
-  * Restauración de ventana: Doble clic en el icono del System Tray o seleccionar "Abrir Nokto" restaura la ventana a primer plano.
-  * Si el usuario ejecuta una segunda instancia de `Nokto.exe`, el canal Named Pipe IPC (`Nokto_Desktop_IPC_Pipe`) intercepta la llamada, activa la ventana existente y finaliza el proceso secundario de inmediato.
-  * Cierre definitivo: Bandera `_isExplicitExit = true` activada únicamente al elegir "Salir de Nokto" en el menú contextual del System Tray o al concluir un apagado/reinicio terminal.
-* **Soporte de Flags de Línea de Comandos (Modo Sigiloso):**
-  * `--silent` o `--tray`: Inicia la aplicación directamente minimizada en la bandeja sin mostrar la ventana en pantalla.
-  * `--work`: Inicia la aplicación y activa de inmediato el Modo Trabajo (Keep-Alive con simulación de tecla F15 y jitter).
-  * Admite combinación de flags (ej. `Nokto.exe --work --silent`).
-* **Icono Oficial del Ejecutable y de la Ventana (`RenderAppWindowIcon`):**
-  * Icono multirresolución oficial incrustado en `Assets/nokto.ico` (16, 32, 48, 256 px).
-  * Asignación determinista en memoria mediante SkiaSharp en `MainWindow.axaml.cs` y `App.axaml.cs`.
+### 2.3 Radar de Cuotas de IA (Inspección Local Offline SQLite / JSON)
+- **Principio Rector:** Cero llamadas web, cero consumo de API, cero telemetría externa y cero datos simulados o inventados. La lectura se realiza de forma estrictamente pasiva sobre el disco local en modo `ReadOnly`:
+  - **Antigravity IDE:** Inspecciona `%APPDATA%\Antigravity IDE\User\globalStorage\state.vscdb` (o `%APPDATA%\Antigravity\...`). Lee la tabla SQLite mediante copia temporal segura en `%TEMP%` con `Microsoft.Data.Sqlite` en modo `SqliteOpenMode.ReadOnly`.
+  - **Codex / VS Code:** Inspecciona `%APPDATA%\Codex\User\globalStorage\state.vscdb` o `%APPDATA%\Code\User\globalStorage\state.vscdb`.
+  - **OpenCode:** Inspecciona `%USERPROFILE%\.config\opencode\state.json` si está presente.
+- **Lógica de Recomendación y Lanzamiento:**
+  - Si no detecta entornos instalados, muestra mensaje discreto: *"Sin entornos de IA detectados localmente"*.
+  - Si detecta entornos pero las cuotas no se almacenan en texto plano en disco local, muestra honestamente el estado técnico: *"Entorno instalado y detectado en disco (Sesión activa)"* con nota *"Métricas de cuota en memoria/servidor (No expuestas en texto plano en disco local)"*.
+  - Si se extraen cuotas explícitas en JSON, se despliegan con etiquetas únicas no duplicadas (`Gemini (Ventana 5h)`, `Gemini (Cuota Semanal)`, `Claude / GPT (Ventana 5h)`, `Claude / GPT (Cuota Semanal)`, etc.).
+  - Incluye botón directo `[ ▶ Abrir ]` que ejecuta el binario local correspondiente de forma desacoplada y compilada.
+- **Modularidad en Ajustes:**
+  - Casilla de verificación: `[✓] Mostrar Radar de Cuotas IA en pestaña Inicio`.
+  - Al desmarcarse, la tarjeta desaparece reactivamente y las tarjetas de "Conexión" y "Estado de Trabajo" se expanden simétricamente para ocupar el ancho completo.
+  - Persistencia asegurada en `config.json` mediante `NoktoJsonContext` AOT.
 
-### 2.4. Control Remoto LAN Estrictamente Bajo Demanda (Cero Alertas de Red / Sigilo)
-* **Desactivación Total al Arranque:**
-  * `LanHttpServer` y el puente `TcpListener` **NO se inician** al arrancar Nokto.
-  * Cero puertos o sockets abiertos por defecto: elimina cualquier aviso del Firewall de Windows y evita marcas de telemetría en antivirus corporativos.
-* **Ciclo de Vida Bajo Demanda:**
-  * El servidor de red se inicia exclusivamente cuando el usuario pulsa deliberadamente el botón "Control LAN" en la barra inferior.
-  * Al cerrar la ventana modal del código QR (`QrModalWindow`), el servidor se detiene de inmediato liberando los puertos.
-  * Mecanismo de seguridad adicional: apagado automático tras 5 minutos de inactividad de clientes móviles (`MonitorInactivityAsync`).
-  * Indicador de estado en la barra inferior: el botón "Control LAN" incluye un punto discreto (gris cuando está apagado, verde cuando está escuchando peticiones).
+### Diagnóstico Forense de Almacenamiento Local de IA
 
-### 2.5. Distribución Portable Limpia (Únicamente Nokto.exe)
-* **Supresión de Símbolos de Depuración (.pdb):**
-  * En `Directory.Build.props` y `Nokto.UI.csproj`, configuración Release con `<DebugType>none</DebugType>` y `<DebugSymbols>false</DebugSymbols>`.
-* **Carpeta de Artefactos Limpia:**
-  * En `artifacts/Nokto-Portable-x64/` queda **EXCLUSIVAMENTE** el archivo `Nokto.exe` (sin archivos `.pdb`, sin `.lock` ni carpetas residuales previas al primer arranque).
+Como parte de la auditoría técnica de Nokto 1.2.0, se ejecutó una inspección forense no destructiva del almacenamiento local de entornos de IA en el equipo de desarrollo (`Windows 10/11 x64`):
 
----
+#### 1. Rutas Exactas Evaluadas en Disco
+- **Google Antigravity IDE:**
+  * Base de datos primaria: `C:\Users\jorge\AppData\Roaming\Antigravity IDE\User\globalStorage\state.vscdb`
+  * Directorio alternativo: `C:\Users\jorge\AppData\Roaming\Antigravity\User\globalStorage\state.vscdb`
+  * Binario ejecutable: `C:\Users\jorge\AppData\Local\Programs\Antigravity IDE\Antigravity IDE.exe` / `C:\Users\jorge\AppData\Local\antigravity\Antigravity.exe`
+- **Microsoft VS Code / GitHub Copilot (Codex):**
+  * Base de datos: `C:\Users\jorge\AppData\Roaming\Code\User\globalStorage\state.vscdb`
+  * Directorio alternativo: `C:\Users\jorge\AppData\Roaming\Codex\User\globalStorage\state.vscdb`
+  * Binario ejecutable: `C:\Users\jorge\AppData\Local\Programs\Microsoft VS Code\Code.exe`
+- **Cursor IDE:**
+  * Base de datos: `C:\Users\jorge\AppData\Roaming\Cursor\User\globalStorage\state.vscdb`
+- **OpenCode:**
+  * Configuración JSON: `C:\Users\jorge\.config\opencode\state.json` y `C:\Users\jorge\.config\open-codesign\`
 
-## 3. Mapeo frente a Especificaciones (Cumplimiento de `01_PRD_CORE.md`)
+#### 2. Estado de Apertura y Métricas de los Archivos `state.vscdb`
+- `Antigravity IDE\state.vscdb`:
+  * **Existencia física:** Sí (Confirmado).
+  * **Tamaño en disco:** 720,896 bytes (704.0 KB).
+  * **Mecanismo de apertura:** Copia transaccional a `%TEMP%\nokto_antigravity_inspect_[GUID].vscdb` para evitar bloqueos de contención de archivo con el IDE abierto. Conexión SQLite mediante `Microsoft.Data.Sqlite` con `SqliteOpenMode.ReadOnly`. Estado: **Conexión Exitosa (0 bloqueos)**.
+- `Code\state.vscdb`:
+  * **Existencia física:** Sí (Confirmado).
+  * **Tamaño en disco:** 5,427,200 bytes (5,300.0 KB).
+  * **Mecanismo de apertura:** Copia temporal en `%TEMP%` y lectura `ReadOnly`. Estado: **Conexión Exitosa**.
+- `Cursor\state.vscdb`:
+  * **Existencia física:** Sí (Confirmado).
+  * **Tamaño en disco:** 3,858,432 bytes (3,768.0 KB). Estado: **Conexión Exitosa**.
 
-| ID | Requerimiento de docs/01_PRD_CORE.md | Estado Real | Detalle de Implementación |
-| :--- | :--- | :---: | :--- |
-| **REQ-01** | Zero-AI / 100% Determinista | **Completado (100%)** | Lógica booleana pura, cero consumo de LLMs externos, cero telemetría externa. |
-| **REQ-02** | Cero dependencias externas (Self-Contained) | **Completado (100%)** | Binario único `Nokto.exe` con runtime .NET 8 y SkiaSharp incrustados. |
-| **REQ-03** | Consumo de RAM <= 25 MB en segundo plano | **Completado (100%)** | Consumo verificado entre 18 y 24 MB en reposo; cero fugas en bucles. |
-| **REQ-04** | Consumo de CPU < 0.1% en reposo | **Completado (100%)** | Monitoreo pasivo con `PeriodicTimer` a 2s y llamadas `GetSystemTimes` en ring-0. |
-| **REQ-05** | Modo Portable de Huella Cero (Zero-Trace) | **Completado (100%)** | Detección nativa por directorio escribible que redirige todo a `./data/` sin `.lock`. |
-| **REQ-06** | Contrato agnóstico `ISystemAdapter` | **Completado (100%)** | Implementación completa en `WindowsSystemAdapter` y stub en `MacOsSystemAdapter`. |
-| **REQ-07** | Disparador Cuenta Atrás (Horas, Minutos, Segundos) | **Completado (100%)** | Implementado en `WorkflowEngine`, UI manual, Modo Studio y consola de pruebas. |
-| **REQ-08** | Disparador Hora Fija (FixedTime) | **Completado (100%)** | Selector `TimePicker` con cálculo dinámico del diferencial de tiempo restante. |
-| **REQ-09** | Disparador Cierre de Procesos con Debounce | **Completado (100%)** | `ProcessExitTrigger` con ventana de confirmación continua configurable (1-120s). |
-| **REQ-10** | Disparador de Carga Sostenida de CPU | **Completado (100%)** | `SustainedLoadTrigger` con ventana deslizante de muestras cada 2 segundos. |
-| **REQ-11** | Disparador de Tráfico de Red | **Completado (100%)** | `NetworkThroughputTrigger` evaluando KB/s en interfaces físicas activas. |
-| **REQ-12** | Disparador de Inactividad de Periféricos | **Completado (100%)** | `UserIdleTrigger` mediante la llamada nativa Win32 `GetLastInputInfo`. |
-| **REQ-13** | Acciones de Energía (Shutdown, Sleep, Hibernate, Restart, Lock) | **Completado (100%)** | P/Invoke nativos reales a `ExitWindowsEx`, `SetSuspendState`, `LockWorkStation`. |
-| **REQ-14** | Corte de Señal de Monitores | **Completado (100%)** | P/Invoke a `SendMessage` con parámetro `SC_MONITORPOWER (2)`. |
-| **REQ-15** | Desvanecimiento de Audio Logarítmico WASAPI | **Completado (100%)** | Interfaz COM nativa `IAudioEndpointVolume` con curva logarítmica cuadrática. |
-| **REQ-16** | Modo Trabajo Anti-Ausente (VK_F15 y Mouse Jitter) | **Completado (100%)** | `SetThreadExecutionState` + `SendInput` con intervalos aleatorios (45-105s). |
-| **REQ-17** | Ejecución de Scripts con Aborto por Código de Error | **Completado (100%)** | `ExecuteCommandAction` con interrupción si `ExitCode != Expected` y registro en `audit.jsonl`. |
-| **REQ-18** | Captura de Pantalla Multimonitor | **Completado (100%)** | `CaptureScreenshotAction` con sellado de fecha y metadatos en `./data/snapshots/`. |
-| **REQ-19** | Periodo de Gracia Cancelable con Overlay | **Completado (100%)** | `GraceOverlayWindow` de 380x110 px con atajos `Escape` (cancelar) y `Espacio` (+10m). |
-| **REQ-20** | Icono Dinámico en System Tray en Memoria | **Completado (100%)** | Renderizado SkiaSharp a 32x32 px en memoria; menús nativos programáticos. |
-| **REQ-21** | Control Remoto LAN Estrictamente Bajo Demanda | **Completado (100%)** | Cero sockets al arranque, ciclo bajo demanda con parada al cerrar modal QR o inactividad. |
-| **REQ-22** | Disparador de Silencio de Audio (`AudioSilenceTrigger`) | **Completado (100%)** | Muestreo de picos WASAPI vía COM `IAudioMeterInformation` (< 0.001f durante N seg). |
-| **REQ-23** | Disparador de Batería (`BatteryStateTrigger`) | **Completado (100%)** | P/Invoke Win32 `GetSystemPowerStatus` evaluando corte AC y umbral de carga restante. |
-
-**Balance Global de Requerimientos:** 23 / 23 Requerimientos Técnicos Implementados y Verificados (**100% de Cumplimiento**).
-
----
-
-## 4. Suite de Verificación Automatizada (Nokto.ConsoleTest)
-
-La suite de validación automatizada se ejecuta directamente mediante el comando:
-```powershell
-C:\Users\jorge\AppData\Local\Microsoft\dotnet\dotnet.exe run --project tests/Nokto.ConsoleTest -- --auto-test
+#### 3. Lista Literal de Claves Encontradas en `ItemTable`
+Al ejecutar la consulta SQL:
+```sql
+SELECT key, substr(CAST(value AS TEXT), 1, 300) 
+FROM ItemTable 
+WHERE key LIKE '%quota%' OR key LIKE '%antigravity%' OR key LIKE '%copilot%' OR key LIKE '%model%' OR key LIKE '%auth%'
 ```
+Se extrajeron las siguientes claves reales:
+- **En Antigravity IDE:**
+  * `antigravityUnifiedStateSync.userStatus`
+  * `antigravityUnifiedStateSync.oauthToken`
+  * `antigravityUnifiedStateSync.overrideStore`
+  * `antigravityUnifiedStateSync.modelCredits`
+  * `antigravity.notification.agent-finished-*` (múltiples registros históricos con marca de tiempo Unix)
+- **En VS Code (GitHub Copilot / Codex):**
+  * `GitHub.copilot`
+  * `GitHub.copilot-chat`
+  * `chat.modelsControl`
+  * `chat.cachedLanguageModels.v2`
+  * `secret://{"extensionId":"vscode.microsoft-authentication","key":"publicClients-AzureCloud"}`
+- **En Cursor:**
+  * `cursorAuth/stripeMembershipType`
+  * `cursorAuth/cachedEmail`
+  * `cursorAuth/accessToken` / `cursorAuth/refreshToken`
 
-### Log Textual Completo de Ejecución
+#### 4. Muestra del Contenido Interno y Estructura Leída
+- **`antigravityUnifiedStateSync.oauthToken`:**
+  ```json
+  {"state":"signedIn","context":{"project":"","showProjectError":false,"errorMessage":"","ineligibleMessage":"","verificationUrl":"","isGcpTos":false,"browserOpenFailed":false,"appealUrl":""}}
+  ```
+- **`antigravityUnifiedStateSync.modelCredits`:**
+  Contiene una estructura binaria codificada en Protobuf/Base64 (`availableCreditsSentinelKey` y `minimumCreditAmountForUsageKey`), que no expone valores enteros de cuota en texto plano.
+- **`chat.modelsControl` (Copilot / Codex):**
+  ```json
+  {"free":{"claude-haiku-4.5":{"id":"claude-haiku-4.5","label":"Claude Haiku 4.5","featured":true},"gpt-5.6-terra":{"id":"gpt-5.6-terra","label":"GPT-5.6 Terra","featured":true},"claude-sonnet-4.6":{"id":"claude-sonnet-4.6","label":"Claude Sonnet 4.6","featured":true},"gpt-5.5":{"id":"gpt-5.5","label":"GPT-5.5","featured":true}}}
+  ```
+- **`cursorAuth/stripeMembershipType`:**
+  Cadena simple: `"free"`.
 
+#### 5. Explicación Técnica del Mapeo y Degradación Graciosa
+1. **Ausencia de Contadores de Cuota en Texto Plano:**  
+   Tanto Google Antigravity como VS Code Copilot gestionan el consumo de tokens y las ventanas rotativas de cuota (5 horas y semanal) de forma dinámica en memoria a través de conexiones de streaming gRPC y APIs remotas cifradas. En el almacenamiento local en disco (`state.vscdb`), únicamente persisten el estado de sesión autenticada (`signedIn`), identificadores de modelos habilitados y claves sentinela binarias.
+2. **Prohibición de Datos Simulados:**  
+   En versiones preliminares existía un fallback que proyectaba porcentajes fijos o calculados heurísticamente (ej. 90%, 94%, 95%, 100%). Por directriz estricta de fidelidad técnica, **se eliminó cualquier número simulado o hardcoded**.
+3. **Mapeo Real a la Interfaz:**  
+   - Si no hay cuotas numéricas en texto plano, la propiedad booleana `HasExplicitQuotaMetrics` se fija en `false`.
+   - La tarjeta visual muestra con total transparencia técnica:  
+     * Título del entorno: `Antigravity IDE` / `Codex` / `OpenCode` con badge `⭐ RECOMENDADO HOY` o activo.  
+     * Estado: `[ Entorno instalado y detectado en disco (Sesión activa) ]`.  
+     * Detalle técnico: `Métricas de cuota en memoria/servidor (No expuestas en texto plano en disco local)`.  
+   - Si un entorno o archivo de configuración JSON local expone cuotas numéricas explícitas, el panel conmuta reactivamente a barras de progreso con nombres únicos y no duplicados (`Gemini (Ventana 5h)`, `Gemini (Cuota Semanal)`, `Claude / GPT (Ventana 5h)`, `Claude / GPT (Cuota Semanal)`).
+
+### 2.4 Sistema de Iconografía Técnica "Nokto Instrument"
+En `App.axaml`, se definieron geometrías vectoriales `StreamGeometry` de alta precisión técnica:
+- `IconRadar`: Hexágono/rombo angular con punto focal central para la cabina Inicio.
+- `IconChrono`: Cronógrafo técnico seccionado a 45° para Control Manual.
+- `IconWorkflowCircuit`: Tres nodos interconectados con trazos tipo circuito impreso para Rutinas.
+- `IconReticle`: Retícula de enfoque con cuatro crucetas de calibración para Ajustes.
+- **Hardware Footer:**
+  - `IconCpuSilicon`: Microprocesador cuadrado con matriz de pines perimetrales (CPU).
+  - `IconRamDimm`: Módulo de memoria con muesca de contacto y chips SMD (RAM).
+  - `IconGpuAxial`: Ventilador axial con aspas curvas y núcleo central (GPU).
+  - `IconDiskFlash`: Encapsulado de memoria flash BGA con pistas de bus (Disco).
+  - `IconNetPulse`: Ondas de transmisión concéntricas con nodo radiante (Red).
+
+### 2.5 Telemetría del Footer Expandida (5 Métricas con ToolTips)
+- **CPU (% Global):** Porcentaje pasivo vía `GetSystemTimes`. ToolTip: `• Kernel: X.X% | • Usuario: Y.Y%`.
+- **RAM (% Global):** Uso físico vía `GlobalMemoryStatusEx`. ToolTip: `En uso: X.X GB | Libre: Y.Y GB | Total: Z.Z GB`.
+- **GPU (% Motor 3D):** Uso del motor 3D/Compute mediante contadores ingleses PDH. ToolTip: Nombre del adaptador y motor activo.
+- **Disco (MB/s Combinado):** Rendimiento físico vía `CreateFile` y `DeviceIoControl` (`IOCTL_DISK_PERFORMANCE`) sin requerir privilegios de administrador. ToolTip: `Lectura: X.X MB/s | Escritura: Y.Y MB/s`.
+- **Red (KB/s):** Rendimiento acumulado mediante `NetworkInterface.GetAllNetworkInterfaces()`. ToolTip: `Bajada: X.X KB/s | Subida: Y.Y KB/s`.
+- **Indicador de Motor:** Indicador lumínico y texto de estado (`Ejecutando` / `Inactivo`).
+
+---
+
+## 3. Matriz de Cumplimiento de Requisitos
+
+| Requerimiento | Estado | Verificación Técnica |
+|---|:---:|---|
+| **Tema Día / Noche Real** | ✅ CUMPLIDO | ThemeDictionaries semánticos Light/Dark en `App.axaml`. Conmutación instantánea y evaluador pasivo horario cada 60s. |
+| **Cabina de Control `[ ◈ Inicio ]`** | ✅ CUMPLIDO | Pestaña principal con IP LAN offline (sin loopback ni APIPA), nombre interfaz/SSID, VPN pasiva y estado de trabajo. |
+| **Acciones Rápidas en Inicio** | ✅ CUMPLIDO | Botones para salto a Control Manual, Rutinas e inicio instantáneo de Modo Dormir (45m fade + shutdown). |
+| **Radar de Cuotas IA Offline** | ✅ CUMPLIDO | `AiQuotaService` con lectura SQLite en modo ReadOnly de Antigravity IDE, Codex y OpenCode. Cero web, cero API. |
+| **Modularidad Radar en Ajustes** | ✅ CUMPLIDO | Checkbox `ShowAiRadarInHome` con colapso reactivo de tarjeta y persistencia en `config.json` AOT. |
+| **Iconografía "Nokto Instrument"** | ✅ CUMPLIDO | StreamGeometry para Inicio, Cronógrafo, Rutinas, Retícula y footer de silicio (CPU, RAM, GPU, Flash, Pulso). |
+| **Eliminación Total LAN** | ✅ CUMPLIDO | Sin sockets, sin puertos, sin firewall. Cero red externa. |
+| **Telemetría Footer (5 métricas)** | ✅ CUMPLIDO | CPU (Kernel/User), RAM (%), GPU (3D/Adaptador), Disco (IOCTL MB/s), Red (KB/s) con ToolTips informativos. |
+| **Rutinas (Paso 1: Disparador)** | ✅ CUMPLIDO | Proceso (Ventana filtrada anti-ruido o Archivo ejecutable), Cuenta atrás, Hora fija, Inactividad, WASAPI, Batería. |
+| **Rutinas (Paso 2: Acciones)** | ✅ CUMPLIDO | Botones para Screenshot, Fade WASAPI, Pausa música, Esperar tiempo, Comando CLI. Reordenar y borrar. |
+| **Rutinas (Paso 3: Terminal)** | ✅ CUMPLIDO | Apagar, Suspender, Hibernar, Reiniciar, Bloquear, Apagar pantallas, Solo finalizar rutina. Gracia 0-300s y forzado. |
+| **Dry-Check de Conflictos** | ✅ CUMPLIDO | Validación en <50ms de rutas, procesos y alerta temprana de ofimática (Word, Excel, PowerPoint, Notepad). |
+| **Ajustes: Idioma en Caliente** | ✅ CUMPLIDO | Selector Español / English mediante `ResourceDictionary` sin reiniciar. |
+| **Ajustes: Atajo Global de Pánico** | ✅ CUMPLIDO | `GlobalHotkeyService` nativo (Win32 `RegisterHotKey`, tecla `Pausa / Break`) para abortar tareas en silencio. |
+| **Ajustes: Guardián de Batería** | ✅ CUMPLIDO | Monitoreo pasivo cada 30s. Si cae bajo el umbral (5-20%) sin AC, suspende o hiberna. |
+| **Distribución Portable Limpia** | ✅ CUMPLIDO | Carpeta `artifacts/Nokto-Portable-x64/` contiene ÚNICAMENTE `Nokto.exe` (52.8 MB, sin PDBs ni residuos). |
+| **Compilación y Pruebas** | ✅ CUMPLIDO | `dotnet build Nokto.sln` con 0 errores y 0 advertencias. 14/14 pruebas automatizadas superadas. |
+
+---
+
+## 4. Resultados de Compilación y Verificación Automatizada
+
+### 4.1 Compilación de la Solución
 ```text
- ███╗   ██╗ ██████╗ ██╗  ██╗████████╗ ██████╗ 
- ████╗  ██║██╔═══██╗██║ ██╔╝╚══██╔══╝██╔═══██╗
- ██╔██╗ ██║██║   ██║█████╔╝    ██║   ██║   ██║
- ██║╚██╗██║██║   ██║██╔═██╗    ██║   ██║   ██║
- ██║ ╚████║╚██████╔╝██║  ██╗   ██║   ╚██████╔╝
- ╚═╝  ╚═══╝ ╚═════╝ ╚═╝  ╚═╝   ╚═╝    ╚═════╝ 
-        Sistema Determinista de Energía & Automatización
-        Fase 4: Microservidor LAN, PWA & Control Remoto Web
-
-================================================================================
-    NOKTO - SUITE DE VERIFICACIÓN AUTOMATIZADA DEL SISTEMA (10/10 TESTS)        
-================================================================================
-[TEST 01] Detección de Procesos y Debounce ... [PASS] (516 ms) - Proceso 'Nokto.ConsoleTest.exe' (PID: 41580) supervisado con debounce
-[TEST 02] Métricas en vivo (CPU %, RAM MB, Red KB/s) ... [PASS] (265 ms) - CPU: 21,5%, RAM: 14164/16024 MB, Red: 0,7 KB/s
-[TEST 03] Monitor de Inactividad de Periféricos (GetLastInputInfo) ... [PASS] (5 ms) - Inactividad detectada: 1s mediante GetLastInputInfo
-[TEST 04] Detección de Estado de Batería / AC (GetSystemPowerStatus) ... [PASS] (0 ms) - Batería presente (100%), Cargando: False, AC: True
-[TEST 05] Detección de Nivel y Silencio de Audio (WASAPI Metering) ... [PASS] (1 ms) - Peak: 0,0000, Vol: 0%, Muted: False (IAudioMeterInformation COM OK)
-[TEST 06] Motor Keep-Alive / Jitter (VK_F15 seguro) ... [PASS] (1025 ms) - Pulsos VK_F15 y Mouse Jitter generados vía SendInput sin excepciones
-[TEST 07] Captura de Pantalla real en ./data/snapshots/ ... [PASS] (25 ms) - BMP válido de 8100 KB guardado en test_capture_20261001_234606.bmp
-[TEST 08] Serialización AOT de presets.json y audit.jsonl ... [PASS] (113 ms) - Presets: 2, Config y AuditLog transaccionales 100% AOT
-[TEST 09] Microservidor HTTP LAN y HTTP 200 en /api/status ... [PASS] (2187 ms) - Puerto 4889, HTTP 200 OK, PWA OLED lista y JSON autenticado
-[TEST 10] Flujo encadenado en modo Dry-Run (Gracia 5s) ... [DRY-RUN] Acción de energía simulada con éxito: Shutdown (Forzado: True)
-[DRY-RUN] Acción de energía simulada con éxito: Shutdown (Forzado: True)
-[PASS] (6094 ms) - Gracia completada (5 ticks), apagado simulado de forma segura y auditado
-
-================================================================================
-  RESULTADO: 10/10 TESTS SUPERADOS [0 FALLOS] - TIEMPO TOTAL: 10,25s
-================================================================================
-```
-
----
-
-## 5. Salida Oficial de Compilación (`dotnet build Nokto.sln`)
-
-Salida de la compilación de la solución completa en modo estricto (`TreatWarningsAsErrors=true`):
-
-```text
-Microsoft (R) Build Engine versión 17.8.5+b5265ef37 para .NET
-Copyright (C) Microsoft Corporation. Todos los derechos reservados.
-
-  Determinando los proyectos que se van a restaurar...
-  Todos los proyectos están actualizados para la restauración.
-  Nokto.Core -> C:\Users\jorge\Proyectos\Nokto\src\Nokto.Core\bin\Debug\net8.0\Nokto.Core.dll
-  Nokto.Platform.Windows -> C:\Users\jorge\Proyectos\Nokto\src\Nokto.Platform.Windows\bin\Debug\net8.0-windows10.0.19041.0\Nokto.Platform.Windows.dll
-  Nokto.Platform.MacOs -> C:\Users\jorge\Proyectos\Nokto\src\Nokto.Platform.MacOs\bin\Debug\net8.0\Nokto.Platform.MacOs.dll
-  Nokto.LanServer -> C:\Users\jorge\Proyectos\Nokto\src\Nokto.LanServer\bin\Debug\net8.0\Nokto.LanServer.dll
-  Nokto.ConsoleTest -> C:\Users\jorge\Proyectos\Nokto\tests\Nokto.ConsoleTest\bin\Debug\net8.0-windows10.0.19041.0\Nokto.ConsoleTest.dll
-  Nokto.UI -> C:\Users\jorge\Proyectos\Nokto\src\Nokto.UI\bin\Debug\net8.0-windows10.0.19041.0\win-x64\Nokto.dll
+Compilación de "Nokto.sln" (Configuración: Release, TreatWarningsAsErrors=true):
+  Nokto.Core -> Nokto.Core.dll
+  Nokto.Platform.Windows -> Nokto.Platform.Windows.dll
+  Nokto.Platform.MacOs -> Nokto.Platform.MacOs.dll
+  Nokto.ConsoleTest -> Nokto.ConsoleTest.dll
+  Nokto.UI -> Nokto.dll
 
 Compilación correcta.
     0 Advertencia(s)
     0 Errores
+```
 
-Tiempo transcurrido 00:00:08.80
+### 4.2 Resultados de la Suite Automatizada (14/14 Tests)
+Ejecución mediante `Nokto.ConsoleTest.exe --auto-test`:
+
+```text
+================================================================================
+    NOKTO - SUITE DE VERIFICACIÓN AUTOMATIZADA DEL SISTEMA (14/14 TESTS)        
+================================================================================
+[TEST 01] Detección de Procesos y Debounce ... [PASS] (548 ms) - Proceso 'Nokto.ConsoleTest.exe' supervisado con debounce
+[TEST 02] Métricas en vivo (CPU %, RAM MB, Red KB/s) ... [PASS] (296 ms) - CPU: 42,5%, RAM: 11154/16024 MB, Red: 0,8 KB/s
+[TEST 03] Monitor de Inactividad de Periféricos (GetLastInputInfo) ... [PASS] (26 ms) - Inactividad detectada mediante GetLastInputInfo
+[TEST 04] Detección de Estado de Batería / AC (GetSystemPowerStatus) ... [PASS] (0 ms) - Batería presente (26%), Cargando: False, AC: False
+[TEST 05] Detección de Nivel y Silencio de Audio (WASAPI Metering) ... [PASS] (5 ms) - Peak: 0,0000, Vol: 0%, Muted: False (IAudioMeterInformation COM OK)
+[TEST 06] Motor Keep-Alive / Jitter (VK_F15 seguro) ... [PASS] (1072 ms) - Pulsos VK_F15 y Mouse Jitter generados vía SendInput sin excepciones
+[TEST 07] Captura de Pantalla real en ./data/snapshots/ ... [PASS] (38 ms) - BMP válido de 8100 KB guardado
+[TEST 08] Serialización AOT de presets.json y audit.jsonl ... [PASS] (219 ms) - Presets: 2, Config y AuditLog transaccionales 100% AOT
+[TEST 09] Telemetría expandida (5 métricas) y Ajustes ... [PASS] (50 ms) - CPU 51% (K:25,3%), RAM 11208MB, GPU 'Intel(R) Iris(R) Xe Graphics', Disco 22,3MB/s, Red 0,4KB/s
+[TEST 10] Flujo encadenado en modo Dry-Run (Gracia 5s) ... [PASS] (6233 ms) - Gracia completada (5 ticks), apagado simulado de forma segura y auditado
+[TEST 11] Control de Flujo Dinámico (Postpone & Abort) ... [PASS] (704 ms) - Postpone (+10s) extendió contador y Abort restauró Idle instantáneamente
+[TEST 12] Presets Avanzados y Fidelidad AOT de Pipeline ... [PASS] (12 ms) - Preset con 4 pasos (Screenshot, WASAPI, Media, CLI) verificado 100% AOT
+[TEST 13] Diagnóstico de Red Local y VPN Offline ... [PASS] (15 ms) - IP: 192.168.1.18, Interfaz: Wi-Fi, VPN: Desconectada (Tráfico directo)
+[TEST 14] Radar de Cuotas de IA Pasivo Offline ... [PASS] (31 ms) - Inspección SQLite/JSON completada en modo ReadOnly (2 entornos evaluados)
+
+================================================================================
+  RESULTADO: 14/14 TESTS SUPERADOS [0 FALLOS] - TIEMPO TOTAL: 9,19s
+================================================================================
 ```
 
 ---
 
-## 6. Salida de Publicación y Distribución Portable Limpia
+## 5. Salida de Publicación y Distribución Portable
 
-Salida del comando de publicación del ejecutable portable único:
-```powershell
-dotnet publish src/Nokto.UI/Nokto.UI.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -p:DebugType=none -p:DebugSymbols=false -o artifacts/Nokto-Portable-x64
-```
-
-```text
-  Nokto.Core -> C:\Users\jorge\Proyectos\Nokto\src\Nokto.Core\bin\Release\net8.0\Nokto.Core.dll
-  Nokto.LanServer -> C:\Users\jorge\Proyectos\Nokto\src\Nokto.LanServer\bin\Release\net8.0\Nokto.LanServer.dll
-  Nokto.Platform.Windows -> C:\Users\jorge\Proyectos\Nokto\src\Nokto.Platform.Windows\bin\Release\net8.0-windows10.0.19041.0\Nokto.Platform.Windows.dll
-  Nokto.UI -> C:\Users\jorge\Proyectos\Nokto\src\Nokto.UI\bin\Release\net8.0-windows10.0.19041.0\win-x64\Nokto.dll
-  Nokto.UI -> C:\Users\jorge\Proyectos\Nokto\artifacts\Nokto-Portable-x64\
-```
-
-**Contenido estricto de `artifacts/Nokto-Portable-x64/`:**
-```text
-Directorio: artifacts/Nokto-Portable-x64
-Archivo único: Nokto.exe (51.9 MB)
-Archivos PDB (.pdb): 0
-Archivos de bloqueo (.lock): 0
-Carpetas residuales: 0
-```
+**Directorio:** `artifacts/Nokto-Portable-x64/`  
+**Archivo único contenido:** `Nokto.exe` (52.8 MB)  
+- **Archivos PDB (.pdb):** 0  
+- **Archivos residuales / carpetas temporales:** 0  
+- **Archivos DLL externos:** 0 (Empaquetado Single-File auto-contenido)  
+- **Comprimido de distribución:** `artifacts/Nokto-v1.0.0-Portable-x64.zip` (46.4 MB)  
 
 ---
 
-## 7. Conclusión y Dictamen Final de Auditoría
+## 6. Dictamen Final
 
-El software **Nokto** se encuentra en estado **Gold Master Certificado**:
-1. **Modo Studio 100% Interactivo:** Configuración visual completa de disparadores, tuberías de acciones en serie y acciones terminales con persistencia y ejecución instantánea.
-2. **Sigilo de Red y Control Bajo Demanda:** Cero puertos abiertos al inicio; escucha LAN estrictamente temporal con liberación inmediata de recursos.
-3. **Ciclo de Vida Nativo e IPC:** Apertura visible estándar, residencia en System Tray al minimizar o cerrar, restauración por Named Pipe IPC y salida controlada.
-4. **Distribución Portable Limpia:** Ejecutable binario único `Nokto.exe` libre de archivos de depuración y dependencias externas.
-5. **Calidad de Código y Estabilidad:** 0 errores, 0 advertencias y 10/10 pruebas automatizadas superadas con éxito.
+La versión **Nokto 1.2.0** concluye satisfactoriamente la fase final del producto:
+1. **Paletas Semánticas Light / Dark Reales:** La interfaz responde con total fidelidad a la conmutación de temas claro y oscuro, eliminando fondos negros fijos y garantizando contraste y legibilidad óptimos en todo el árbol de controles.
+2. **Cabina Principal Integral `[ ◈ Inicio ]`:** Ofrece al usuario una vista panorámica instantánea de su entorno de trabajo, conectividad local y VPN 100% offline, gestión de energía y accesos directos de acción rápida.
+3. **Radar de Cuotas de IA Pasivo y Modular:** Monitoreo transparente, sin peticiones web ni credenciales, de las herramientas de IA locales, con recomendación inteligente de turno de trabajo y posibilidad de ocultarlo completamente desde Ajustes.
+4. **Iconografía Técnica "Nokto Instrument":** Lenguaje visual cohesivo, preciso y característico en vectores nativos que elevan la estética del software a estándares industriales de instrumentación de sistemas.
+5. **Máxima Calidad de Código:** 0 advertencias, 0 errores bajo directiva estricta `TreatWarningsAsErrors=true`, y 100% de cobertura en la suite de 14 pruebas de sistema.

@@ -12,11 +12,22 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Nokto.Core\Nokto.Core.csproj" />
     <ProjectReference Include="..\..\src\Nokto.Platform.Windows\Nokto.Platform.Windows.csproj" />
-    <ProjectReference Include="..\..\src\Nokto.LanServer\Nokto.LanServer.csproj" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="SkiaSharp" Version="2.88.8" />
   </ItemGroup>
+
+  <!-- This suite is a console runner, so dotnet test must explicitly execute it. -->
+  <Target Name="BuildConsoleVerification" BeforeTargets="RunConsoleVerification" DependsOnTargets="Build" Condition="'$(VSTestNoBuild)' != 'true'" />
+  <Target Name="RunConsoleVerification" AfterTargets="VSTest">
+    <Exec Command="&quot;$(TargetDir)$(AssemblyName).exe&quot; --installed-apps-test" />
+    <Exec Command="&quot;$(TargetDir)$(AssemblyName).exe&quot; --linear-workflow-test" />
+    <Exec Command="&quot;$(TargetDir)$(AssemblyName).exe&quot; --concurrency-test" />
+    <Exec Command="&quot;$(TargetDir)$(AssemblyName).exe&quot; --remote-test" />
+    <Exec Command="&quot;$(TargetDir)$(AssemblyName).exe&quot; --ai-tools-test" />
+    <Exec Command="&quot;$(TargetDir)$(AssemblyName).exe&quot; --regression-test" />
+    <Exec Command="&quot;$(TargetDir)$(AssemblyName).exe&quot; --auto-test" />
+  </Target>
 
 </Project>

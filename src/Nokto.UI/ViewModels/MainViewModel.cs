@@ -1,16 +1,29 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.IO;
 using System.Text.Json;
+using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Nokto.Core.Abstractions;
 using Nokto.Core.Engine;
 using Nokto.Core.Models;
 using Nokto.Core.Persistence;
-using Nokto.LanServer;
+using Nokto.Core.Services;
+using Nokto.Platform.Windows.Hotkeys;
+using Nokto.Platform.Windows.Network;
+using Nokto.Platform.Windows.Startup;
 using Nokto.UI.Tray;
 
 namespace Nokto.UI.ViewModels;
+
+public class EvidenceItem
+{
+    public string FilePath { get; set; } = "";
+    public string FileName { get; set; } = "";
+    public string TimestampText { get; set; } = "";
+    public string FileSizeText { get; set; } = "";
+}
 
 public partial class MainViewModel : ObservableObject, IDisposable
 {
@@ -18,98 +31,311 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private readonly IWorkflowEngine _workflowEngine;
     private readonly PersistenceService _persistence;
     private readonly CancellationTokenSource _disposalCts = new();
+    private readonly AppConfig _config;
+    private GlobalHotkeyService? _panicHotkeyService;
+    private readonly IAiQuotaService _aiQuotaService;
 
-    private LanHttpServer? _lanServer;
     private CancellationTokenSource? _keepAliveCts;
     private PeriodicTimer? _metricsTimer;
     private float _pulsePhase = 0f;
+    private int _batteryGuardianTicks = 0;
+    private int _scheduleThemeTicks = 0;
+    private int _networkTickCounter = 0;
+    private int _quotaRefreshInProgress;
 
     public event Action<TrayIconVisualState, double, int, float>? RequestTrayIconUpdate;
     public event Action<bool, int>? RequestGraceOverlay;
-    public event Action? RequestQrModal;
+    public event Func<Task<string?>>? RequestFilePicker;
+
+    // ========================================================
+    // --- NAVEGACIÓN PRINCIPAL (4 PESTAÑAS) -------------------
+    // ========================================================
+    [ObservableProperty]
+    private int _selectedTabIndex = 0; // 0=Inicio, 1=Control Manual, 2=Rutinas, 3=Ajustes
+
+    [RelayCommand]
+    public void NavigateToTab(object? param)
+    {
+        if (param is int idx)
+        {
+            SelectedTabIndex = idx;
+        }
+        else if (param is string s && int.TryParse(s, out int parsed))
+        {
+            SelectedTabIndex = parsed;
+        }
+    }
+
+    // ========================================================
+    // --- PESTAÑA PRINCIPAL [ ◈ INICIO ] ----------------------
+    // ========================================================
+    [ObservableProperty]
+    private string _localIpAddress = "127.0.0.1";
+
+    [ObservableProperty]
+    private string _networkNameAndType = "Consultando red local...";
+
+    [ObservableProperty]
+    private string _connectedNetworkName = "Consultando red local...";
+
+    [ObservableProperty]
+    private string _networkInterfaceText = "Consultando interfaz...";
+
+    [ObservableProperty]
+    private bool _isVpnConnected;
+
+    [ObservableProperty]
+    private string _vpnStatusText = "VPN: Desconectada (Tráfico directo)";
+
+    [ObservableProperty]
+    private string _batteryAndPowerText = "Red Eléctrica (AC) - 100%";
+
+    [ObservableProperty]
+    private string _powerSourceStatusText = "Red Eléctrica (AC) - 100%";
+
+    [ObservableProperty]
+    private string _workModeStatusText = "Inactivo";
+
+    public bool IsWorkModeRunning => WorkModeStatusText != "Inactivo";
+    partial void OnWorkModeStatusTextChanged(string value)
+    {
+        OnPropertyChanged(nameof(IsWorkModeRunning));
+        OnPropertyChanged(nameof(WorkModeStatusBadge));
+    }
+
+    public string WorkModeStatusBadge => WorkModeStatusText;
+    public string WorkModeDetailText => IsWorkModeRunning ? "Mantener equipo activo para evitar el estado Ausente." : "El equipo puede entrar en reposo automáticamente.";
+
+    public HomeDashboardSettings Config { get; }
+    public bool MinimizeToTrayOnClose
+    {
+        get => _config.Settings.MinimizeToTrayOnClose;
+        set
+        {
+            if (_config.Settings.MinimizeToTrayOnClose == value) return;
+            _config.Settings.MinimizeToTrayOnClose = value;
+            _persistence.SaveConfig(_config);
+            OnPropertyChanged();
+        }
+    }
+    public HardwareProfile HardwareProfile { get; }
+    public int NetworkCardColumnSpan => Config.ShowEnergyStatusCardInHome ? 1 : 2;
+    public int EnergyCardColumn => Config.ShowNetworkCardInHome ? 1 : 0;
+    public int EnergyCardColumnSpan => Config.ShowNetworkCardInHome ? 1 : 2;
+    public int HardwareCardColumnSpan => Config.ShowAiRadarCardInHome ? 1 : 2;
+    public int AiRadarCardColumn => Config.ShowHardwareCardInHome ? 1 : 0;
+    public int AiRadarCardColumnSpan => Config.ShowHardwareCardInHome ? 1 : 2;
+
+    [ObservableProperty]
+    private AudioDeviceProfile _audioDevices = new();
+    [ObservableProperty]
+    private string _uptimeText = FormatUptime();
+
+    private static string FormatUptime()
+    {
+        var uptime = TimeSpan.FromMilliseconds(Environment.TickCount64);
+        return $"{uptime.Days}d {uptime.Hours:00}:{uptime.Minutes:00}:{uptime.Seconds:00}";
+    }
+
+    private void RefreshHomeStatusCardLayout()
+    {
+        OnPropertyChanged(nameof(NetworkCardColumnSpan));
+        OnPropertyChanged(nameof(EnergyCardColumn));
+        OnPropertyChanged(nameof(EnergyCardColumnSpan));
+        OnPropertyChanged(nameof(HardwareCardColumnSpan));
+        OnPropertyChanged(nameof(AiRadarCardColumn));
+        OnPropertyChanged(nameof(AiRadarCardColumnSpan));
+    }
+
+    [ObservableProperty]
+    private AiQuotaSnapshot _aiQuotaSnapshot = new(false, [], null);
+
+    public ObservableCollection<AiEnvironmentItem> AiEnvironments { get; } = new();
+    public ObservableCollection<AiEnvironmentItem> DetectedAiEnvironments { get; } = new();
+    public bool HasDetectedAiEnvironments => DetectedAiEnvironments.Count > 0;
+    public bool HasVisibleAiEnvironments => AiEnvironments.Count > 0;
+    private void SetAiEnvironmentVisibility(string id, bool visible)
+    {
+        _config.Settings.HiddenAiEnvironmentIds ??= [];
+        _config.Settings.HiddenAiEnvironmentIds.RemoveAll(hidden => hidden == id);
+        if (!visible) _config.Settings.HiddenAiEnvironmentIds.Add(id);
+        _persistence.SaveConfig(_config);
+        RefreshVisibleAiEnvironments();
+    }
+    private void RefreshVisibleAiEnvironments()
+    {
+        AiEnvironments.Clear();
+        foreach (var item in DetectedAiEnvironments.Where(item => item.ShowInHome)) AiEnvironments.Add(item);
+        OnPropertyChanged(nameof(HasVisibleAiEnvironments));
+    }
+
+    private void ApplyAiEnvironmentOrder()
+    {
+        var preference = _config.Settings.AiEnvironmentOrder ?? ["codex"];
+        var ordered = DetectedAiEnvironments.OrderBy(item =>
+        {
+            int index = preference.IndexOf(item.Id);
+            return index < 0 ? int.MaxValue : index;
+        }).ToArray();
+        for (int index = 0; index < ordered.Length; index++)
+            DetectedAiEnvironments.Move(DetectedAiEnvironments.IndexOf(ordered[index]), index);
+        UpdateAiOrderPositions();
+        RefreshVisibleAiEnvironments();
+    }
+
+    private void UpdateAiOrderPositions()
+    {
+        for (int index = 0; index < DetectedAiEnvironments.Count; index++)
+            DetectedAiEnvironments[index].SetOrderPosition(index, DetectedAiEnvironments.Count);
+    }
+
+    private void MoveAiEnvironment(string id, int direction)
+    {
+        int index = DetectedAiEnvironments.ToList().FindIndex(item => item.Id == id);
+        int target = index + direction;
+        if (index < 0 || target < 0 || target >= DetectedAiEnvironments.Count) return;
+        DetectedAiEnvironments.Move(index, target);
+        // Retain preferences for tools temporarily absent from the local installation.
+        _config.Settings.AiEnvironmentOrder = DetectedAiEnvironments.Select(item => item.Id)
+            .Concat(_config.Settings.AiEnvironmentOrder ?? []).Distinct(StringComparer.Ordinal).ToList();
+        _persistence.SaveConfig(_config);
+        UpdateAiOrderPositions();
+        RefreshVisibleAiEnvironments();
+    }
+
+    [RelayCommand]
+    public void OpenAntigravity() => _aiQuotaService.LaunchEnvironment("antigravity");
+
+    [RelayCommand]
+    public void OpenCodex() => _aiQuotaService.LaunchEnvironment("codex");
+
+    [RelayCommand]
+    public void OpenOpenCode() => _aiQuotaService.LaunchEnvironment("opencode");
+
+    [RelayCommand]
+    public void OpenEnvironment(string? id)
+    {
+        if (!string.IsNullOrWhiteSpace(id))
+        {
+            _aiQuotaService.LaunchEnvironment(id);
+        }
+    }
+
+    [RelayCommand]
+    public async Task RefreshAiQuotas()
+    {
+        if (Interlocked.Exchange(ref _quotaRefreshInProgress, 1) != 0) return;
+        try
+        {
+            var snapshot = await Task.Run(_aiQuotaService.InspectLocalQuotas, _disposalCts.Token);
+            await Dispatcher.UIThread.InvokeAsync(() =>
+            {
+                if (_disposalCts.IsCancellationRequested) return;
+                AiQuotaSnapshot = snapshot;
+                DetectedAiEnvironments.Clear();
+                foreach (var env in snapshot.Environments)
+                    DetectedAiEnvironments.Add(new AiEnvironmentItem(env, id => OpenEnvironment(id),
+                        !(_config.Settings.HiddenAiEnvironmentIds?.Contains(env.Id) ?? false), SetAiEnvironmentVisibility, MoveAiEnvironment));
+                ApplyAiEnvironmentOrder();
+                OnPropertyChanged(nameof(HasDetectedAiEnvironments));
+            });
+        }
+        catch (OperationCanceledException) { }
+        finally
+        {
+            Interlocked.Exchange(ref _quotaRefreshInProgress, 0);
+        }
+    }
+
+    public void RefreshNetworkDiagnostics()
+    {
+        try
+        {
+            var netSnap = NetworkDiagnostics.GetSnapshot();
+            LocalIpAddress = netSnap.IpAddress;
+            NetworkNameAndType = netSnap.NetworkNameAndType;
+            ConnectedNetworkName = netSnap.ConnectedNetworkName;
+            NetworkInterfaceText = netSnap.InterfaceNameAndType;
+            IsVpnConnected = netSnap.IsVpnActive;
+            VpnStatusText = netSnap.VpnStatusText;
+        }
+        catch { }
+    }
+
+    public void RefreshBatteryStatus()
+    {
+        try
+        {
+            var batt = _systemAdapter.GetBatteryStatus();
+            if (batt.IsAcConnected)
+            {
+                if (batt.HasBattery && batt.BatteryLifePercent >= 0 && batt.BatteryLifePercent < 100)
+                {
+                    BatteryAndPowerText = $"Red Eléctrica (AC) - {batt.BatteryLifePercent}%";
+                }
+                else
+                {
+                    BatteryAndPowerText = "Red Eléctrica (AC) - 100%";
+                }
+            }
+            else
+            {
+                if (batt.HasBattery && batt.BatteryLifePercent >= 0)
+                {
+                    BatteryAndPowerText = $"Batería: {batt.BatteryLifePercent}% (Descargando)";
+                }
+                else
+                {
+                    BatteryAndPowerText = "Batería en uso";
+                }
+            }
+        }
+        catch
+        {
+            BatteryAndPowerText = "Red Eléctrica (AC) - 100%";
+        }
+        PowerSourceStatusText = BatteryAndPowerText;
+        OnPropertyChanged(nameof(BatteryAndPowerText));
+        OnPropertyChanged(nameof(PowerSourceStatusText));
+    }
+
+    // ========================================================
+    // --- ESTADO GLOBAL Y TELEMETRÍA DEL FOOTER (5 MÉTRICAS) --
+    // ========================================================
+    [ObservableProperty]
+    private bool _isTaskRunning;
 
     [ObservableProperty]
     private bool _isKeepAliveActive;
-
-    partial void OnIsKeepAliveActiveChanged(bool value)
-    {
-        OnPropertyChanged(nameof(StatusDotColor));
-        OnPropertyChanged(nameof(EngineStateText));
-    }
-
-    [ObservableProperty]
-    private string _lanConnectionUrl = "http://localhost:4884";
-
-    [ObservableProperty]
-    private bool _isLanServerActive;
-
-    partial void OnIsLanServerActiveChanged(bool value)
-    {
-        OnPropertyChanged(nameof(StatusLanDotColor));
-    }
-
-    public string StatusLanDotColor => IsLanServerActive ? "#00E676" : "#7D8390";
-
-    public void AttachLanServer(LanHttpServer lanServer)
-    {
-        _lanServer = lanServer;
-        _lanServer.ServerStateChanged += () =>
-        {
-            Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-            {
-                IsLanServerActive = _lanServer.IsRunning;
-            });
-        };
-    }
-
-    public void StartLanServer()
-    {
-        if (_lanServer != null && !_lanServer.IsRunning)
-        {
-            try
-            {
-                _lanServer.Start();
-                LanConnectionUrl = _lanServer.GetConnectionUrl();
-                IsLanServerActive = true;
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"[LAN] Error al iniciar servidor bajo demanda: {ex.Message}");
-            }
-        }
-        else if (_lanServer != null && _lanServer.IsRunning)
-        {
-            LanConnectionUrl = _lanServer.GetConnectionUrl();
-        }
-    }
-
-    public void StopLanServer()
-    {
-        if (_lanServer != null && _lanServer.IsRunning)
-        {
-            try
-            {
-                _lanServer.Stop();
-                IsLanServerActive = false;
-            }
-            catch (Exception ex)
-            {
-                Debug.WriteLine($"[LAN] Error al detener servidor: {ex.Message}");
-            }
-        }
-    }
-
-    [ObservableProperty]
-    private string _keepAliveButtonText = "Iniciar Modo";
-
-    [ObservableProperty]
-    private bool _isTaskRunning;
 
     partial void OnIsTaskRunningChanged(bool value)
     {
         OnPropertyChanged(nameof(StatusDotColor));
         OnPropertyChanged(nameof(EngineStateText));
+        OnPropertyChanged(nameof(ManualStartButtonText));
+        OnPropertyChanged(nameof(CanStartManualTask));
+        OnPropertyChanged(nameof(CanFinishTask));
+        StartManualTaskCommand.NotifyCanExecuteChanged();
+        FinishTaskCommand.NotifyCanExecuteChanged();
     }
+
+    public string ManualStartButtonText => IsTriggerNow ? "▶ Ejecutar ahora" : "▶ Activar tarea";
+    public bool CanStartManualTask => TryBuildManualTask(out _, out _, out _);
+    public bool CanFinishManualTask => ActiveRoutines.Any(item => item.IsManual);
+    public bool CanFinishTask => IsTaskRunning;
+
+    partial void OnIsKeepAliveActiveChanged(bool value)
+    {
+        WorkModeStatusText = value || _workflowEngine.GetActiveWorkflows().Any(info => info.KeepAliveActive) ? "Activo (Jitter F15)" : "Inactivo";
+        OnPropertyChanged(nameof(StatusDotColor));
+        OnPropertyChanged(nameof(EngineStateText));
+        OnPropertyChanged(nameof(WorkModeStatusBadge));
+        OnPropertyChanged(nameof(WorkModeStatusText));
+        OnPropertyChanged(nameof(WorkModeDetailText));
+    }
+
+    public string StatusDotColor => (IsTaskRunning || IsKeepAliveActive) ? "#00E676" : "#7D8390";
+    public string EngineStateText => (IsTaskRunning || IsKeepAliveActive) ? "Ejecutando" : "Inactivo";
 
     [ObservableProperty]
     private string _currentStatusText = "Listo";
@@ -126,56 +352,284 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private int _secondsRemaining;
 
+    // 5 Métricas compactas con ToolTips expandidos
     [ObservableProperty]
-    private string _cpuText = "0.0%";
+    private string _cpuText = "CPU: 0%";
 
     [ObservableProperty]
-    private string _ramText = "0 / 0 MB";
+    private string _cpuToolTip = "Desglose CPU:\n• Kernel: 0.0%\n• Usuario: 0.0%";
 
     [ObservableProperty]
-    private string _netText = "0.0 / 0.0 KB/s";
+    private string _ramText = "RAM: 0%";
 
     [ObservableProperty]
-    private bool _isStudioMode;
+    private string _ramToolTip = "En uso: 0.0 GB | Libre: 0.0 GB | Total: 0.0 GB";
 
     [ObservableProperty]
-    private double _windowWidth = 880;
+    private string _gpuText = "GPU: 0%";
 
     [ObservableProperty]
-    private double _windowHeight = 640;
+    private string _gpuToolTip = "Adaptador: GPU\nMotor: 3D / Compute";
 
     [ObservableProperty]
-    private string _selectedProcessName = "blender.exe";
+    private string _diskText = "Disco: -- GB / -- GB libres";
 
     [ObservableProperty]
-    private int _quickMinutesInput = 30;
+    private string _diskToolTip = "Espacio en disco del sistema";
 
+    private long? _systemDiskFreeGb;
+    public bool IsDiskSpaceLow => DiskSpaceAlert.IsLowSpace(_systemDiskFreeGb, (int)DiskAlertThresholdGb);
     [ObservableProperty]
-    private PresetDefinition? _selectedPreset;
+    private decimal _diskAlertThresholdGb = 15;
 
-    partial void OnSelectedPresetChanged(PresetDefinition? value)
+    partial void OnDiskAlertThresholdGbChanged(decimal value)
     {
-        if (value != null)
+        int threshold = (int)Math.Clamp(decimal.Truncate(value), 0, 1000000);
+        if (value != threshold) { DiskAlertThresholdGb = threshold; return; }
+        _config.Settings.DiskAlertThresholdGb = threshold;
+        _persistence.SaveConfig(_config);
+        OnPropertyChanged(nameof(IsDiskSpaceLow));
+    }
+
+    [ObservableProperty]
+    private string _netText = "Red: 0.0 KB/s";
+
+    [ObservableProperty]
+    private string _netToolTip = "Bajada: 0.0 KB/s | Subida: 0.0 KB/s";
+
+    public void RaisePropertyChanged(string propertyName) => OnPropertyChanged(propertyName);
+
+    // ========================================================
+    // --- 1. CONTROL MANUAL (ESTILO RS SOMNÍFERO) ------------
+    // ========================================================
+    public ObservableCollection<string> ManualTriggerOptions { get; } =
+    [
+        "Cuenta Atrás",
+        "Hora Fija del Día",
+        "Inactividad de Periféricos",
+        "Proceso terminado", "Silencio de audio", "Batería", "Ahora"
+    ];
+
+    [ObservableProperty]
+    private int _selectedTriggerTypeIndex = 0; // 0=Cuenta Atrás, 1=Hora Fija del Día, 2=Inactividad de Periféricos
+
+    public bool IsTriggerNow => SelectedTriggerTypeIndex == 6;
+    public bool IsTriggerCountdown => SelectedTriggerTypeIndex == 0;
+    public bool IsTriggerExactTime => SelectedTriggerTypeIndex == 1;
+    public bool IsTriggerInactivity => SelectedTriggerTypeIndex == 2;
+    public bool IsTriggerProcessExit => SelectedTriggerTypeIndex == 3;
+    public bool IsTriggerAudioSilence => SelectedTriggerTypeIndex == 4;
+    public bool IsTriggerBatteryState => SelectedTriggerTypeIndex == 5;
+
+    partial void OnSelectedTriggerTypeIndexChanged(int value)
+    {
+        OnPropertyChanged(nameof(IsTriggerCountdown));
+        OnPropertyChanged(nameof(IsTriggerExactTime));
+        OnPropertyChanged(nameof(IsTriggerInactivity));
+        OnPropertyChanged(nameof(IsTriggerProcessExit));
+        OnPropertyChanged(nameof(IsTriggerAudioSilence));
+        OnPropertyChanged(nameof(IsTriggerBatteryState));
+        OnPropertyChanged(nameof(IsTriggerNow));
+        OnPropertyChanged(nameof(IsOtherManualCondition));
+        OnPropertyChanged(nameof(ManualOtherConditionIndex));
+    }
+
+    [ObservableProperty]
+    private decimal? _countdownHours = 0;
+    partial void OnCountdownHoursChanged(decimal? value) => OnPropertyChanged(nameof(FormattedCountdownText));
+
+    [ObservableProperty]
+    private decimal? _countdownMinutes = 30;
+    partial void OnCountdownMinutesChanged(decimal? value) => OnPropertyChanged(nameof(FormattedCountdownText));
+
+    [ObservableProperty]
+    private decimal? _countdownSeconds = 0;
+    partial void OnCountdownSecondsChanged(decimal? value) => OnPropertyChanged(nameof(FormattedCountdownText));
+
+    public string FormattedCountdownText
+    {
+        get
         {
-            LoadPresetIntoStudio(value);
+            int h = (int)(CountdownHours ?? 0);
+            int m = (int)(CountdownMinutes ?? 0);
+            int s = (int)(CountdownSeconds ?? 0);
+            int totalSec = h * 3600 + m * 60 + s;
+            if (totalSec <= 0) return "00h 00m 00s (Sin tiempo fijado)";
+            var targetTime = DateTime.Now.AddSeconds(totalSec);
+            return $"{h:D2}h {m:D2}m {s:D2}s (Activará a las {targetTime:HH:mm:ss})";
         }
     }
 
+    [ObservableProperty]
+    private TimeSpan? _exactTime = DateTime.Now.AddHours(1).TimeOfDay;
+    partial void OnExactTimeChanged(TimeSpan? value)
+    {
+        OnPropertyChanged(nameof(ExactTimeSummaryText));
+    }
+
+    public string ExactTimeSummaryText
+    {
+        get
+        {
+            var span = ExactTime ?? DateTime.Now.TimeOfDay.Add(TimeSpan.FromHours(1));
+            DateTime now = DateTime.Now;
+            DateTime target = now.Date + span;
+            if (target <= now) target = target.AddDays(1);
+            TimeSpan diff = target - now;
+            return $"{(target.Date == now.Date ? "Hoy" : "Mañana")} a las {target:HH:mm} (en {(int)diff.TotalHours}h {diff.Minutes}m), antes del aviso previo.";
+        }
+    }
+
+    [ObservableProperty]
+    private decimal _inactivityMinutes = 15;
+
+    [ObservableProperty]
+    private bool _enableCpuThreshold = false;
+
+    [ObservableProperty]
+    private decimal _cpuThreshold = 8;
+
+    [ObservableProperty]
+    private string _selectedProcessName = "";
+
+    [ObservableProperty]
+    private decimal _debounceSeconds = 5;
+
+    [ObservableProperty]
+    private decimal _audioSilenceSeconds = 30;
+
+    [ObservableProperty]
+    private bool _batteryTriggerOnAcDisconnect = true;
+
+    [ObservableProperty]
+    private bool _batteryTriggerOnThreshold = false;
+
+    [ObservableProperty]
+    private decimal _batteryThresholdPercent = 20;
+
+    // Acción terminal manual
+    [ObservableProperty]
+    private int _manualPowerActionIndex = 0; // 0=sin acción de energía
+
+    public IReadOnlyList<string> ManualPowerActionOptions { get; } = new[]
+    {
+        "Finalizar sin apagar ni suspender",
+        "Apagar el PC",
+        "Suspender",
+        "Hibernar",
+        "Reiniciar"
+    };
+
+    public int SelectedTerminalActionIndex
+    {
+        get => ManualPowerActionIndex;
+        set => ManualPowerActionIndex = value;
+    }
+
+    [ObservableProperty]
+    private bool _manualForceClose = false;
+
+    [ObservableProperty] private bool _manualMuteOutput;
+    [ObservableProperty] private bool _manualMuteMicrophone;
+    [ObservableProperty] private bool _manualPauseMedia;
+    [ObservableProperty] private bool _manualTurnOffMonitors;
+    [ObservableProperty] private bool _manualLockSession;
+    [ObservableProperty] private bool _manualCloseForegroundApps;
+
+    public bool ForceCloseApps
+    {
+        get => ManualForceClose;
+        set
+        {
+            ManualForceClose = value;
+            OnPropertyChanged();
+        }
+    }
+
+    [ObservableProperty]
+    private bool _manualGracePeriodEnabled = true;
+
+    public bool EnableGraceOverlay
+    {
+        get => ManualGracePeriodEnabled;
+        set
+        {
+            ManualGracePeriodEnabled = value;
+            OnPropertyChanged();
+        }
+    }
+
+    [ObservableProperty]
+    private decimal _manualGraceSeconds = 60;
+
+    [ObservableProperty]
+    private bool _manualAudioFadeEnabled = false;
+
+    public bool EnableWasapiFade
+    {
+        get => ManualAudioFadeEnabled;
+        set
+        {
+            ManualAudioFadeEnabled = value;
+            OnPropertyChanged();
+        }
+    }
+
+    [ObservableProperty]
+    private bool _manualScreenshotEnabled = false;
+
+    public bool TakeEvidenceScreenshot
+    {
+        get => ManualScreenshotEnabled;
+        set
+        {
+            ManualScreenshotEnabled = value;
+            OnPropertyChanged();
+        }
+    }
+
+    public ObservableCollection<string> AvailableProcesses { get; } = [];
+
     // ========================================================
-    // --- MODO STUDIO: CONFIGURACIÓN INTERACTIVA (3 BLOQUES) -
+    // --- 2. ACCESOS RÁPIDOS ---------------------------------
     // ========================================================
+    [ObservableProperty]
+    private string _keepAliveButtonText = "▶ Iniciar";
+
+    // ========================================================
+    // --- 3. RUTINAS (SUSTITUYE A MODO STUDIO) ---------------
+    // ========================================================
+    public ObservableCollection<PresetDefinition> SavedPipelines { get; } = [];
+
+    [ObservableProperty]
+    private PresetDefinition? _selectedRoutine;
+
+    public bool CanDeleteSelectedRoutine => SelectedRoutine != null && !SelectedRoutine.IsSystemPreset && !_workflowEngine.IsRoutineRunning(SelectedRoutine.Id);
+
+    partial void OnSelectedRoutineChanged(PresetDefinition? value)
+    {
+        OnPropertyChanged(nameof(CanDeleteSelectedRoutine));
+        DeleteSelectedPipelineCommand.NotifyCanExecuteChanged();
+        if (value != null)
+        {
+            LoadRoutineIntoEditor(value);
+            SelectedRoutineItem = RoutineCards.FirstOrDefault(item => item.Id == value.Id);
+            RefreshSelectedRoutineCommands();
+        }
+    }
+
     [ObservableProperty]
     private string _studioPresetId = "";
 
     [ObservableProperty]
-    private string _studioPresetName = "";
+    private string _studioPresetName = "Nueva Rutina";
 
     [ObservableProperty]
-    private string _studioPresetDescription = "";
+    private string _studioPresetDescription = "Rutina automatizada secuencial";
 
-    // BLOQUE 1: DISPARADOR PRINCIPAL
+    // PASO 1: ¿CUÁNDO EJECUTAR? (Disparador)
     [ObservableProperty]
-    private int _studioTriggerTypeIndex = 1; // 0=Proceso, 1=Cuenta Atrás, 2=Hora Fija, 3=Inactividad, 4=Silencio Audio, 5=Batería
+    private int _studioTriggerTypeIndex = 7; // Process, Countdown, ScheduledTime, UserIdle, AudioSilence, Battery, NetworkIdle, Manual
 
     public bool IsStudioTriggerProcess => StudioTriggerTypeIndex == 0;
     public bool IsStudioTriggerCountdown => StudioTriggerTypeIndex == 1;
@@ -192,10 +646,30 @@ public partial class MainViewModel : ObservableObject, IDisposable
         OnPropertyChanged(nameof(IsStudioTriggerInactivity));
         OnPropertyChanged(nameof(IsStudioTriggerAudioSilence));
         OnPropertyChanged(nameof(IsStudioTriggerBattery));
+        OnPropertyChanged(nameof(IsStudioTriggerNetworkIdle));
+        OnPropertyChanged(nameof(IsStudioTriggerManual));
     }
 
+    // Modo del proceso
     [ObservableProperty]
-    private string _studioProcessName = "notepad.exe";
+    private int _studioProcessWatchMode = 0; // 0=Vigilar una ventana abierta, 1=Lanzar y vigilar un archivo
+
+    public bool IsWatchOpenWindow => StudioProcessWatchMode == 0;
+    public bool IsLaunchAndWatchFile => StudioProcessWatchMode == 1;
+
+    partial void OnStudioProcessWatchModeChanged(int value)
+    {
+        OnPropertyChanged(nameof(IsWatchOpenWindow));
+        OnPropertyChanged(nameof(IsLaunchAndWatchFile));
+    }
+
+    public ObservableCollection<string> ActiveWindowProcesses { get; } = [];
+
+    [ObservableProperty]
+    private string _studioSelectedWindowProcess = "";
+
+    [ObservableProperty]
+    private string _studioLaunchFilePath = "";
 
     [ObservableProperty]
     private decimal _studioProcessDebounceSeconds = 5;
@@ -230,12 +704,12 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private decimal _studioBatteryThresholdPercent = 20;
 
-    // BLOQUE 2: ACCIONES INTERMEDIAS
+    // PASO 2: ¿LUEGO QUÉ HACER? (Acciones intermedias en serie)
     public ObservableCollection<StudioStepItem> StudioPipelineSteps { get; } = [];
 
-    // BLOQUE 3: ACCIÓN TERMINAL
+    // PASO 3: ¿CÓMO FINALIZAR? (Acción terminal)
     [ObservableProperty]
-    private int _studioTerminalActionIndex = 0; // 0=Apagar, 1=Suspender, 2=Hibernar, 3=Reiniciar, 4=Bloquear, 5=Apagar Monitores, 6=Ninguna
+    private int _studioTerminalActionIndex = 0; // 0=Apagar, 1=Suspender, 2=Hibernar, 3=Reiniciar, 4=Bloquear, 5=Apagar Monitores, 6=Solo finalizar rutina
 
     [ObservableProperty]
     private decimal _studioGracePeriodSeconds = 60; // 0 a 300s
@@ -243,266 +717,304 @@ public partial class MainViewModel : ObservableObject, IDisposable
     [ObservableProperty]
     private bool _studioForceClose = false;
 
-    // --- CONFIGURACIÓN MANUAL: DISPARADOR ---
+    // Dry-Check (Verificador de Conflictos)
     [ObservableProperty]
-    private int _selectedTriggerTypeIndex = 0;
+    private bool _isRoutineCheckVisible = false;
 
-    public bool IsTriggerCountdown => SelectedTriggerTypeIndex == 0;
-    public bool IsTriggerExactTime => SelectedTriggerTypeIndex == 1;
-    public bool IsTriggerInactivity => SelectedTriggerTypeIndex == 2;
-    public bool IsTriggerProcessExit => SelectedTriggerTypeIndex == 3;
-    public bool IsTriggerAudioSilence => SelectedTriggerTypeIndex == 4;
-    public bool IsTriggerBatteryState => SelectedTriggerTypeIndex == 5;
+    [ObservableProperty]
+    private string _routineCheckStatusMessage = "";
 
-    partial void OnSelectedTriggerTypeIndexChanged(int value)
+    [ObservableProperty]
+    private string _routineCheckStatusColor = "#00E676";
+
+    // ========================================================
+    // --- 4. AJUSTES -----------------------------------------
+    // ========================================================
+    // IDIOMA
+    [ObservableProperty]
+    private int _selectedLanguageIndex = 0; // 0=Español, 1=English
+
+    partial void OnSelectedLanguageIndexChanged(int value)
     {
-        OnPropertyChanged(nameof(IsTriggerCountdown));
-        OnPropertyChanged(nameof(IsTriggerExactTime));
-        OnPropertyChanged(nameof(IsTriggerInactivity));
-        OnPropertyChanged(nameof(IsTriggerProcessExit));
-        OnPropertyChanged(nameof(IsTriggerAudioSilence));
-        OnPropertyChanged(nameof(IsTriggerBatteryState));
+        string lang = value == 1 ? "en" : "es";
+        _config.Settings.Language = lang;
+        _persistence.SaveConfig(_config);
+        App.CurrentInstance?.SetLanguage(lang);
+    }
+
+    // APARIENCIA
+    [ObservableProperty]
+    private int _selectedThemeModeIndex = 3; // 0=Sincronizar con Windows, 1=Automático por Horario, 2=Modo Día, 3=Modo Noche
+
+    public bool IsScheduleThemeActive => SelectedThemeModeIndex == 1;
+
+    partial void OnSelectedThemeModeIndexChanged(int value)
+    {
+        OnPropertyChanged(nameof(IsScheduleThemeActive));
+        string mode = value switch
+        {
+            0 => "Windows",
+            1 => "Schedule",
+            2 => "Light",
+            3 => "Dark",
+            4 => "Slate",
+            _ => "Dark"
+        };
+        _config.Settings.Theme = mode;
+        _persistence.SaveConfig(_config);
+        App.CurrentInstance?.SetTheme(mode, ScheduleDayTime, ScheduleNightTime);
     }
 
     [ObservableProperty]
-    private decimal _audioSilenceSeconds = 30;
+    private TimeSpan _scheduleDayTime = new(8, 0, 0);
 
-    [ObservableProperty]
-    private bool _batteryTriggerOnAcDisconnect = true;
-
-    [ObservableProperty]
-    private bool _batteryTriggerOnThreshold = false;
-
-    [ObservableProperty]
-    private decimal _batteryThresholdPercent = 20;
-
-    [ObservableProperty]
-    private decimal? _countdownHours = 0;
-
-    partial void OnCountdownHoursChanged(decimal? value) => OnPropertyChanged(nameof(FormattedCountdownText));
-
-    [ObservableProperty]
-    private decimal? _countdownMinutes = 30;
-
-    partial void OnCountdownMinutesChanged(decimal? value) => OnPropertyChanged(nameof(FormattedCountdownText));
-
-    [ObservableProperty]
-    private decimal? _countdownSeconds = 0;
-
-    partial void OnCountdownSecondsChanged(decimal? value) => OnPropertyChanged(nameof(FormattedCountdownText));
-
-    public string FormattedCountdownText
+    partial void OnScheduleDayTimeChanged(TimeSpan value)
     {
-        get
+        _config.Settings.ScheduleDayTime = value;
+        _persistence.SaveConfig(_config);
+        if (IsScheduleThemeActive)
         {
-            int h = (int)(CountdownHours ?? 0);
-            int m = (int)(CountdownMinutes ?? 0);
-            int s = (int)(CountdownSeconds ?? 0);
-            int totalSec = h * 3600 + m * 60 + s;
-            if (totalSec <= 0) return "00h 00m 00s (Sin tiempo fijado)";
-            var targetTime = DateTime.Now.AddSeconds(totalSec);
-            return $"{h:D2}h {m:D2}m {s:D2}s (Activará a las {targetTime:HH:mm:ss})";
+            App.CurrentInstance?.SetTheme("Schedule", value, ScheduleNightTime);
         }
     }
 
     [ObservableProperty]
-    private TimeSpan? _exactTime = DateTime.Now.TimeOfDay.Add(TimeSpan.FromHours(1));
+    private TimeSpan _scheduleNightTime = new(20, 0, 0);
 
-    partial void OnExactTimeChanged(TimeSpan? value)
+    partial void OnScheduleNightTimeChanged(TimeSpan value)
     {
-        OnPropertyChanged(nameof(ExactTimeSummaryText));
-        OnPropertyChanged(nameof(SelectedExactTime));
+        _config.Settings.ScheduleNightTime = value;
+        _persistence.SaveConfig(_config);
+        if (IsScheduleThemeActive)
+        {
+            App.CurrentInstance?.SetTheme("Schedule", ScheduleDayTime, value);
+        }
     }
 
-    public string ExactTimeSummaryText
+    // TELETRABAJO Y ARRANQUE
+    [ObservableProperty]
+    private bool _startWithWindows;
+
+    partial void OnStartWithWindowsChanged(bool value)
     {
-        get
+        WindowsStartupHelper.SetStartup(value, StartMinimizedToTray, StartInWorkMode);
+    }
+
+    [ObservableProperty]
+    private bool _startMinimizedToTray;
+
+    partial void OnStartMinimizedToTrayChanged(bool value)
+    {
+        _config.Settings.StartMinimizedToTray = value;
+        _persistence.SaveConfig(_config);
+        if (StartWithWindows)
         {
-            var span = ExactTime ?? DateTime.Now.TimeOfDay.Add(TimeSpan.FromHours(1));
-            DateTime now = DateTime.Now;
-            DateTime target = now.Date + span;
-            if (target <= now) target = target.AddDays(1);
-            TimeSpan diff = target - now;
-            return $"Se ejecutará a las {target:HH:mm} (en {(int)diff.TotalHours}h {diff.Minutes}m)";
+            WindowsStartupHelper.SetStartup(true, value, StartInWorkMode);
         }
     }
 
     [ObservableProperty]
-    private decimal _inactivityMinutes = 15;
+    private bool _startInWorkMode;
 
-    [ObservableProperty]
-    private bool _enableCpuThreshold = false;
-
-    [ObservableProperty]
-    private decimal _cpuThreshold = 8;
-
-    // Propiedades de enlace compatibles / alias
-    public bool IsTriggerIdle => IsTriggerInactivity;
-    public decimal IdleMinutesThreshold
+    partial void OnStartInWorkModeChanged(bool value)
     {
-        get => InactivityMinutes;
-        set => InactivityMinutes = value;
-    }
-    public TimeSpan? SelectedExactTime
-    {
-        get => ExactTime;
-        set => ExactTime = value;
-    }
-    public string SelectedProcessToWatch
-    {
-        get => SelectedProcessName;
-        set => SelectedProcessName = value;
-    }
-    public bool WaitForCpuDrop
-    {
-        get => EnableCpuThreshold;
-        set => EnableCpuThreshold = value;
+        _config.Settings.StartInWorkMode = value;
+        _persistence.SaveConfig(_config);
+        if (StartWithWindows)
+        {
+            WindowsStartupHelper.SetStartup(true, StartMinimizedToTray, value);
+        }
     }
 
-    // --- CONFIGURACIÓN MANUAL: ACCIÓN TERMINAL Y MODIFICADORES ---
+    // ATAJO GLOBAL DE PÁNICO
     [ObservableProperty]
-    private int _selectedTerminalActionIndex = 0;
+    private string _panicHotkeyText = "Pause";
+
+    // GUARDIÁN DE BATERÍA (Portátiles)
+    [ObservableProperty]
+    private bool _batteryProtectionEnabled;
+
+    partial void OnBatteryProtectionEnabledChanged(bool value)
+    {
+        _config.Settings.BatteryProtectionEnabled = value;
+        _persistence.SaveConfig(_config);
+    }
 
     [ObservableProperty]
-    private bool _optForceClose = false;
+    private int _batteryThresholdPercentIndex = 1; // 0=5%, 1=10%, 2=15%, 3=20%
+
+    partial void OnBatteryThresholdPercentIndexChanged(int value)
+    {
+        int pct = value switch
+        {
+            0 => 5,
+            1 => 10,
+            2 => 15,
+            3 => 20,
+            _ => 10
+        };
+        _config.Settings.BatteryThresholdPercent = pct;
+        _persistence.SaveConfig(_config);
+    }
 
     [ObservableProperty]
-    private bool _optAudioFadeOut = true;
+    private int _batteryActionIndex = 0; // 0=Hibernar, 1=Suspender
+
+    partial void OnBatteryActionIndexChanged(int value)
+    {
+        string act = value == 1 ? "Sleep" : "Hibernate";
+        _config.Settings.BatteryAction = act;
+        _persistence.SaveConfig(_config);
+    }
+
+    // EVIDENCIAS Y MANTENIMIENTO
+    [ObservableProperty]
+    private bool _evidenceScreenshotsEnabled = true;
+
+    partial void OnEvidenceScreenshotsEnabledChanged(bool value)
+    {
+        _config.Settings.EvidenceScreenshotsEnabled = value;
+        OnPropertyChanged(nameof(ManualScreenshotStatus));
+        RefreshManualPreview();
+        _persistence.SaveConfig(_config);
+    }
 
     [ObservableProperty]
-    private bool _optGracePeriod = true;
+    private int _maxEvidenceRetention = 20;
+
+    partial void OnMaxEvidenceRetentionChanged(int value)
+    {
+        _config.Settings.MaxEvidenceRetention = value;
+        _persistence.SaveConfig(_config);
+    }
+
+    public ObservableCollection<EvidenceItem> EvidenceGalleryItems { get; } = [];
 
     [ObservableProperty]
-    private bool _optScreenshot = false;
+    private bool _isEvidenceGalleryOpen = false;
 
-    public string StatusDotColor => IsTaskRunning ? "#00E676" : (IsKeepAliveActive ? "#00D2FF" : "#7D8390");
-    public string EngineStateText => IsTaskRunning ? "En ejecución" : (IsKeepAliveActive ? "Keep-Alive" : "Inactivo");
-
-    public ObservableCollection<string> AvailableProcesses { get; } = [];
-    public ObservableCollection<PresetDefinition> Presets { get; } = [];
-
-    public MainViewModel(ISystemAdapter systemAdapter, IWorkflowEngine? engine = null, PersistenceService? persistence = null)
+    // ========================================================
+    // --- CONSTRUCTOR E INICIALIZACIÓN -----------------------
+    // ========================================================
+    public MainViewModel(ISystemAdapter systemAdapter, IWorkflowEngine? engine = null, PersistenceService? persistence = null,
+        IAiQuotaService? aiQuotaService = null, IInstalledAppsService? installedAppsService = null)
     {
         _systemAdapter = systemAdapter;
+        _aiQuotaService = aiQuotaService ?? new AiQuotaService();
         _persistence = persistence ?? new PersistenceService();
         _workflowEngine = engine ?? new WorkflowEngine(systemAdapter, _persistence);
+        _config = _persistence.LoadConfig();
+        Config = new HomeDashboardSettings(_config.Settings, () => _persistence.SaveConfig(_config));
+        Config.PropertyChanged += (_, e) =>
+        {
+            RefreshHomeStatusCardLayout();
+        };
+        HardwareProfile = _systemAdapter.GetHardwareProfile();
+        AudioDevices = _systemAdapter.GetAudioDevices();
 
-        LoadPresetsFromStorage();
+        // This project exposes keep-alive through the workflow snapshot and the local loop.
+        WorkModeStatusText = (_workflowEngine.GetStatusSnapshot().KeepAliveActive || IsKeepAliveActive)
+            ? "Activo (Jitter F15)" : "Inactivo";
+        RefreshBatteryStatus();
+        OnPropertyChanged(nameof(WorkModeStatusText));
+        OnPropertyChanged(nameof(WorkModeStatusBadge));
+        OnPropertyChanged(nameof(WorkModeDetailText));
+
+        LoadSettingsFromConfig();
+        SavedPipelines.CollectionChanged += (_, _) => RefreshRoutineCards();
+        LoadRoutinesFromStorage();
+        RefreshActiveWindowProcesses();
         RefreshAvailableProcesses();
+        RefreshNetworkDiagnostics();
+
+        try
+        {
+            string? sysRoot = Path.GetPathRoot(Environment.SystemDirectory);
+            var drive = new DriveInfo(sysRoot ?? "C:\\");
+            long freeGb = drive.AvailableFreeSpace / (1024 * 1024 * 1024);
+            long totalGb = drive.TotalSize / (1024 * 1024 * 1024);
+            DiskText = $"Disco: {freeGb} GB / {totalGb} GB libres";
+            DiskToolTip = $"Espacio en disco del sistema: {freeGb} GB disponibles de {totalGb} GB totales";
+            _systemDiskFreeGb = freeGb;
+            OnPropertyChanged(nameof(IsDiskSpaceLow));
+        }
+        catch { }
+
+        _ = RefreshAiQuotas();
+        OnPropertyChanged(nameof(ManualStartButtonText));
+        OnPropertyChanged(nameof(CanDeleteSelectedRoutine));
         SubscribeToEngineEvents();
         StartMetricsMonitoring();
+
+        InitializePanicHotkey();
+        InitializeAudioControls();
+        InitializeRemoteControls();
+        InitializeManualControls();
+        _ = LoadInstalledAppsAsync(installedAppsService);
+    }
+
+    private void LoadSettingsFromConfig()
+    {
+        SelectedLanguageIndex = _config.Settings.Language == "en" ? 1 : 0;
+        SelectedThemeModeIndex = _config.Settings.Theme switch
+        {
+            "Windows" => 0,
+            "Schedule" => 1,
+            "Light" => 2,
+            "Slate" => 4,
+            "Dark" => 3,
+            _ => 3
+        };
+        ScheduleDayTime = _config.Settings.ScheduleDayTime;
+        ScheduleNightTime = _config.Settings.ScheduleNightTime;
+
+        StartWithWindows = WindowsStartupHelper.IsStartupEnabled();
+        StartMinimizedToTray = _config.Settings.StartMinimizedToTray;
+        StartInWorkMode = _config.Settings.StartInWorkMode;
+
+        BatteryProtectionEnabled = _config.Settings.BatteryProtectionEnabled;
+        BatteryThresholdPercentIndex = _config.Settings.BatteryThresholdPercent switch
+        {
+            5 => 0,
+            10 => 1,
+            15 => 2,
+            20 => 3,
+            _ => 1
+        };
+        BatteryActionIndex = _config.Settings.BatteryAction == "Sleep" ? 1 : 0;
+
+        EvidenceScreenshotsEnabled = _config.Settings.EvidenceScreenshotsEnabled;
+        MaxEvidenceRetention = _config.Settings.MaxEvidenceRetention;
+        DiskAlertThresholdGb = _config.Settings.DiskAlertThresholdGb;
+        Config.Reload(_config.Settings);
+        OnPropertyChanged(nameof(MinimizeToTrayOnClose));
+        LoadPanicHotkeySettings();
+        LoadAudioSettings();
+        foreach (var item in DetectedAiEnvironments)
+            item.ShowInHome = !(_config.Settings.HiddenAiEnvironmentIds?.Contains(item.Id) ?? false);
+        ApplyAiEnvironmentOrder();
     }
 
     private void SubscribeToEngineEvents()
     {
         _workflowEngine.StatusChanged += HandleEngineStatusChanged;
-        _workflowEngine.GracePeriodTick += HandleGracePeriodTick;
+        
         _workflowEngine.LogMessageReceived += HandleEngineLog;
     }
 
     private void HandleEngineStatusChanged(SystemStatusState state)
     {
-        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-        {
-            IsTaskRunning = state.EngineState != EngineState.Idle &&
-                            state.EngineState != EngineState.Completed &&
-                            state.EngineState != EngineState.Failed;
-
-            CurrentStatusText = state.EngineState switch
-            {
-                EngineState.Idle => "Listo",
-                EngineState.WaitingTrigger => $"Esperando disparador ({state.ActivePresetName ?? "Tarea"})...",
-                EngineState.ExecutingActions => "Ejecutando acciones intermedias...",
-                EngineState.GracePeriod => $"¡Gracia activa! Apagado en {state.GracePeriodRemainingSeconds}s",
-                EngineState.Paused => "Flujo en pausa",
-                EngineState.Completed => "Flujo completado con éxito",
-                EngineState.Failed => "Flujo abortado por error en paso",
-                _ => "Listo"
-            };
-
-            if (IsTaskRunning)
-            {
-                ActiveTaskTitle = state.ActivePresetName ?? "Flujo Activo";
-                SecondsRemaining = state.TimeRemainingSeconds;
-                TimeRemainingText = TimeSpan.FromSeconds(state.TimeRemainingSeconds).ToString(@"hh\:mm\:ss");
-                ProgressPercentage = state.ProgressPercentage;
-            }
-            else
-            {
-                ActiveTaskTitle = "Ninguna tarea en curso";
-                TimeRemainingText = "--:--:--";
-                ProgressPercentage = 0;
-                SecondsRemaining = 0;
-                RequestGraceOverlay?.Invoke(false, 0);
-            }
-        });
+        // Read the current registry on the UI thread, rather than applying an old queued snapshot.
+        Dispatcher.UIThread.Post(RefreshActiveRoutines);
     }
-
-    private void HandleGracePeriodTick(int secondsRemaining)
-    {
-        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-        {
-            SecondsRemaining = secondsRemaining;
-            TimeRemainingText = $"00:00:{secondsRemaining:D2}";
-            ProgressPercentage = 100.0;
-            CurrentStatusText = $"¡Apagado inminente en {secondsRemaining}s! Presione Esc para cancelar.";
-            RequestGraceOverlay?.Invoke(true, secondsRemaining);
-        });
-    }
-
     private void HandleEngineLog(string message)
     {
         Debug.WriteLine(message);
     }
 
-    private void LoadPresetsFromStorage()
-    {
-        Presets.Clear();
-        var presetsFile = _persistence.LoadPresets();
-        foreach (var p in presetsFile.Presets)
-        {
-            Presets.Add(p);
-        }
-
-        if (Presets.Count > 0)
-        {
-            SelectedPreset = Presets[0];
-        }
-    }
-
-    public void RefreshAvailableProcesses()
-    {
-        try
-        {
-            AvailableProcesses.Clear();
-            var processes = Process.GetProcesses()
-                .Where(p => !string.IsNullOrEmpty(p.ProcessName) && p.MainWindowHandle != IntPtr.Zero)
-                .Select(p => p.ProcessName + ".exe")
-                .Distinct()
-                .OrderBy(name => name)
-                .Take(20);
-
-            foreach (var proc in processes)
-            {
-                AvailableProcesses.Add(proc);
-            }
-
-            if (!AvailableProcesses.Contains(SelectedProcessName) && AvailableProcesses.Count > 0)
-            {
-                SelectedProcessName = AvailableProcesses[0];
-            }
-        }
-        catch
-        {
-            if (AvailableProcesses.Count == 0)
-            {
-                AvailableProcesses.Add("blender.exe");
-                AvailableProcesses.Add("handbrake.exe");
-                AvailableProcesses.Add("qbittorrent.exe");
-            }
-        }
-    }
-
+    // ========================================================
+    // --- TELEMETRÍA DEL FOOTER Y MONITOREO PASIVO -----------
+    // ========================================================
     private void StartMetricsMonitoring()
     {
         Task.Run(async () =>
@@ -515,23 +1027,97 @@ public partial class MainViewModel : ObservableObject, IDisposable
                     await _metricsTimer.WaitForNextTickAsync(_disposalCts.Token);
                     var metrics = _systemAdapter.GetCurrentMetrics();
 
-                    CpuText = $"{metrics.CpuUsagePercentage:F1}%";
-                    RamText = $"{metrics.RamUsedMb:F0} / {metrics.RamTotalMb:F0} MB";
-                    NetText = $"{metrics.NetworkDownKBs:F1} / {metrics.NetworkUpKBs:F1} KB/s";
+                    double ramPercent = metrics.RamTotalMb > 0 ? (metrics.RamUsedMb / metrics.RamTotalMb) * 100.0 : 0;
+                    double ramUsedGb = metrics.RamUsedMb / 1024.0;
+                    double ramTotalGb = metrics.RamTotalMb / 1024.0;
+                    double ramFreeGb = Math.Max(0, ramTotalGb - ramUsedGb);
 
-                    _pulsePhase = (float)(Math.Sin(DateTime.UtcNow.TimeOfDay.TotalSeconds * Math.PI) * 0.5 + 0.5);
+                    Dispatcher.UIThread.Post(() =>
+                    {
+                        CpuText = $"CPU: {metrics.CpuUsagePercentage:F0}%";
+                        CpuToolTip = $"Desglose CPU:\n• Kernel: {metrics.CpuKernelPercentage:F1}%\n• Usuario: {metrics.CpuUserPercentage:F1}%";
 
-                    if (IsTaskRunning)
+                        RamText = $"RAM: {ramPercent:F0}%";
+                        RamToolTip = $"En uso: {ramUsedGb:F1} GB | Libre: {ramFreeGb:F1} GB | Total: {ramTotalGb:F1} GB";
+
+                        GpuText = $"GPU: {metrics.GpuUsagePercentage:F0}%";
+                        GpuToolTip = $"Adaptadores: {HardwareProfile.GraphicsAdapterName}\nUso de los motores gráficos";
+
+                        DiskText = $"Disco: {metrics.DiskFreeGb} GB / {metrics.DiskTotalGb} GB libres";
+                        DiskToolTip = $"Espacio en disco del sistema: {metrics.DiskFreeGb} GB disponibles de {metrics.DiskTotalGb} GB totales";
+                        _systemDiskFreeGb = metrics.DiskTotalGb > 0 ? metrics.DiskFreeGb : null;
+                        OnPropertyChanged(nameof(IsDiskSpaceLow));
+                        UptimeText = FormatUptime();
+
+                        double totalNetKBs = metrics.NetworkDownKBs + metrics.NetworkUpKBs;
+                        if (totalNetKBs >= 1024)
+                        {
+                            NetText = $"Red: {(totalNetKBs / 1024.0):F1} MB/s";
+                        }
+                        else
+                        {
+                            NetText = $"Red: {totalNetKBs:F0} KB/s";
+                        }
+                        NetToolTip = $"Bajada: {metrics.NetworkDownKBs:F1} KB/s | Subida: {metrics.NetworkUpKBs:F1} KB/s";
+
+                        RefreshActiveRoutines();
+                        _pulsePhase = (float)(Math.Sin(DateTime.UtcNow.TimeOfDay.TotalSeconds * Math.PI) * 0.5 + 0.5);
+
+                        if (IsTaskRunning)
+                        {
+                            RequestTrayIconUpdate?.Invoke(TrayIconVisualState.InProgress, ProgressPercentage, SecondsRemaining, _pulsePhase);
+                        }
+                        else if (IsKeepAliveActive)
+                        {
+                            RequestTrayIconUpdate?.Invoke(TrayIconVisualState.InProgress, 100, 0, _pulsePhase);
+                        }
+                        else
+                        {
+                            RequestTrayIconUpdate?.Invoke(TrayIconVisualState.Idle, 0, 0, 1.0f);
+                        }
+                    });
+
+                    // Monitoreo Guardián de Batería (cada ~30s = 15 ticks)
+                    _batteryGuardianTicks++;
+                    if (_batteryGuardianTicks >= 15)
                     {
-                        RequestTrayIconUpdate?.Invoke(TrayIconVisualState.InProgress, ProgressPercentage, SecondsRemaining, _pulsePhase);
+                        _batteryGuardianTicks = 0;
+                        EvaluateBatteryGuardian(metrics.Battery);
                     }
-                    else if (IsKeepAliveActive)
+
+                    // Monitoreo de Red Local y VPN (cada ~6s = 3 ticks)
+                    _networkTickCounter++;
+                    if (_networkTickCounter >= 3)
                     {
-                        RequestTrayIconUpdate?.Invoke(TrayIconVisualState.InProgress, 100, 0, _pulsePhase);
+                        _networkTickCounter = 0;
+                        var netSnap = NetworkDiagnostics.GetSnapshot();
+                        var batt = metrics.Battery;
+                        Dispatcher.UIThread.Post(() =>
+                        {
+                            LocalIpAddress = netSnap.IpAddress;
+                            NetworkNameAndType = netSnap.NetworkNameAndType;
+                            ConnectedNetworkName = netSnap.ConnectedNetworkName;
+                            NetworkInterfaceText = netSnap.InterfaceNameAndType;
+                            IsVpnConnected = netSnap.IsVpnActive;
+                            VpnStatusText = netSnap.VpnStatusText;
+                            RefreshAudioPanel(true);
+
+                            RefreshBatteryStatus();
+                        });
                     }
-                    else
+
+                    // Monitoreo Tema Automático (cada ~60s = 30 ticks)
+                    _scheduleThemeTicks++;
+                    if (_scheduleThemeTicks >= 30)
                     {
-                        RequestTrayIconUpdate?.Invoke(TrayIconVisualState.Idle, 0, 0, 1.0f);
+                        _scheduleThemeTicks = 0;
+                        if (IsScheduleThemeActive)
+                        {
+                            Dispatcher.UIThread.Post(() =>
+                            {
+                                App.CurrentInstance?.SetTheme("Schedule", ScheduleDayTime, ScheduleNightTime);
+                            });
+                        }
                     }
                 }
                 catch (OperationCanceledException)
@@ -540,815 +1126,289 @@ public partial class MainViewModel : ObservableObject, IDisposable
                 }
                 catch
                 {
-                    // Ignore transient metrics read errors
+                    // Ignora fallos transitorios
                 }
             }
         });
     }
 
-    [RelayCommand]
-    public void ToggleKeepAlive()
+    private void EvaluateBatteryGuardian(BatteryStatus? battery)
     {
-        if (IsKeepAliveActive)
+        if (battery == null || !BatteryProtectionEnabled || !battery.HasBattery || battery.IsOnAcPower || battery.BatteryLifePercent < 0)
         {
-            StopKeepAlive();
-        }
-        else
-        {
-            StartKeepAlive();
-        }
-    }
-
-    private void StartKeepAlive()
-    {
-        _keepAliveCts?.Cancel();
-        _keepAliveCts = new CancellationTokenSource();
-
-        IsKeepAliveActive = true;
-        KeepAliveButtonText = "Activo (Jitter ON)";
-        CurrentStatusText = "Modo Trabajo Activo (Teams/Slack)";
-
-        Task.Run(async () =>
-        {
-            try
-            {
-                await _systemAdapter.RunKeepAliveLoopAsync(
-                    KeepAliveMode.Mixed,
-                    45,
-                    105,
-                    msg => { },
-                    _keepAliveCts.Token);
-            }
-            catch (OperationCanceledException)
-            {
-            }
-            finally
-            {
-                IsKeepAliveActive = false;
-                KeepAliveButtonText = "Iniciar Modo";
-                if (!IsTaskRunning)
-                {
-                    CurrentStatusText = "Listo";
-                }
-            }
-        });
-    }
-
-    [RelayCommand]
-    public void StopKeepAlive()
-    {
-        _keepAliveCts?.Cancel();
-        _keepAliveCts = null;
-        IsKeepAliveActive = false;
-        KeepAliveButtonText = "Iniciar Modo";
-        if (!IsTaskRunning)
-        {
-            CurrentStatusText = "Listo";
-        }
-    }
-
-    [RelayCommand]
-    public async Task StartSleepMode()
-    {
-        var sleepPreset = new PresetDefinition
-        {
-            Id = "preset_quick_sleep",
-            Name = "Modo Dormir (45 min)",
-            Description = "Cuenta regresiva con atenuación de volumen y suspensión.",
-            Trigger = new TriggerDefinition
-            {
-                Type = TriggerType.Countdown,
-                Parameters = new Dictionary<string, JsonElement>
-                {
-                    ["durationSeconds"] = JsonSerializer.SerializeToElement(45 * 60)
-                }
-            },
-            Pipeline =
-            [
-                new PipelineStepDefinition
-                {
-                    StepOrder = 1,
-                    ActionType = ActionType.AudioFadeOut,
-                    Parameters = new Dictionary<string, JsonElement>
-                    {
-                        ["durationSeconds"] = JsonSerializer.SerializeToElement(15),
-                        ["targetVolumePercentage"] = JsonSerializer.SerializeToElement(0)
-                    },
-                    IgnoreFailure = true
-                },
-                new PipelineStepDefinition
-                {
-                    StepOrder = 2,
-                    ActionType = ActionType.TurnOffMonitors,
-                    IgnoreFailure = true
-                }
-            ],
-            TerminalAction = new TerminalActionDefinition
-            {
-                Type = TerminalActionType.Sleep,
-                Parameters = new Dictionary<string, JsonElement>
-                {
-                    ["gracePeriodSeconds"] = JsonSerializer.SerializeToElement(30)
-                }
-            }
-        };
-
-        await _workflowEngine.StartPresetAsync(sleepPreset);
-    }
-
-    [RelayCommand]
-    public async Task StartQuickShutdown(string minutesStr)
-    {
-        int minutes = int.TryParse(minutesStr, out int m) && m > 0 ? m : QuickMinutesInput;
-        await _workflowEngine.StartQuickCountdownAsync(
-            $"Apagado Rápido ({minutes}m)",
-            TimeSpan.FromMinutes(minutes),
-            TerminalActionType.Shutdown);
-    }
-
-    [RelayCommand]
-    public void IncrementHours() => CountdownHours = Math.Min((CountdownHours ?? 0) + 1, 23);
-
-    [RelayCommand]
-    public void DecrementHours() => CountdownHours = Math.Max((CountdownHours ?? 0) - 1, 0);
-
-    [RelayCommand]
-    public void IncrementMinutes() => CountdownMinutes = Math.Min((CountdownMinutes ?? 0) + 1, 59);
-
-    [RelayCommand]
-    public void DecrementMinutes() => CountdownMinutes = Math.Max((CountdownMinutes ?? 0) - 1, 0);
-
-    [RelayCommand]
-    public void IncrementSeconds() => CountdownSeconds = Math.Min((CountdownSeconds ?? 0) + 1, 59);
-
-    [RelayCommand]
-    public void DecrementSeconds() => CountdownSeconds = Math.Max((CountdownSeconds ?? 0) - 1, 0);
-
-    [RelayCommand]
-    public void AddCountdownMinutes(string minutesStr)
-    {
-        if (int.TryParse(minutesStr, out int mins))
-        {
-            int totalMins = (int)((CountdownHours ?? 0) * 60 + (CountdownMinutes ?? 0) + mins);
-            if (totalMins < 0) totalMins = 0;
-            CountdownHours = Math.Clamp(totalMins / 60, 0, 23);
-            CountdownMinutes = Math.Clamp(totalMins % 60, 0, 59);
-        }
-    }
-
-    [RelayCommand]
-    public void ResetCountdown()
-    {
-        CountdownHours = 0;
-        CountdownMinutes = 0;
-        CountdownSeconds = 0;
-    }
-
-    [RelayCommand]
-    public void RefreshProcesses()
-    {
-        RefreshAvailableProcesses();
-    }
-
-    [RelayCommand]
-    public async Task StartManualTask()
-    {
-        string taskName;
-        TriggerDefinition trigger;
-
-        switch (SelectedTriggerTypeIndex)
-        {
-            case 1: // Hora Exacta
-                DateTime now = DateTime.Now;
-                var span = ExactTime ?? DateTime.Now.TimeOfDay.Add(TimeSpan.FromHours(1));
-                DateTime target = now.Date + span;
-                if (target <= now) target = target.AddDays(1);
-                int waitSeconds = (int)(target - now).TotalSeconds;
-                if (waitSeconds <= 0) waitSeconds = 5;
-                taskName = $"Hora Exacta ({target:HH:mm})";
-                trigger = new TriggerDefinition
-                {
-                    Type = TriggerType.Countdown,
-                    Parameters = new Dictionary<string, JsonElement>
-                    {
-                        ["durationSeconds"] = JsonSerializer.SerializeToElement(waitSeconds)
-                    }
-                };
-                break;
-
-            case 2: // Inactividad
-                int idleMins = (int)InactivityMinutes;
-                if (idleMins <= 0) idleMins = 1;
-                taskName = $"Inactividad ({idleMins} min)";
-                trigger = new TriggerDefinition
-                {
-                    Type = TriggerType.UserIdle,
-                    Parameters = new Dictionary<string, JsonElement>
-                    {
-                        ["idleMinutes"] = JsonSerializer.SerializeToElement(idleMins)
-                    }
-                };
-                break;
-
-            case 3: // Al Terminar Proceso
-                string proc = string.IsNullOrWhiteSpace(SelectedProcessName) ? "notepad.exe" : SelectedProcessName;
-                taskName = $"Vigilar {proc}";
-                if (EnableCpuThreshold)
-                {
-                    trigger = new TriggerDefinition
-                    {
-                        Type = TriggerType.SustainedLoad,
-                        Parameters = new Dictionary<string, JsonElement>
-                        {
-                            ["thresholdPercentage"] = JsonSerializer.SerializeToElement((double)CpuThreshold),
-                            ["durationSeconds"] = JsonSerializer.SerializeToElement(60)
-                        }
-                    };
-                }
-                else
-                {
-                    trigger = new TriggerDefinition
-                    {
-                        Type = TriggerType.ProcessExit,
-                        Parameters = new Dictionary<string, JsonElement>
-                        {
-                            ["processName"] = JsonSerializer.SerializeToElement(proc),
-                            ["debounceSeconds"] = JsonSerializer.SerializeToElement(5)
-                        }
-                    };
-                }
-                break;
-
-            case 4: // Silencio de Audio
-                int silenceSec = (int)AudioSilenceSeconds;
-                if (silenceSec <= 0) silenceSec = 30;
-                taskName = $"Silencio de Audio ({silenceSec}s)";
-                trigger = new TriggerDefinition
-                {
-                    Type = TriggerType.AudioSilence,
-                    Parameters = new Dictionary<string, JsonElement>
-                    {
-                        ["silenceThresholdSeconds"] = JsonSerializer.SerializeToElement(silenceSec),
-                        ["thresholdPeak"] = JsonSerializer.SerializeToElement(0.001)
-                    }
-                };
-                break;
-
-            case 5: // Estado de Batería
-                int batPct = BatteryTriggerOnThreshold ? (int)BatteryThresholdPercent : 0;
-                taskName = BatteryTriggerOnAcDisconnect ? "Desconexión de Cargador (AC)" : $"Batería baja ({batPct}%)";
-                trigger = new TriggerDefinition
-                {
-                    Type = TriggerType.BatteryState,
-                    Parameters = new Dictionary<string, JsonElement>
-                    {
-                        ["onAcDisconnect"] = JsonSerializer.SerializeToElement(BatteryTriggerOnAcDisconnect),
-                        ["batteryLevelThreshold"] = JsonSerializer.SerializeToElement(batPct)
-                    }
-                };
-                break;
-
-            case 0: // Cuenta Atrás
-            default:
-                int totalSeconds = (int)((CountdownHours ?? 0) * 3600 + (CountdownMinutes ?? 0) * 60 + (CountdownSeconds ?? 0));
-                if (totalSeconds <= 0) totalSeconds = 60;
-                taskName = $"Cuenta Atrás ({TimeSpan.FromSeconds(totalSeconds):hh\\:mm\\:ss})";
-                trigger = new TriggerDefinition
-                {
-                    Type = TriggerType.Countdown,
-                    Parameters = new Dictionary<string, JsonElement>
-                    {
-                        ["durationSeconds"] = JsonSerializer.SerializeToElement(totalSeconds)
-                    }
-                };
-                break;
+            return;
         }
 
-        var pipeline = new List<PipelineStepDefinition>();
-        int stepOrder = 1;
-
-        if (OptScreenshot)
+        int threshold = _config.Settings.BatteryThresholdPercent;
+        if (battery.BatteryLifePercent <= threshold && !IsTaskRunning)
         {
-            pipeline.Add(new PipelineStepDefinition
+            Dispatcher.UIThread.Post(async () =>
             {
-                StepOrder = stepOrder++,
-                ActionType = ActionType.CaptureScreenshot,
-                IgnoreFailure = true
+                var action = _config.Settings.BatteryAction == "Sleep" ? PowerAction.Sleep : PowerAction.Hibernate;
+                CurrentStatusText = $"Guardián de Batería: Batería crítica ({battery.BatteryLifePercent}%). Activando {action}...";
+                try
+                {
+                    await _systemAdapter.SetPowerStateAsync(action, force: true);
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"Error al ejecutar acción de batería: {ex.Message}");
+                }
             });
         }
-
-        if (OptAudioFadeOut)
-        {
-            pipeline.Add(new PipelineStepDefinition
-            {
-                StepOrder = stepOrder++,
-                ActionType = ActionType.AudioFadeOut,
-                Parameters = new Dictionary<string, JsonElement>
-                {
-                    ["durationSeconds"] = JsonSerializer.SerializeToElement(15),
-                    ["targetVolumePercentage"] = JsonSerializer.SerializeToElement(0)
-                },
-                IgnoreFailure = true
-            });
-        }
-
-        TerminalActionType terminalType;
-        switch (SelectedTerminalActionIndex)
-        {
-            case 0:
-                terminalType = TerminalActionType.Shutdown;
-                break;
-            case 1:
-                terminalType = TerminalActionType.Sleep;
-                break;
-            case 2:
-                terminalType = TerminalActionType.Hibernate;
-                break;
-            case 3:
-                terminalType = TerminalActionType.Restart;
-                break;
-            case 4:
-                terminalType = TerminalActionType.LockStation;
-                break;
-            case 5:
-                pipeline.Add(new PipelineStepDefinition
-                {
-                    StepOrder = stepOrder++,
-                    ActionType = ActionType.TurnOffMonitors,
-                    IgnoreFailure = true
-                });
-                terminalType = TerminalActionType.None;
-                break;
-            default:
-                terminalType = TerminalActionType.Shutdown;
-                break;
-        }
-
-        int graceSeconds = OptGracePeriod ? 60 : 0;
-        var terminal = new TerminalActionDefinition
-        {
-            Type = terminalType,
-            Parameters = new Dictionary<string, JsonElement>
-            {
-                ["gracePeriodSeconds"] = JsonSerializer.SerializeToElement(graceSeconds),
-                ["forced"] = JsonSerializer.SerializeToElement(OptForceClose)
-            }
-        };
-
-        var preset = new PresetDefinition
-        {
-            Id = "manual_task_" + Guid.NewGuid().ToString("N")[..8],
-            Name = taskName,
-            Description = "Tarea configurada manualmente por el usuario.",
-            Trigger = trigger,
-            Pipeline = pipeline,
-            TerminalAction = terminal
-        };
-
-        await _workflowEngine.StartPresetAsync(preset);
     }
 
-    [RelayCommand]
-    public async Task StartProcessWatch()
+    // ========================================================
+    // --- RUTINAS (MÉTODOS Y COMANDOS) -----------------------
+    // ========================================================
+    private static readonly HashSet<string> SystemNoiseProcesses = new(StringComparer.OrdinalIgnoreCase)
     {
-        if (string.IsNullOrWhiteSpace(SelectedProcessName)) return;
+        "TextInputHost", "explorer", "ShellExperienceHost", "ApplicationFrameHost",
+        "SystemSettings", "SearchHost", "StartMenuExperienceHost", "Nokto", "taskhostw",
+        "dwm", "svchost", "csrss", "services", "lsass", "smss", "fontdrvhost"
+    };
 
-        var procPreset = new PresetDefinition
+    [RelayCommand]
+    public void RefreshActiveWindowProcesses()
+    {
+        try
         {
-            Id = "preset_watch_" + SelectedProcessName,
-            Name = $"Vigilar {SelectedProcessName}",
-            Description = $"Supervisa {SelectedProcessName}, toma captura y apaga con 60s de gracia.",
-            Trigger = new TriggerDefinition
-            {
-                Type = TriggerType.ProcessExit,
-                Parameters = new Dictionary<string, JsonElement>
+            var list = Process.GetProcesses()
+                .Where(p =>
                 {
-                    ["processName"] = JsonSerializer.SerializeToElement(SelectedProcessName),
-                    ["debounceSeconds"] = JsonSerializer.SerializeToElement(5)
-                }
-            },
-            Pipeline =
-            [
-                new PipelineStepDefinition
-                {
-                    StepOrder = 1,
-                    ActionType = ActionType.CaptureScreenshot,
-                    IgnoreFailure = true
-                },
-                new PipelineStepDefinition
-                {
-                    StepOrder = 2,
-                    ActionType = ActionType.AudioFadeOut,
-                    Parameters = new Dictionary<string, JsonElement>
+                    try
                     {
-                        ["durationSeconds"] = JsonSerializer.SerializeToElement(10),
-                        ["targetVolumePercentage"] = JsonSerializer.SerializeToElement(0)
-                    },
-                    IgnoreFailure = true
-                }
-            ],
-            TerminalAction = new TerminalActionDefinition
-            {
-                Type = TerminalActionType.Shutdown,
-                Parameters = new Dictionary<string, JsonElement>
-                {
-                    ["gracePeriodSeconds"] = JsonSerializer.SerializeToElement(60),
-                    ["forced"] = JsonSerializer.SerializeToElement(false)
-                }
-            }
-        };
+                        return p.MainWindowHandle != IntPtr.Zero
+                            && !string.IsNullOrWhiteSpace(p.MainWindowTitle)
+                            && !SystemNoiseProcesses.Contains(p.ProcessName);
+                    }
+                    catch
+                    {
+                        return false;
+                    }
+                })
+                .Select(p => $"{p.ProcessName}.exe ({p.MainWindowTitle})")
+                .Distinct()
+                .OrderBy(x => x)
+                .ToList();
 
-        await _workflowEngine.StartPresetAsync(procPreset);
+            ActiveWindowProcesses.Clear();
+            foreach (var item in list)
+            {
+                ActiveWindowProcesses.Add(item);
+            }
+
+            if (ActiveWindowProcesses.Count > 0 && string.IsNullOrWhiteSpace(StudioSelectedWindowProcess))
+            {
+                StudioSelectedWindowProcess = ActiveWindowProcesses[0];
+            }
+        }
+        catch
+        {
+        }
     }
 
-    [RelayCommand]
-    public async Task ExecuteSelectedPreset()
+    public void RefreshAvailableProcesses()
     {
-        if (SelectedPreset != null)
+        try
         {
-            await _workflowEngine.StartPresetAsync(SelectedPreset);
+            AvailableProcesses.Clear();
+            var processes = Process.GetProcesses()
+                .Where(p => !string.IsNullOrEmpty(p.ProcessName) && p.MainWindowHandle != IntPtr.Zero && !SystemNoiseProcesses.Contains(p.ProcessName))
+                .Select(p => p.ProcessName + ".exe")
+                .Distinct()
+                .OrderBy(name => name)
+                .Take(25);
+
+            foreach (var proc in processes)
+            {
+                AvailableProcesses.Add(proc);
+            }
+
+            if (!AvailableProcesses.Contains(SelectedProcessName)) SelectedProcessName = "";
+        }
+        catch
+        {
+        }
+    }
+
+    private void LoadRoutinesFromStorage()
+    {
+        SavedPipelines.Clear();
+        var presetsFile = _persistence.LoadPresets();
+        foreach (var p in presetsFile.Presets)
+        {
+            SavedPipelines.Add(p);
+        }
+
+        if (SavedPipelines.Count > 0)
+        {
+            SelectedRoutine = SavedPipelines[0];
         }
     }
 
     [RelayCommand]
-    public void SaveCurrentPresets()
+    public void NewStudioPipeline()
     {
-        var file = new PresetsFile
-        {
-            Version = 1,
-            Presets = [.. Presets]
-        };
-        _persistence.SavePresets(file);
-        CurrentStatusText = "Presets guardados en presets.json.";
+        SelectedRoutine = null;
+        SelectedRoutineItem = null;
+        StudioPresetId = "routine_" + Guid.NewGuid().ToString("N")[..8];
+        StudioPresetName = "Nueva Rutina";
+        StudioPresetDescription = "Rutina personalizada";
+        StudioTriggerTypeIndex = 7;
+        StudioProcessWatchMode = 0;
+        StudioSelectedWindowProcess = ActiveWindowProcesses.FirstOrDefault() ?? "notepad.exe";
+        StudioLaunchFilePath = "";
+        StudioPipelineSteps.Clear();
+        StudioTerminalActionIndex = 6;
+        StudioGracePeriodSeconds = 60;
+        StudioForceClose = false;
+        StudioRepeatSchedule = true;
+        foreach (var day in StudioWeekdays) day.IsSelected = true;
+        IsRoutineCheckVisible = false;
     }
 
-    [RelayCommand]
-    public void AddNewPreset()
-    {
-        var newPreset = new PresetDefinition
-        {
-            Id = "preset_" + Guid.NewGuid().ToString("N")[..8],
-            Name = "Nuevo Flujo",
-            Description = "Descripción del nuevo flujo automatizado.",
-            IsFavorite = false,
-            Icon = "Sparkles",
-            Trigger = new TriggerDefinition
-            {
-                Type = TriggerType.Countdown,
-                Parameters = new Dictionary<string, JsonElement>
-                {
-                    ["durationSeconds"] = JsonSerializer.SerializeToElement(300)
-                }
-            },
-            Pipeline =
-            [
-                new PipelineStepDefinition
-                {
-                    StepOrder = 1,
-                    ActionType = ActionType.TurnOffMonitors,
-                    IgnoreFailure = true
-                }
-            ],
-            TerminalAction = new TerminalActionDefinition
-            {
-                Type = TerminalActionType.Shutdown,
-                Parameters = new Dictionary<string, JsonElement>
-                {
-                    ["gracePeriodSeconds"] = JsonSerializer.SerializeToElement(60),
-                    ["forced"] = JsonSerializer.SerializeToElement(false)
-                }
-            }
-        };
-
-        Presets.Add(newPreset);
-        SelectedPreset = newPreset;
-        SaveCurrentPresets();
-    }
-
-    public void LoadPresetIntoStudio(PresetDefinition preset)
+    private void LoadRoutineIntoEditor(PresetDefinition preset)
     {
         StudioPresetId = preset.Id;
         StudioPresetName = preset.Name;
-        StudioPresetDescription = preset.Description;
+        StudioPresetDescription = preset.DisplayDescription;
+        IsRoutineCheckVisible = false;
 
         // Disparador
+        foreach (var day in StudioWeekdays) day.IsSelected = true;
+        StudioRepeatSchedule = true;
         if (preset.Trigger != null)
         {
             switch (preset.Trigger.Type)
             {
                 case TriggerType.ProcessExit:
                     StudioTriggerTypeIndex = 0;
-                    if (preset.Trigger.Parameters != null &&
-                        preset.Trigger.Parameters.TryGetValue("processName", out var pName))
+                    if (preset.Trigger.Parameters != null)
                     {
-                        StudioProcessName = pName.GetString() ?? "notepad.exe";
-                    }
-                    if (preset.Trigger.Parameters != null &&
-                        preset.Trigger.Parameters.TryGetValue("debounceSeconds", out var pDeb) &&
-                        pDeb.TryGetDecimal(out var debVal))
-                    {
-                        StudioProcessDebounceSeconds = debVal;
+                        if (preset.Trigger.Parameters.TryGetValue("launchFilePath", out var pPath))
+                        {
+                            StudioLaunchFilePath = pPath.GetString() ?? "";
+                            StudioProcessWatchMode = !string.IsNullOrWhiteSpace(StudioLaunchFilePath) ? 1 : 0;
+                        }
+                        else
+                        {
+                            StudioProcessWatchMode = 0;
+                        }
+
+                        if (preset.Trigger.Parameters.TryGetValue("processName", out var pProc))
+                        {
+                            string raw = pProc.GetString() ?? "";
+                            var match = ActiveWindowProcesses.FirstOrDefault(a => a.StartsWith(raw, StringComparison.OrdinalIgnoreCase));
+                            StudioSelectedWindowProcess = match ?? raw;
+                        }
+                        if (preset.Trigger.Parameters.TryGetValue("debounceSeconds", out var pDebounce) && pDebounce.TryGetDecimal(out var dVal))
+                        {
+                            StudioProcessDebounceSeconds = dVal;
+                        }
                     }
                     break;
 
                 case TriggerType.Countdown:
-                    StudioTriggerTypeIndex = 1;
-                    if (preset.Trigger.Parameters != null &&
-                        preset.Trigger.Parameters.TryGetValue("durationSeconds", out var pDur) &&
-                        pDur.TryGetInt32(out var sec))
+                    if (preset.Trigger.Parameters != null && preset.Trigger.Parameters.TryGetValue("isFixedTime", out var pIsFixed) && pIsFixed.GetBoolean())
                     {
-                        StudioCountdownHours = sec / 3600;
-                        StudioCountdownMinutes = (sec % 3600) / 60;
-                        StudioCountdownSeconds = sec % 60;
+                        StudioTriggerTypeIndex = 2; // Hora Fija
+                        LoadScheduleFields(preset.Trigger);
+                        if (preset.Trigger.Parameters.TryGetValue("timeOfDay", out var pTime) && TimeSpan.TryParse(pTime.GetString(), out var ts))
+                        {
+                            StudioExactTime = ts;
+                        }
+                    }
+                    else
+                    {
+                        StudioTriggerTypeIndex = 1; // Cuenta Atrás
+                        if (preset.Trigger.Parameters != null && preset.Trigger.Parameters.TryGetValue("durationSeconds", out var pDur) && pDur.TryGetInt32(out var sec))
+                        {
+                            StudioCountdownHours = sec / 3600;
+                            StudioCountdownMinutes = (sec % 3600) / 60;
+                            StudioCountdownSeconds = sec % 60;
+                        }
                     }
                     break;
 
                 case TriggerType.UserIdle:
                     StudioTriggerTypeIndex = 3;
-                    if (preset.Trigger.Parameters != null &&
-                        preset.Trigger.Parameters.TryGetValue("idleMinutes", out var pIdle) &&
-                        pIdle.TryGetDecimal(out var idleVal))
+                    if (preset.Trigger.Parameters != null && preset.Trigger.Parameters.TryGetValue("idleMinutes", out var pIdle) && pIdle.TryGetDecimal(out var idleVal))
                     {
                         StudioInactivityMinutes = idleVal;
                     }
+                    else
+                    {
+                        StudioInactivityMinutes = 3m;
+                    }
+                    break;
+
+                case TriggerType.Schedule:
+                case TriggerType.FixedTime:
+                case TriggerType.ScheduledTime:
+                    StudioTriggerTypeIndex = 2; // Hora Fija
+                    LoadScheduleFields(preset.Trigger);
                     break;
 
                 case TriggerType.AudioSilence:
                     StudioTriggerTypeIndex = 4;
-                    if (preset.Trigger.Parameters != null &&
-                        preset.Trigger.Parameters.TryGetValue("silenceThresholdSeconds", out var pSil) &&
-                        pSil.TryGetDecimal(out var silVal))
+                    if (preset.Trigger.Parameters != null)
                     {
-                        StudioAudioSilenceSeconds = silVal;
-                    }
-                    if (preset.Trigger.Parameters != null &&
-                        preset.Trigger.Parameters.TryGetValue("thresholdPeak", out var pPeak) &&
-                        pPeak.TryGetDecimal(out var peakVal))
-                    {
-                        StudioAudioSilencePeak = peakVal;
+                        if (preset.Trigger.Parameters.TryGetValue("silenceThresholdSeconds", out var pSil) && pSil.TryGetDecimal(out var silVal))
+                            StudioAudioSilenceSeconds = silVal;
+                        if (preset.Trigger.Parameters.TryGetValue("thresholdPeak", out var pPeak) && pPeak.TryGetDecimal(out var peakVal))
+                            StudioAudioSilencePeak = peakVal;
                     }
                     break;
 
                 case TriggerType.BatteryState:
                     StudioTriggerTypeIndex = 5;
-                    if (preset.Trigger.Parameters != null &&
-                        preset.Trigger.Parameters.TryGetValue("onAcDisconnect", out var pAc))
+                    if (preset.Trigger.Parameters != null)
                     {
-                        StudioBatteryOnAcDisconnect = pAc.GetBoolean();
-                    }
-                    if (preset.Trigger.Parameters != null &&
-                        preset.Trigger.Parameters.TryGetValue("batteryLevelThreshold", out var pBat) &&
-                        pBat.TryGetDecimal(out var batVal))
-                    {
-                        StudioBatteryThresholdPercent = batVal;
-                        StudioBatteryOnThreshold = batVal > 0;
+                        if (preset.Trigger.Parameters.TryGetValue("onAcDisconnect", out var pAc))
+                            StudioBatteryOnAcDisconnect = pAc.GetBoolean();
+                        if (preset.Trigger.Parameters.TryGetValue("batteryLevelThreshold", out var pBat) && pBat.TryGetDecimal(out var batVal))
+                        {
+                            StudioBatteryThresholdPercent = batVal;
+                            StudioBatteryOnThreshold = batVal > 0;
+                        }
                     }
                     break;
 
+                case TriggerType.NetworkThroughput:
+                case TriggerType.NetworkIdle:
+                    StudioTriggerTypeIndex = 6;
+                    if (preset.Trigger.Parameters?.TryGetValue("thresholdKBs", out var threshold) == true) StudioNetworkThresholdKBs = threshold.GetDecimal();
+                    if (preset.Trigger.Parameters?.TryGetValue("durationSeconds", out var duration) == true) StudioNetworkIdleSeconds = duration.GetDecimal();
+                    break;
                 default:
-                    StudioTriggerTypeIndex = 1;
+                    StudioTriggerTypeIndex = 7;
                     break;
             }
         }
-        else
-        {
-            StudioTriggerTypeIndex = 1;
-        }
 
-        // Acciones intermedias
         StudioPipelineSteps.Clear();
-        if (preset.Pipeline != null)
+        foreach (var definition in WorkflowDefinition.GetActions(preset))
         {
-            foreach (var step in preset.Pipeline.OrderBy(s => s.StepOrder))
-            {
-                StudioPipelineSteps.Add(StudioStepItem.FromDefinition(step));
-            }
+            var step = StudioStepItem.FromDefinition(definition);
+            AttachStepCallbacks(step);
+            StudioPipelineSteps.Add(step);
         }
         RenumberStudioSteps();
-
-        // Acción Terminal
-        if (preset.TerminalAction != null)
+        StudioTerminalActionIndex = 6;
+    }
+    [RelayCommand]
+    public async Task BrowseStudioLaunchFileAsync()
+    {
+        if (RequestFilePicker != null)
         {
-            StudioTerminalActionIndex = preset.TerminalAction.Type switch
+            var path = await RequestFilePicker();
+            if (!string.IsNullOrWhiteSpace(path))
             {
-                TerminalActionType.Shutdown => 0,
-                TerminalActionType.Sleep => 1,
-                TerminalActionType.Hibernate => 2,
-                TerminalActionType.Restart => 3,
-                TerminalActionType.LockStation => 4,
-                TerminalActionType.None => 6,
-                _ => 0
-            };
-
-            if (preset.TerminalAction.Parameters != null)
-            {
-                if (preset.TerminalAction.Parameters.TryGetValue("gracePeriodSeconds", out var pGrace) &&
-                    pGrace.TryGetDecimal(out var graceVal))
-                {
-                    StudioGracePeriodSeconds = Math.Clamp(graceVal, 0, 300);
-                }
-                if (preset.TerminalAction.Parameters.TryGetValue("forced", out var pForce))
-                {
-                    StudioForceClose = pForce.GetBoolean();
-                }
+                StudioLaunchFilePath = path;
+                StudioProcessWatchMode = 1;
             }
         }
-        else
-        {
-            StudioTerminalActionIndex = 0;
-            StudioGracePeriodSeconds = 60;
-            StudioForceClose = false;
-        }
-    }
-
-    public PresetDefinition BuildPresetFromStudio(string? overrideId = null)
-    {
-        string presetId = string.IsNullOrWhiteSpace(overrideId)
-            ? (string.IsNullOrWhiteSpace(StudioPresetId) ? "preset_" + Guid.NewGuid().ToString("N")[..8] : StudioPresetId)
-            : overrideId;
-
-        // Disparador
-        TriggerDefinition trigger;
-        switch (StudioTriggerTypeIndex)
-        {
-            case 0: // Proceso
-                trigger = new TriggerDefinition
-                {
-                    Type = TriggerType.ProcessExit,
-                    Parameters = new Dictionary<string, JsonElement>
-                    {
-                        ["processName"] = JsonSerializer.SerializeToElement(string.IsNullOrWhiteSpace(StudioProcessName) ? "notepad.exe" : StudioProcessName),
-                        ["debounceSeconds"] = JsonSerializer.SerializeToElement((int)StudioProcessDebounceSeconds)
-                    }
-                };
-                break;
-
-            case 1: // Cuenta Atrás
-            default:
-                int totalSec = (int)((StudioCountdownHours ?? 0) * 3600 + (StudioCountdownMinutes ?? 0) * 60 + (StudioCountdownSeconds ?? 0));
-                if (totalSec <= 0) totalSec = 60;
-                trigger = new TriggerDefinition
-                {
-                    Type = TriggerType.Countdown,
-                    Parameters = new Dictionary<string, JsonElement>
-                    {
-                        ["durationSeconds"] = JsonSerializer.SerializeToElement(totalSec)
-                    }
-                };
-                break;
-
-            case 2: // Hora Fija
-                DateTime now = DateTime.Now;
-                var span = StudioExactTime ?? DateTime.Now.TimeOfDay.Add(TimeSpan.FromHours(1));
-                DateTime target = now.Date + span;
-                if (target <= now) target = target.AddDays(1);
-                int waitSec = (int)(target - now).TotalSeconds;
-                if (waitSec <= 0) waitSec = 5;
-                trigger = new TriggerDefinition
-                {
-                    Type = TriggerType.Countdown,
-                    Parameters = new Dictionary<string, JsonElement>
-                    {
-                        ["durationSeconds"] = JsonSerializer.SerializeToElement(waitSec)
-                    }
-                };
-                break;
-
-            case 3: // Inactividad
-                int idleM = (int)StudioInactivityMinutes;
-                if (idleM <= 0) idleM = 1;
-                trigger = new TriggerDefinition
-                {
-                    Type = TriggerType.UserIdle,
-                    Parameters = new Dictionary<string, JsonElement>
-                    {
-                        ["idleMinutes"] = JsonSerializer.SerializeToElement(idleM)
-                    }
-                };
-                break;
-
-            case 4: // Silencio WASAPI
-                int silSec = (int)StudioAudioSilenceSeconds;
-                if (silSec <= 0) silSec = 30;
-                trigger = new TriggerDefinition
-                {
-                    Type = TriggerType.AudioSilence,
-                    Parameters = new Dictionary<string, JsonElement>
-                    {
-                        ["silenceThresholdSeconds"] = JsonSerializer.SerializeToElement(silSec),
-                        ["thresholdPeak"] = JsonSerializer.SerializeToElement((double)StudioAudioSilencePeak)
-                    }
-                };
-                break;
-
-            case 5: // Batería
-                int batPct = StudioBatteryOnThreshold ? (int)StudioBatteryThresholdPercent : 0;
-                trigger = new TriggerDefinition
-                {
-                    Type = TriggerType.BatteryState,
-                    Parameters = new Dictionary<string, JsonElement>
-                    {
-                        ["onAcDisconnect"] = JsonSerializer.SerializeToElement(StudioBatteryOnAcDisconnect),
-                        ["batteryLevelThreshold"] = JsonSerializer.SerializeToElement(batPct)
-                    }
-                };
-                break;
-        }
-
-        // Acciones intermedias
-        var pipeline = StudioPipelineSteps.Select(s => s.ToDefinition()).ToList();
-
-        // Acción Terminal
-        TerminalActionType termType = StudioTerminalActionIndex switch
-        {
-            0 => TerminalActionType.Shutdown,
-            1 => TerminalActionType.Sleep,
-            2 => TerminalActionType.Hibernate,
-            3 => TerminalActionType.Restart,
-            4 => TerminalActionType.LockStation,
-            5 => TerminalActionType.None,
-            6 => TerminalActionType.None,
-            _ => TerminalActionType.Shutdown
-        };
-
-        if (StudioTerminalActionIndex == 5)
-        {
-            pipeline.Add(new PipelineStepDefinition
-            {
-                StepOrder = pipeline.Count + 1,
-                ActionType = ActionType.TurnOffMonitors,
-                IgnoreFailure = true
-            });
-        }
-
-        var terminal = new TerminalActionDefinition
-        {
-            Type = termType,
-            Parameters = new Dictionary<string, JsonElement>
-            {
-                ["gracePeriodSeconds"] = JsonSerializer.SerializeToElement((int)StudioGracePeriodSeconds),
-                ["forced"] = JsonSerializer.SerializeToElement(StudioForceClose)
-            }
-        };
-
-        return new PresetDefinition
-        {
-            Id = presetId,
-            Name = string.IsNullOrWhiteSpace(StudioPresetName) ? "Flujo Personalizado" : StudioPresetName,
-            Description = StudioPresetDescription,
-            Icon = "Sparkles",
-            Trigger = trigger,
-            Pipeline = pipeline,
-            TerminalAction = terminal
-        };
-    }
-
-    [RelayCommand]
-    public void SaveStudioPreset()
-    {
-        var updated = BuildPresetFromStudio();
-        int existingIndex = -1;
-        for (int i = 0; i < Presets.Count; i++)
-        {
-            if (Presets[i].Id == updated.Id)
-            {
-                existingIndex = i;
-                break;
-            }
-        }
-
-        if (existingIndex >= 0)
-        {
-            Presets[existingIndex] = updated;
-        }
-        else
-        {
-            Presets.Add(updated);
-        }
-
-        SelectedPreset = updated;
-        SaveCurrentPresets();
-        CurrentStatusText = $"Flujo '{updated.Name}' guardado con éxito.";
-    }
-
-    [RelayCommand]
-    public async Task StartStudioPreset()
-    {
-        var preset = BuildPresetFromStudio();
-        await _workflowEngine.StartPresetAsync(preset);
-    }
-
-    [RelayCommand]
-    public void DeleteSelectedPreset()
-    {
-        if (SelectedPreset == null) return;
-
-        var toRemove = SelectedPreset;
-        Presets.Remove(toRemove);
-        SaveCurrentPresets();
-
-        SelectedPreset = Presets.FirstOrDefault();
-        CurrentStatusText = $"Flujo '{toRemove.Name}' eliminado.";
     }
 
     [RelayCommand]
@@ -1359,8 +1419,14 @@ public partial class MainViewModel : ObservableObject, IDisposable
             "Screenshot" => ActionType.CaptureScreenshot,
             "AudioFade" => ActionType.AudioFadeOut,
             "MediaControl" => ActionType.MediaControl,
+            "WaitDelay" => ActionType.WaitDelay,
             "Command" => ActionType.ExecuteCommand,
+            "LaunchApp" => ActionType.LaunchApp,
+            "AudioConfig" => ActionType.AudioConfig,
+            "PowerAction" => ActionType.PowerAction,
             "MonitorsOff" => ActionType.TurnOffMonitors,
+            "LockWorkstation" => ActionType.LockWorkstation,
+            "KeepAlive" => ActionType.KeepAliveEngine,
             _ => ActionType.CaptureScreenshot
         };
 
@@ -1368,13 +1434,22 @@ public partial class MainViewModel : ObservableObject, IDisposable
         {
             StepOrder = StudioPipelineSteps.Count + 1,
             ActionType = actionType,
-            IgnoreFailure = true
+            IgnoreFailure = false
         };
+        AttachStepCallbacks(step);
         StudioPipelineSteps.Add(step);
         RenumberStudioSteps();
     }
 
-    [RelayCommand]
+    private void AttachStepCallbacks(StudioStepItem step)
+    {
+        step.MoveUpRequested = MoveStudioStepUp;
+        step.MoveDownRequested = MoveStudioStepDown;
+        step.RemoveRequested = RemoveStudioStep;
+        step.BrowseFileRequested = () => RequestFilePicker?.Invoke() ?? Task.FromResult<string?>(null);
+        step.SetInstalledApps(InstalledApps);
+    }
+
     public void RemoveStudioStep(StudioStepItem step)
     {
         if (StudioPipelineSteps.Remove(step))
@@ -1383,7 +1458,6 @@ public partial class MainViewModel : ObservableObject, IDisposable
         }
     }
 
-    [RelayCommand]
     public void MoveStudioStepUp(StudioStepItem step)
     {
         int index = StudioPipelineSteps.IndexOf(step);
@@ -1394,7 +1468,6 @@ public partial class MainViewModel : ObservableObject, IDisposable
         }
     }
 
-    [RelayCommand]
     public void MoveStudioStepDown(StudioStepItem step)
     {
         int index = StudioPipelineSteps.IndexOf(step);
@@ -1414,34 +1487,429 @@ public partial class MainViewModel : ObservableObject, IDisposable
     }
 
     [RelayCommand]
-    public void AbortTask()
+    public void VerifyRoutine()
     {
-        _workflowEngine.Abort();
+        try
+        {
+            BuildPresetFromStudio();
+            RoutineCheckStatusMessage = StudioPipelineSteps.Any(step => step.IsPowerAction)
+                ? "Rutina válida. Contiene una acción explícita de energía / sesión; revisa su aviso previo antes de iniciarla."
+                : "Rutina válida. Al finalizar, el equipo continuará encendido.";
+            RoutineCheckStatusColor = "#00E676";
+            IsRoutineCheckVisible = true;
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or ArgumentException or OverflowException) { ShowRoutineValidationError(ex); }
+    }
+    [RelayCommand]
+    public void SaveCurrentStudioPipeline()
+    {
+        PresetDefinition preset;
+        try { preset = BuildPresetFromStudio(); }
+        catch (Exception ex) when (ex is InvalidOperationException or ArgumentException or OverflowException) { ShowRoutineValidationError(ex); return; }
+        int existingIndex = -1;
+        for (int i = 0; i < SavedPipelines.Count; i++)
+        {
+            if (SavedPipelines[i].Id == preset.Id)
+            {
+                existingIndex = i;
+                break;
+            }
+        }
 
-        IsTaskRunning = false;
-        ActiveTaskTitle = "Ninguna tarea en curso";
-        CurrentStatusText = "Listo";
-        TimeRemainingText = "--:--:--";
-        ProgressPercentage = 0;
-        SecondsRemaining = 0;
+        if (existingIndex >= 0)
+        {
+            SavedPipelines[existingIndex] = preset;
+        }
+        else
+        {
+            SavedPipelines.Add(preset);
+        }
 
-        RequestGraceOverlay?.Invoke(false, 0);
-        RequestTrayIconUpdate?.Invoke(TrayIconVisualState.Idle, 0, 0, 1.0f);
+        _persistence.SavePresets(new PresetsFile { Presets = [.. SavedPipelines] });
+        SelectedRoutine = preset;
+        CurrentStatusText = $"Rutina '{preset.Name}' guardada con éxito.";
     }
 
+    [RelayCommand(CanExecute = nameof(CanStartSelectedRoutine), AllowConcurrentExecutions = true)]
+    public async Task RunCurrentStudioPipelineAsync()
+    {
+        PresetDefinition preset;
+        try { preset = BuildPresetFromStudio(); }
+        catch (Exception ex) when (ex is InvalidOperationException or ArgumentException or OverflowException) { ShowRoutineValidationError(ex); return; }
+        StudioPresetId = preset.Id;
+        CurrentStatusText = $"Iniciando rutina: {preset.Name}...";
+        await RunRoutineSafelyAsync(preset);
+    }
+
+    [RelayCommand(CanExecute = nameof(CanDeleteSelectedRoutine))]
+    public void DeleteSelectedPipeline()
+    {
+        if (SelectedRoutine == null || SelectedRoutine.IsSystemPreset) return;
+
+        var toRemove = SelectedRoutine;
+        SavedPipelines.Remove(toRemove);
+        _persistence.SavePresets(new PresetsFile { Presets = [.. SavedPipelines] });
+
+        if (SavedPipelines.Count == 0)
+        {
+            RestoreFactoryRoutines();
+        }
+        else
+        {
+            SelectedRoutine = SavedPipelines.FirstOrDefault();
+        }
+        CurrentStatusText = $"Rutina '{toRemove.Name}' eliminada.";
+    }
+
+    [RelayCommand]
+    public void RestoreFactoryRoutines()
+    {
+        string? selectedId = SelectedRoutine?.Id;
+        var restored = Presets.RestoreFactoryPresets(SavedPipelines);
+        SavedPipelines.Clear();
+        foreach (var preset in restored) SavedPipelines.Add(preset);
+        _persistence.SavePresets(new PresetsFile { Presets = [.. SavedPipelines] });
+        SelectedRoutine = SavedPipelines.FirstOrDefault(p => p.Id == selectedId) ?? SavedPipelines.FirstOrDefault();
+        CurrentStatusText = "Rutinas base de fábrica restauradas.";
+    }
+
+    public PresetDefinition BuildPresetFromStudio(string? overrideId = null)
+    {
+        ValidateLinearRoutine();
+        string presetId = overrideId ?? (string.IsNullOrWhiteSpace(StudioPresetId) ? "routine_" + Guid.NewGuid().ToString("N")[..8] : StudioPresetId);
+        var parameters = new Dictionary<string, JsonElement>();
+        TriggerType type;
+        void Set(string key, object value) => parameters[key] = JsonSerializer.SerializeToElement(value);
+        switch (StudioTriggerTypeIndex)
+        {
+            case 0:
+                type = TriggerType.ProcessExit;
+                string process = StudioProcessWatchMode == 1 ? Path.GetFileName(StudioLaunchFilePath) : StudioSelectedWindowProcess.Split(' ')[0];
+                if (!process.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)) process += ".exe";
+                Set("processName", process);
+                Set("debounceSeconds", (int)StudioProcessDebounceSeconds);
+                if (StudioProcessWatchMode == 1) Set("launchFilePath", StudioLaunchFilePath);
+                break;
+            case 1:
+                type = TriggerType.Countdown;
+                decimal seconds = (StudioCountdownHours ?? 0) * 3600 + (StudioCountdownMinutes ?? 0) * 60 + (StudioCountdownSeconds ?? 0);
+                if (seconds < 0 || seconds > int.MaxValue) throw new InvalidOperationException("Cuenta atrás fuera del rango permitido.");
+                Set("durationSeconds", (int)seconds);
+                break;
+            case 2:
+                type = TriggerType.ScheduledTime;
+                if (StudioExactTime is null) throw new InvalidOperationException("Selecciona una hora válida.");
+                Set("timeOfDay", StudioExactTime.Value.ToString(@"hh\:mm"));
+                Set("daysOfWeek", StudioWeekdays.Where(day => day.IsSelected).Select(day => day.Day).ToArray());
+                Set("repeat", StudioRepeatSchedule);
+                RoutineSchedule.NextOccurrence(new RoutineTrigger { Type = type, Parameters = parameters }, DateTimeOffset.Now, TimeZoneInfo.Local);
+                break;
+            case 3:
+                type = TriggerType.UserIdle;
+                Set("idleMinutes", (int)Math.Max(1, StudioInactivityMinutes));
+                break;
+            case 4:
+                type = TriggerType.AudioSilence;
+                Set("silenceThresholdSeconds", (int)Math.Max(1, StudioAudioSilenceSeconds));
+                Set("thresholdPeak", (double)StudioAudioSilencePeak);
+                break;
+            case 5:
+                type = TriggerType.BatteryState;
+                Set("onAcDisconnect", StudioBatteryOnAcDisconnect);
+                Set("batteryLevelThreshold", StudioBatteryOnThreshold ? (int)StudioBatteryThresholdPercent : 0);
+                break;
+            case 6:
+                type = TriggerType.NetworkIdle;
+                Set("thresholdKBs", (double)Math.Max(0, StudioNetworkThresholdKBs));
+                Set("durationSeconds", (int)Math.Max(1, StudioNetworkIdleSeconds));
+                break;
+            default:
+                type = TriggerType.Manual;
+                break;
+        }
+        return new PresetDefinition
+        {
+            Id = presetId,
+            Name = string.IsNullOrWhiteSpace(StudioPresetName) ? "Rutina Personalizada" : StudioPresetName.Trim(),
+            Description = StudioPresetDescription,
+            Icon = SelectedRoutine?.Icon ?? "Moon",
+            IsFavorite = SelectedRoutine?.IsFavorite ?? false,
+            IsSystemPreset = SelectedRoutine?.Id == presetId && SelectedRoutine.IsSystemPreset,
+            Trigger = new RoutineTrigger { Type = type, Parameters = parameters.Count == 0 ? null : parameters },
+            Actions = new ObservableCollection<WorkflowActionItem>(StudioPipelineSteps.Select(step => WorkflowDefinition.Copy(step.ToDefinition()))),
+            TerminalAction = new TerminalActionDefinition { Type = TerminalActionType.None }
+        };
+    }
+    // ========================================================
+    // --- CONTROL MANUAL: ACCIONES DE EJECUCIÓN --------------
+    // ========================================================
+    [RelayCommand(CanExecute = nameof(CanStartManualTask), AllowConcurrentExecutions = true)]
+    public async Task StartManualTaskAsync()
+    {
+        if (!TryBuildManualTask(out var preset, out _, out var error))
+        {
+            CurrentStatusText = error;
+            return;
+        }
+        CurrentStatusText = "Activando tarea manual...";
+        await RunRoutineSafelyAsync(preset!);
+    }
+
+    private TriggerDefinition BuildCountdownTrigger()
+    {
+        int seconds = (int)((CountdownHours ?? 0) * 3600 + (CountdownMinutes ?? 0) * 60 + (CountdownSeconds ?? 0));
+        return new() { Type = TriggerType.Countdown, Parameters = new() { ["durationSeconds"] = JsonSerializer.SerializeToElement(seconds) } };
+    }
+
+    private TriggerDefinition BuildFixedTimeTrigger()
+    {
+        DateTime now = DateTime.Now;
+        TimeSpan time = ExactTime ?? now.TimeOfDay.Add(TimeSpan.FromHours(1));
+        DateTime target = now.Date + time;
+        if (target <= now) target = target.AddDays(1);
+        int seconds = Math.Max(1, (int)(target - now).TotalSeconds);
+        return new() { Type = TriggerType.Countdown, Parameters = new()
+        {
+            ["durationSeconds"] = JsonSerializer.SerializeToElement(seconds),
+            ["isFixedTime"] = JsonSerializer.SerializeToElement(true),
+            ["timeOfDay"] = JsonSerializer.SerializeToElement(time.ToString())
+        } };
+    }
+
+    [RelayCommand]
+    public void SetQuickCountdown(string minutesStr)
+    {
+        if (int.TryParse(minutesStr, out int m))
+        {
+            CountdownHours = m / 60;
+            CountdownMinutes = m % 60;
+            CountdownSeconds = 0;
+            SelectedTriggerTypeIndex = 0;
+        }
+    }
+
+    [RelayCommand]
+    public void AddCountdownMinutes(string minutesStr)
+    {
+        if (int.TryParse(minutesStr, out int delta))
+        {
+            int current = (int)((CountdownHours ?? 0) * 60 + (CountdownMinutes ?? 0));
+            int next = Math.Clamp(current + delta, 0, 99 * 60 + 59);
+            CountdownHours = next / 60;
+            CountdownMinutes = next % 60;
+            SelectedTriggerTypeIndex = 0;
+        }
+    }
+
+    [RelayCommand]
+    public void ResetCountdown()
+    {
+        CountdownHours = 0;
+        CountdownMinutes = 0;
+        CountdownSeconds = 0;
+        SelectedTriggerTypeIndex = 0;
+    }
+
+    // ========================================================
+    // --- ACCESOS RÁPIDOS (PRESETS DE UN CLIC) ---------------
+    // ========================================================
+    [RelayCommand]
+    public void ToggleKeepAlive()
+    {
+        if (IsKeepAliveActive)
+        {
+            StopKeepAlive();
+        }
+        else
+        {
+            StartKeepAlive();
+        }
+    }
+
+    private void StartKeepAlive()
+    {
+        _keepAliveCts = new CancellationTokenSource();
+        IsKeepAliveActive = true;
+        KeepAliveButtonText = "⏸ Pausar";
+        CurrentStatusText = "Mantener equipo activo";
+
+        Task.Run(async () =>
+        {
+            try
+            {
+                await _systemAdapter.RunKeepAliveLoopAsync(
+                    KeepAliveMode.Mixed,
+                    30,
+                    90,
+                    msg => Debug.WriteLine($"[KeepAlive] {msg}"),
+                    _keepAliveCts.Token);
+            }
+            catch (OperationCanceledException)
+            {
+            }
+            finally
+            {
+                Dispatcher.UIThread.Post(() =>
+                {
+                    IsKeepAliveActive = false;
+                    KeepAliveButtonText = "▶ Iniciar";
+                    CurrentStatusText = "Listo";
+                });
+            }
+        });
+    }
+
+    private void StopKeepAlive()
+    {
+        _keepAliveCts?.Cancel();
+        _keepAliveCts?.Dispose();
+        _keepAliveCts = null;
+        IsKeepAliveActive = false;
+        KeepAliveButtonText = "▶ Iniciar";
+        CurrentStatusText = "Listo";
+    }
+
+    [RelayCommand]
+    public async Task RunQuickSleepModeAsync()
+    {
+        var preset = new PresetDefinition
+        {
+            Id = "quick_sleep",
+            Name = "Modo Dormir",
+            Trigger = new TriggerDefinition
+            {
+                Type = TriggerType.Countdown,
+                Parameters = new Dictionary<string, JsonElement>
+                {
+                    ["durationSeconds"] = JsonSerializer.SerializeToElement(45 * 60)
+                }
+            },
+            Pipeline =
+            [
+                new PipelineStepDefinition
+                {
+                    StepOrder = 1,
+                    ActionType = ActionType.AudioFadeOut,
+                    Parameters = new Dictionary<string, JsonElement>
+                    {
+                        ["durationSeconds"] = JsonSerializer.SerializeToElement(30),
+                        ["targetVolumePercentage"] = JsonSerializer.SerializeToElement(0)
+                    }
+                },
+                new PipelineStepDefinition
+                {
+                    StepOrder = 2,
+                    ActionType = ActionType.MediaControl
+                }
+            ],
+            TerminalAction = new TerminalActionDefinition
+            {
+                Type = TerminalActionType.Shutdown,
+                Parameters = new Dictionary<string, JsonElement>
+                {
+                    ["gracePeriodSeconds"] = JsonSerializer.SerializeToElement(60),
+                    ["forced"] = JsonSerializer.SerializeToElement(false)
+                }
+            }
+        };
+
+        CurrentStatusText = "Modo Dormir activado (45 min)...";
+        await RunRoutineSafelyAsync(preset);
+    }
+
+    [RelayCommand]
+    public async Task RunQuickRenderModeAsync()
+    {
+        var preset = new PresetDefinition
+        {
+            Id = "quick_render",
+            Name = "Modo Render",
+            Trigger = new TriggerDefinition
+            {
+                Type = TriggerType.ProcessExit,
+                Parameters = new Dictionary<string, JsonElement>
+                {
+                    ["processName"] = JsonSerializer.SerializeToElement(SelectedProcessName),
+                    ["debounceSeconds"] = JsonSerializer.SerializeToElement(5)
+                }
+            },
+            Pipeline =
+            [
+                new PipelineStepDefinition
+                {
+                    StepOrder = 1,
+                    ActionType = ActionType.CaptureScreenshot
+                }
+            ],
+            TerminalAction = new TerminalActionDefinition
+            {
+                Type = TerminalActionType.Shutdown,
+                Parameters = new Dictionary<string, JsonElement>
+                {
+                    ["gracePeriodSeconds"] = JsonSerializer.SerializeToElement(60),
+                    ["forced"] = JsonSerializer.SerializeToElement(false)
+                }
+            }
+        };
+
+        CurrentStatusText = $"Modo Render activado: vigilando '{SelectedProcessName}'...";
+        await RunRoutineSafelyAsync(preset);
+    }
+
+    [RelayCommand]
+    public async Task RunQuickDownloadModeAsync()
+    {
+        var preset = new PresetDefinition
+        {
+            Id = "quick_download",
+            Name = "Modo Descargas",
+            Trigger = new TriggerDefinition
+            {
+                Type = TriggerType.NetworkThroughput,
+                Parameters = new Dictionary<string, JsonElement>
+                {
+                    ["thresholdKBs"] = JsonSerializer.SerializeToElement(50.0),
+                    ["durationSeconds"] = JsonSerializer.SerializeToElement(60)
+                }
+            },
+            Pipeline =
+            [
+                new PipelineStepDefinition
+                {
+                    StepOrder = 1,
+                    ActionType = ActionType.TurnOffMonitors
+                }
+            ],
+            TerminalAction = new TerminalActionDefinition
+            {
+                Type = TerminalActionType.Sleep,
+                Parameters = new Dictionary<string, JsonElement>
+                {
+                    ["gracePeriodSeconds"] = JsonSerializer.SerializeToElement(30),
+                    ["forced"] = JsonSerializer.SerializeToElement(false)
+                }
+            }
+        };
+
+        CurrentStatusText = "Modo Descargas activado: vigilando tráfico de red...";
+        await RunRoutineSafelyAsync(preset);
+    }
+
+    [RelayCommand(CanExecute = nameof(CanFinishTask))]
+    public void FinishTask()
+    {
+        _workflowEngine.FinishAll();
+        RefreshActiveRoutines();
+    }
     [RelayCommand]
     public void PostponeTask(string minutesStr)
     {
         int minutes = int.TryParse(minutesStr, out int m) ? m : 10;
-        _workflowEngine.Postpone(TimeSpan.FromMinutes(minutes));
+        if (_graceRoutineId is not null)
+            _workflowEngine.PostponeRoutine(_graceRoutineId, TimeSpan.FromMinutes(minutes));
+        else _workflowEngine.Postpone(TimeSpan.FromMinutes(minutes));
         RequestGraceOverlay?.Invoke(false, 0);
         CurrentStatusText = $"Pospuesto +{minutes} min.";
-    }
-
-    [RelayCommand]
-    public void ToggleStudioMode()
-    {
-        IsStudioMode = !IsStudioMode;
     }
 
     [RelayCommand]
@@ -1450,17 +1918,98 @@ public partial class MainViewModel : ObservableObject, IDisposable
         await _systemAdapter.SetDisplayPowerAsync(false);
     }
 
+    // ========================================================
+    // --- AJUSTES Y EVIDENCIAS: ACCIONES Y MANTENIMIENTO -----
+    // ========================================================
     [RelayCommand]
-    public void OpenQrModal()
+    public void OpenEvidenceGallery()
     {
-        StartLanServer();
-        RequestQrModal?.Invoke();
+        EvidenceGalleryItems.Clear();
+        string snapDir = _persistence.Storage.SnapshotsDirectory;
+        if (Directory.Exists(snapDir))
+        {
+            var files = Directory.GetFiles(snapDir, "*.bmp")
+                .Select(f => new FileInfo(f))
+                .OrderByDescending(f => f.CreationTimeUtc);
+
+            foreach (var file in files)
+            {
+                EvidenceGalleryItems.Add(new EvidenceItem
+                {
+                    FilePath = file.FullName,
+                    FileName = file.Name,
+                    TimestampText = file.CreationTime.ToString("yyyy-MM-dd HH:mm:ss"),
+                    FileSizeText = $"{file.Length / 1024.0 / 1024.0:F1} MB"
+                });
+            }
+        }
+        IsEvidenceGalleryOpen = true;
     }
+
+    [RelayCommand]
+    public void CloseEvidenceGallery()
+    {
+        IsEvidenceGalleryOpen = false;
+    }
+
+    [RelayCommand]
+    public void CleanEvidence()
+    {
+        string snapDir = _persistence.Storage.SnapshotsDirectory;
+        if (Directory.Exists(snapDir))
+        {
+            foreach (var f in Directory.GetFiles(snapDir, "*.bmp"))
+            {
+                try
+                {
+                    File.Delete(f);
+                }
+                catch { }
+            }
+        }
+        EvidenceGalleryItems.Clear();
+        CurrentStatusText = "Galería de evidencias purgada.";
+    }
+
+    [RelayCommand]
+    public void OpenDataFolder()
+    {
+        string dataPath = _persistence.Storage.DataDirectory;
+        if (Directory.Exists(dataPath))
+        {
+            Process.Start(new ProcessStartInfo
+            {
+                FileName = dataPath,
+                UseShellExecute = true
+            });
+        }
+    }
+
+    [RelayCommand]
+    public void ResetSettings()
+    {
+        _panicHotkeyService?.Stop();
+        _micMuteHotkeyService?.Stop();
+        _audioMuteHotkeyService?.Stop();
+        _config.Settings = new AppSettings();
+        _persistence.SaveConfig(_config);
+        LoadSettingsFromConfig();
+        App.CurrentInstance?.SetLanguage("es");
+        App.CurrentInstance?.SetTheme("Dark", ScheduleDayTime, ScheduleNightTime);
+        CurrentStatusText = "Ajustes restablecidos a valores por defecto.";
+    }
+
+    [RelayCommand]
+    private Task LockSessionNow() => _systemAdapter.SetPowerStateAsync(PowerAction.LockStation);
 
     public void Dispose()
     {
+        DisposeRoutineEditor();
         _disposalCts.Cancel();
         _disposalCts.Dispose();
+        _panicHotkeyService?.Dispose();
+        DisposeAudioControls();
+        DisposeRemoteControls();
         _keepAliveCts?.Cancel();
         _keepAliveCts?.Dispose();
         _metricsTimer?.Dispose();

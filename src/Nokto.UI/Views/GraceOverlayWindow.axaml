@@ -63,7 +63,7 @@
 
                 <Button Grid.Column="2"
                         x:Name="BtnCancel"
-                        Content="Cancelar (Esc)"
+                        Content="Finalizar (Esc)"
                         Background="#FF4B4B"
                         Foreground="#FFFFFF"
                         FontWeight="SemiBold"

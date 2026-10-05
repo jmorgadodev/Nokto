@@ -58,7 +58,10 @@ public enum TriggerType
     NetworkThroughput,
     AudioSilence,
     UserIdle,
-    BatteryState
+    BatteryState,
+    Manual,
+    ScheduledTime,
+    NetworkIdle
 }
 
 /// <summary>
@@ -73,7 +76,15 @@ public enum ActionType
     MediaControl,
     TurnOffMonitors,
     ExecuteCommand,
-    KeepAliveEngine
+    KeepAliveEngine,
+    WaitDelay,
+    MuteMicrophone,
+    LockWorkstation,
+    CloseForegroundApplications,
+    LaunchApp,
+    AudioConfig,
+    PowerAction,
+    CloseSelectedApplications
 }
 
 /// <summary>

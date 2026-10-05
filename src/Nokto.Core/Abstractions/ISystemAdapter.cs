@@ -63,6 +63,26 @@ public interface ISystemAdapter : IDisposable
     /// </summary>
     SystemMetrics GetCurrentMetrics();
 
+    /// <summary>Returns a cached, offline hardware identity where supported.</summary>
+    HardwareProfile GetHardwareProfile() => new();
+
+    /// <summary>Reads the active default speaker and microphone device names without capturing audio.</summary>
+    AudioDeviceProfile GetAudioDevices() => new();
+
+    IReadOnlyList<AudioEndpointInfo> GetOutputAudioDevices() => [];
+    IReadOnlyList<AudioEndpointInfo> GetInputAudioDevices() => [];
+    bool SetDefaultAudioDevice(string deviceId, bool input) => false;
+    bool? GetOutputMute() => GetAudioDevices().OutputMuted;
+    bool? GetInputMute() => GetAudioDevices().InputMuted;
+    bool ToggleOutputMute() => false;
+    bool ToggleInputMute() => false;
+    bool SetInputMute(bool mute) => false;
+    void CloseForegroundApplication() { }
+    IReadOnlyList<ApplicationWindow> GetApplicationWindows() => [];
+    Task CloseApplicationsAsync(IReadOnlyList<ApplicationCloseTarget> targets, bool foregroundAtExecution,
+        CancellationToken cancellationToken = default) =>
+        Task.FromException(new NotSupportedException("El cierre de ventanas seleccionadas no está disponible."));
+
     /// <summary>
     /// Modo de prueba seguro (Dry-Run): evita la ejecución de llamadas reales destructivas de energía.
     /// </summary>
@@ -87,4 +107,7 @@ public interface ISystemAdapter : IDisposable
     /// Envía una señal de control multimedia nativa (reproducir/pausar o detener) al sistema operativo.
     /// </summary>
     void SendMediaControl(bool pauseOnly = true);
+    bool IsAppRunning(string executablePath) => false;
+    Task LaunchAppAsync(LaunchAppOptions options, CancellationToken cancellationToken = default) =>
+        Task.FromException(new NotSupportedException("El lanzamiento de aplicaciones no está disponible en este adaptador."));
 }

@@ -1,0 +1,63 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+    <sys:String x:Key="TabHome">◈ Inicio</sys:String>
+    <sys:String x:Key="TabManual">⏱ Control Manual</sys:String>
+    <sys:String x:Key="TabQuick">⚡ Accesos Rápidos</sys:String>
+    <sys:String x:Key="TabRoutines">🔄 Rutinas</sys:String>
+    <sys:String x:Key="TabSettings">⚙ Ajustes</sys:String>
+
+    <sys:String x:Key="HomeConnection">CONEXIÓN Y RED LOCAL</sys:String>
+    <sys:String x:Key="HomeWorkAndPower">ESTADO DE TRABAJO Y ENERGÍA</sys:String>
+    <sys:String x:Key="HomeAiRadar">RADAR DE HERRAMIENTAS IA</sys:String>
+    <sys:String x:Key="HomeHardwareSpecifications">ESTACIÓN DE TRABAJO</sys:String>
+    <sys:String x:Key="SettingsDiskSpace">ESPACIO EN DISCO PRINCIPAL</sys:String>
+    <sys:String x:Key="DiskAlertPrompt">Avisar cuando quede menos de</sys:String>
+    <sys:String x:Key="SettingsHomeModularity">MODULARIDAD DE LA CABINA (Pestaña Inicio)</sys:String>
+    <sys:String x:Key="ShowNetworkCardInHome">Mostrar Tarjeta de Red Local y Diagnóstico VPN</sys:String>
+    <sys:String x:Key="ShowEnergyStatusCardInHome">Mostrar Tarjeta de Estado de Trabajo y Energía</sys:String>
+    <sys:String x:Key="ShowHardwareCardInHome">Mostrar Tarjeta de Especificaciones de Hardware y Sistema</sys:String>
+    <sys:String x:Key="ShowAiRadarCardInHome">Mostrar Radar de Herramientas IA</sys:String>
+    <sys:String x:Key="ShowQuickActionsInHome">Mostrar Acciones Rápidas (Temporizador, Rutinas, Modo Dormir)</sys:String>
+    <sys:String x:Key="ShowAudioControlCardInHome">Mostrar Configuración y Control de Audio</sys:String>
+    <sys:String x:Key="HomeQuickActions">ACCIONES RÁPIDAS</sys:String>
+    <sys:String x:Key="HomeBtnQuickTimer">⏱ Temporizador</sys:String>
+    <sys:String x:Key="HomeBtnViewRoutines">🔄 Ver Rutinas</sys:String>
+    <sys:String x:Key="HomeBtnSleepMode">🌙 Modo Dormir</sys:String>
+
+    <sys:String x:Key="WhenToExecute">¿CUÁNDO ACTIVAR?</sys:String>
+    <sys:String x:Key="WhatToDo">¿LUEGO QUÉ HACER? (Acciones intermedias en serie)</sys:String>
+    <sys:String x:Key="HowToFinish">¿QUÉ HACER AL FINALIZAR?</sys:String>
+    <sys:String x:Key="WhenToActivateLabel">¿Cuándo activar?</sys:String>
+    <sys:String x:Key="OnCompletionLabel">¿Qué hacer al finalizar?</sys:String>
+    <sys:String x:Key="FadeAudioLabel">Bajar volumen gradualmente</sys:String>
+    <sys:String x:Key="PreExecutionNoticeLabel">Aviso en pantalla antes de ejecutar</sys:String>
+    <sys:String x:Key="PreExecutionNoticeRange">Aviso en pantalla antes de ejecutar (0 a 300 segundos):</sys:String>
+
+    <sys:String x:Key="BtnVerifyRoutine">🔍 Verificar Rutina</sys:String>
+    <sys:String x:Key="BtnSaveRoutine">💾 Guardar Rutina</sys:String>
+    <sys:String x:Key="BtnStartRoutine">▶ INICIAR RUTINA</sys:String>
+    <sys:String x:Key="BtnStartTimer">▶ INICIAR TEMPORIZADOR</sys:String>
+    <sys:String x:Key="BtnFinish">⏹ FINALIZAR</sys:String>
+    <sys:String x:Key="BtnDelete">🗑 Eliminar</sys:String>
+    <sys:String x:Key="BtnRestoreFactory">↺ Restaurar Rutinas de Fábrica</sys:String>
+    <sys:String x:Key="BtnNewRoutine">+ Nueva Rutina</sys:String>
+
+    <sys:String x:Key="SettingsLanguage">IDIOMA</sys:String>
+    <sys:String x:Key="SettingsAppearance">APARIENCIA</sys:String>
+    <sys:String x:Key="SettingsStartup">TELETRABAJO Y ARRANQUE</sys:String>
+    <sys:String x:Key="SettingsPanicHotkey">ATAJO GLOBAL DE PÁNICO (Panic Hotkey)</sys:String>
+    <sys:String x:Key="SettingsBattery">GUARDIÁN DE BATERÍA (Portátiles)</sys:String>
+    <sys:String x:Key="SettingsEvidence">EVIDENCIAS Y MANTENIMIENTO</sys:String>
+    <sys:String x:Key="SettingsAiOptions">MODULARIDAD E INTELIGENCIA ARTIFICIAL</sys:String>
+
+    <sys:String x:Key="StartWithWindows">Iniciar con Windows</sys:String>
+    <sys:String x:Key="StartMinimized">Iniciar minimizado en la bandeja del sistema</sys:String>
+    <sys:String x:Key="StartInWorkMode">Iniciar automáticamente en Modo Trabajo (anti-ausente)</sys:String>
+    <sys:String x:Key="EnableBatteryProtection">Activar protección de batería</sys:String>
+    <sys:String x:Key="TakeEvidenceScreenshots">Tomar capturas de pantalla de evidencia (máx 20)</sys:String>
+    <sys:String x:Key="ShowAiRadarInHome">Mostrar Radar de Cuotas IA en pestaña Inicio</sys:String>
+    <sys:String x:Key="BtnViewGallery">🖼 Ver Galería de Evidencias</sys:String>
+    <sys:String x:Key="BtnOpenData">📂 Abrir carpeta de datos</sys:String>
+    <sys:String x:Key="BtnResetSettings">🔄 Restablecer Ajustes</sys:String>
+</ResourceDictionary>

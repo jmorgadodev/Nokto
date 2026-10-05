@@ -1,5 +1,6 @@
 using Avalonia;
 using Avalonia.Controls;
+using Avalonia.Platform.Storage;
 using Nokto.UI.ViewModels;
 
 namespace Nokto.UI.Views;
@@ -9,10 +10,12 @@ public partial class MainWindow : Window
     private bool _isExplicitExit;
     private GraceOverlayWindow? _graceOverlay;
     private MainViewModel? _viewModel;
+    internal bool IsExiting => _isExplicitExit;
 
     public MainWindow()
     {
         InitializeComponent();
+        WindowState = Avalonia.Controls.WindowState.Maximized;
         Closing += OnMainWindowClosing;
 
         try
@@ -31,13 +34,37 @@ public partial class MainWindow : Window
         DataContext = viewModel;
 
         _viewModel.RequestGraceOverlay += HandleRequestGraceOverlay;
-        _viewModel.RequestQrModal += HandleRequestQrModal;
+        _viewModel.RequestFilePicker += async () =>
+        {
+            var topLevel = TopLevel.GetTopLevel(this);
+            if (topLevel != null)
+            {
+                var files = await topLevel.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
+                {
+                    Title = "Seleccionar aplicación o script",
+                    AllowMultiple = false,
+                    FileTypeFilter = new[]
+                    {
+                        new FilePickerFileType("Ejecutables y Scripts (*.exe, *.bat, *.cmd, *.ps1)")
+                        {
+                            Patterns = new[] { "*.exe", "*.bat", "*.cmd", "*.ps1" }
+                        }
+                    }
+                });
+                if (files.Count > 0)
+                {
+                    return files[0].Path.LocalPath;
+                }
+            }
+            return null;
+        };
     }
 
     private void HandleRequestGraceOverlay(bool show, int secondsRemaining)
     {
         Avalonia.Threading.Dispatcher.UIThread.Post(() =>
         {
+            if (_isExplicitExit || PlatformImpl is null) return;
             if (show)
             {
                 if (_graceOverlay == null)
@@ -61,27 +88,22 @@ public partial class MainWindow : Window
         });
     }
 
-    private void HandleRequestQrModal()
-    {
-        Avalonia.Threading.Dispatcher.UIThread.Post(() =>
-        {
-            var qrModal = new QrModalWindow();
-            qrModal.SetConnectionDetails(_viewModel?.LanConnectionUrl ?? "http://localhost:4884");
-            qrModal.Closed += (s, e) =>
-            {
-                _viewModel?.StopLanServer();
-            };
-            qrModal.ShowDialog(this);
-        });
-    }
-
     private void OnMainWindowClosing(object? sender, WindowClosingEventArgs e)
     {
         if (!_isExplicitExit)
         {
-            // Residencia en segundo plano: oculta la ventana a la bandeja del sistema
-            e.Cancel = true;
-            Hide();
+            bool minimizeToTray = _viewModel?.MinimizeToTrayOnClose ?? true;
+            if (minimizeToTray)
+            {
+                e.Cancel = true;
+                Hide();
+            }
+            else
+            {
+                _isExplicitExit = true;
+                _graceOverlay?.Close();
+                _graceOverlay = null;
+            }
         }
     }
 
@@ -99,6 +121,15 @@ public partial class MainWindow : Window
     {
         _isExplicitExit = true;
         _graceOverlay?.Close();
+        _graceOverlay = null;
         Close();
+    }
+
+    private void OnExitNoktoClick(object? sender, Avalonia.Interactivity.RoutedEventArgs e)
+    {
+        _viewModel?.FinishTask();
+        ForceCloseApplication();
+        if (Avalonia.Application.Current?.ApplicationLifetime is Avalonia.Controls.ApplicationLifetimes.IClassicDesktopStyleApplicationLifetime desktop)
+            desktop.Shutdown();
     }
 }

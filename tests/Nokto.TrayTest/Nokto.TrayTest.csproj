@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>false</PublishSingleFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/Nokto.UI/Nokto.UI.csproj" />
+    <Compile Include="../Nokto.ConsoleTest/WorkflowTestAdapter.cs" Link="WorkflowTestAdapter.cs" />
+  </ItemGroup>
+  <Target Name="BuildTrayVerification" BeforeTargets="RunTrayVerification" DependsOnTargets="Build" Condition="'$(VSTestNoBuild)' != 'true'" />
+  <Target Name="RunTrayVerification" AfterTargets="VSTest">
+    <Exec Command="&quot;$(TargetDir)$(AssemblyName).exe&quot;" />
+  </Target>
+</Project>

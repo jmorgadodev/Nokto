@@ -8,13 +8,18 @@ AppSupportURL=https://github.com/nokto/nokto/issues
 DefaultDirName={autopf}\Nokto
 DefaultGroupName=Nokto
 DisableProgramGroupPage=yes
-OutputDir=..\..\artifacts\installer
+OutputDir=..\..\artifacts\Nokto-Installer-x64
 OutputBaseFilename=Nokto-Setup-x64
 Compression=lzma2/ultra64
 SolidCompression=yes
 WizardStyle=modern
 PrivilegesRequired=lowest
+MinVersion=10.0.19041
+ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
+SetupIconFile=..\..\src\Nokto.UI\Assets\nokto.ico
+UninstallDisplayIcon={app}\Nokto.exe
+VersionInfoDescription=Consola local de operaciones matutinas, telemetría y automatización de escritorio
 
 [Languages]
 Name: "spanish"; MessagesFile: "compiler:Languages\Spanish.isl"
@@ -22,10 +27,10 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
-Name: "startup"; Description: "Iniciar Nokto con Windows"; GroupDescription: "Opciones de inicio:"
+Name: "startup"; Description: "Iniciar Nokto con Windows"; GroupDescription: "Opciones de inicio:"; Flags: unchecked
 
 [Files]
-Source: "..\..\publish\win-x64\Nokto.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\..\artifacts\Nokto-Installer-x64\App\*"; DestDir: "{app}"; Excludes: "data\*,portable.lock"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{group}\Nokto"; Filename: "{app}\Nokto.exe"

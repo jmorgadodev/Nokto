@@ -2,6 +2,106 @@
 
 Este documento registra de manera cronológica y detallada cada avance, fase del roadmap, archivos modificados y resultados de compilación del proyecto Nokto.
 
+## [Fase Final: Tema Día/Noche Dinámico, Cabina Inicio, Radar Cuotas IA Offline y Nokto Instrument] - 2026-10-02 00:20:00
+- **Fase del roadmap:** Fase Final — Tema Dinámico, Cabina Inicio & Radar IA Local
+- **Archivos creados o modificados:**
+  - `src/Nokto.Core/Services/AiQuotaService.cs` *(Nuevo)*: Servicio desacoplado `IAiQuotaService` / `AiQuotaService` para inspección pasiva, 100% offline y en modo ReadOnly de bases SQLite (`state.vscdb`) y JSON (`state.json`) locales de Antigravity IDE, Codex y OpenCode. Se erradicaron por completo valores simulados o hardcoded; utiliza copia temporal segura para evitar bloqueos por concurrencia con el IDE abierto, analiza `ItemTable` y degrada graciosamente a estado técnico real ("Entorno instalado y detectado en disco (Sesión activa)") si las cuotas no están expuestas en texto plano.
+  - `src/Nokto.Platform.Windows/Network/NetworkDiagnostics.cs` *(Nuevo)*: Diagnóstico de red local offline sin apertura de sockets ni peticiones web. Detección de IP LAN IPv4 física real (filtrando loopback y 169.254.x.x APIPA), nombre de interfaz o SSID Wi-Fi, y detección pasiva de adaptadores VPN (WireGuard, Tailscale, OpenVPN, TAP, Cisco AnyConnect, FortiClient, etc.).
+  - `src/Nokto.Core/Models/Config.cs`: Añadido campo `ShowAiRadarInHome` en `AppSettings` con persistencia en `config.json` a través de `NoktoJsonContext`.
+  - `src/Nokto.Core/Nokto.Core.csproj`: Añadida dependencia `Microsoft.Data.Sqlite` para lectura segura de bases de datos locales en modo de solo lectura.
+  - `src/Nokto.UI/App.axaml`:
+    * Implementación de `ThemeDictionaries` para `ThemeVariant.Dark` y `ThemeVariant.Light` con paleta semántica completa: `ThemeBackground`, `ThemeCardBackground`, `ThemeCardBorder`, `ThemeTextPrimary`, `ThemeTextSecondary`, `ThemeAccent`, `ThemeAccentWarning`, `ThemeAccentSuccess`, `ThemeInputBackground`, `ThemeInputBorder`, `ThemeCardHover`, `ThemeHeaderBackground`, `ThemeFooterBackground`.
+    * Iconografía técnica vectorial "Nokto Instrument" en `StreamGeometry`: `IconRadar` (rombo angular con punto focal), `IconChrono` (cronógrafo a 45°), `IconWorkflowCircuit` (nodos interconectados circuito impreso), `IconReticle` (retícula con crucetas), `IconCpuSilicon` (chip con pines), `IconRamDimm` (módulo DIMM con muesca), `IconGpuAxial` (ventilador axial), `IconDiskFlash` (chip flash BGA) e `IconNetPulse` (ondas concéntricas de pulso).
+  - `src/Nokto.UI/App.axaml.cs`: Temporizador pasivo en background cada 60s para conmutación automática de tema Light/Dark según horario fijado (default 08:00 y 20:00).
+  - `src/Nokto.UI/Resources/Locale.es.axaml` y `Locale.en.axaml`: Cadenas localizadas para la pestaña Inicio, red local, estado de trabajo y radar de cuotas de IA.
+  - `src/Nokto.UI/ViewModels/AiEnvironmentItem.cs` *(Nuevo)*: Modelo de elemento visual para entornos de IA que encapsula `OpenCommand` enlazado fuertemente tipado en tiempo de compilación (`x:DataType="vm:AiEnvironmentItem"`), erradicando el uso de expresiones de reflexión `$parent` y previniendo excepciones en el `XamlTypeResolver` de Avalonia.
+  - `src/Nokto.UI/ViewModels/MainViewModel.cs`:
+    * Integración de `AiQuotaService` y `NetworkDiagnostics` con actualización periódica de métricas y red.
+    * Navegación fluida entre pestañas (`NavigateToTabCommand`) para acciones rápidas.
+    * Conexión reactiva de la propiedad `ShowAiRadarInHome` con guardado automático en `config.json`.
+  - `src/Nokto.UI/Views/MainWindow.axaml`:
+    * Reorganización en 4 pestañas limpias: `[ ◈ Inicio ]`, `[ ⏱ Control Manual ]`, `[ 🔄 Rutinas ]` y `[ ⚙ Ajustes ]`.
+    * Reemplazo de todos los estilos y colores hardcoded por `DynamicResource` a la paleta semántica Light/Dark.
+    * Diseño de la cabina `[ ◈ Inicio ]` con Tarjeta de Red Local & VPN, Tarjeta de Estado de Trabajo y Energía, Tarjeta de Radar de Cuotas de IA (con barras visuales, badge de recomendación y botón de apertura directa) y Fila de Acciones Rápidas.
+    * Checkbox en Ajustes `[✓] Mostrar Radar de Cuotas IA en pestaña Inicio` con colapso armónico reactivo del grid.
+  - `tests/Nokto.ConsoleTest/Program.cs`: Suite ampliada a 14 pruebas automatizadas con `[TEST 13]` (Diagnóstico de Red Local y VPN Offline) y `[TEST 14]` (Radar de Cuotas de IA Pasivo Offline).
+  - `artifacts/Nokto-Portable-x64/`: Binario final único `Nokto.exe` (52.8 MB, 0 PDBs, 0 residuos).
+  - `artifacts/Nokto-v1.0.0-Portable-x64.zip`: Paquete zip actualizado y certificado.
+- **Resultados de Validación:**
+  - Compilación: **0 advertencias, 0 errores** (`TreatWarningsAsErrors=true`).
+  - Suite de pruebas de sistema: **14/14 TESTS SUPERADOS [0 FALLOS]** en 9.19s.
+  - Validación runtime: Verificada alternancia instantánea Light/Dark, lectura real de IP LAN/VPN y funcionamiento modular del radar IA.
+
+## [Evolución Definitiva: Cero Red LAN, 4 Pestañas, Rutinas con Dry-Check, 5 Métricas Footer, Panel Ajustes y Binario Único] - 2026-10-01 23:55:00
+- **Fase del roadmap:** Evolución Definitiva & Certificación Offline Local
+- **Archivos creados o modificados:**
+  - `src/Nokto.LanServer/` *(Eliminado por completo)*: Retirado el módulo HTTP/TCP, sockets y dependencias de red. Nokto opera 100% offline y en local sin abrir puertos ni generar avisos de Firewall de Windows.
+  - `src/Nokto.UI/Views/QrModalWindow.axaml` y `QrModalWindow.axaml.cs` *(Eliminados)*: Eliminado el diálogo y botón de control LAN de la interfaz.
+  - `Nokto.sln` y `src/Nokto.UI/Nokto.UI.csproj`: Removida la referencia a `Nokto.LanServer`.
+  - `src/Nokto.Platform.Windows/Interop/NativeMethods.cs` y `NativeStructs.cs`:
+    * P/Invoke nativo `CreateFileW` y `DeviceIoControl` con código `IOCTL_DISK_PERFORMANCE` (`0x00070020`) y estructura `DISK_PERFORMANCE` para telemetría de disco sin privilegios de administrador.
+    * P/Invoke `EnumDisplayDevicesA` y estructura `DISPLAY_DEVICE` para resolución del nombre del adaptador gráfico.
+    * Enlace a `pdh.dll` (`PdhOpenQueryW`, `PdhAddEnglishCounterW`, `PdhCollectQueryData`, `PdhGetFormattedCounterValue`, `PdhCloseQuery`) para lectura de uso 3D/Compute de GPU.
+    * P/Invokes `RegisterHotKey` y `UnregisterHotKey` junto a `GetMessageW` y `PostThreadMessageW` para captura global de teclas de pánico.
+  - `src/Nokto.Platform.Windows/Metrics/PassiveMetricsCollector.cs`:
+    * Desglose pasivo de CPU entre tiempo de Kernel y tiempo de Usuario mediante `GetSystemTimes`.
+    * Consulta pasiva de rendimiento de disco (MB/s lectura, escritura y total) mediante `IOCTL_DISK_PERFORMANCE`.
+    * Telemetría de GPU en tiempo real con nombre del hardware y porcentaje de uso del motor 3D.
+  - `src/Nokto.Platform.Windows/Hotkeys/GlobalHotkeyService.cs` *(Nuevo)*: Servicio de atajo de pánico global en hilo de mensajes dedicado (Win32 `RegisterHotKey`, tecla por defecto: `Pausa / Break` o `VK_PAUSE`) para abortar tareas y periodo de gracia en silencio desde cualquier ventana o juego.
+  - `src/Nokto.Platform.Windows/Startup/WindowsStartupHelper.cs` *(Nuevo)*: Integración con el registro de Windows `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` para inicio automático con soporte de flags `--silent` y `--work`.
+  - `src/Nokto.Core/Models/Config.cs`: Modelo de configuración ampliado con todos los campos de `AppSettings` (Idioma, Tema, Horarios, Teletrabajo, Guardián de Batería, Retención de Evidencias).
+  - `src/Nokto.Core/Models/Enums.cs`: Añadido `ActionType.WaitDelay`.
+  - `src/Nokto.Core/Models/SystemMetrics.cs`: Métricas ampliadas con `CpuKernelPercentage`, `CpuUserPercentage`, `GpuAdapterName`, `DiskReadMBs`, `DiskWriteMBs`, `DiskTotalMBs`.
+  - `src/Nokto.Core/Engine/WorkflowEngine.cs`: Soporte para paso `ActionType.WaitDelay`, soporte para lanzamiento de archivo en disparador de proceso (`launchFilePath`), y purga automática de evidencias en `./data/snapshots/` según `MaxEvidenceRetention`.
+  - `src/Nokto.UI/Resources/Locale.es.axaml` y `Locale.en.axaml` *(Nuevos)*: ResourceDictionaries para cambio de idioma instantáneo en caliente (sin reiniciar).
+  - `src/Nokto.UI/App.axaml` y `App.axaml.cs`: Gestión dinámica de idioma (`SetLanguage`) y temas (`SetTheme`: Windows, Horario pasivo 60s, Día, Noche), arranque minimizado a la bandeja y activación automática de Modo Trabajo.
+  - `src/Nokto.UI/ViewModels/MainViewModel.cs`:
+    * Telemetría expandida del footer con 5 métricas compactas y ToolTips detallados.
+    * Rediseño de Modo Studio como "Rutinas" con 3 pasos secuenciales claros: Paso 1 (Disparador con Modo A: Vigilar ventana activa filtrada anti-ruido o Modo B: Lanzar y vigilar archivo con examinador nativo), Paso 2 (Acciones intermedias en serie con botones directos y reordenamiento/eliminación), Paso 3 (Acción terminal con gracia y forzado).
+    * Verificador de Conflictos ("Dry-Check"): Evaluación en <50ms de rutas, procesos y alerta temprana de ofimática (Word, Excel, PowerPoint, Notepad) abierta sin forzado de cierre.
+    * Panel de Ajustes completo: Idioma, Tema, Arranque, Tecla de Pánico, Guardián de Batería (monitoreo pasivo cada 30s) y Galería de Evidencias con purga.
+  - `src/Nokto.UI/Views/MainWindow.axaml`: Estructura reconfigurada en 4 pestañas limpias: `[ ⏱ Control Manual ]`, `[ ⚡ Accesos Rápidos ]`, `[ 🔄 Rutinas ]` y `[ ⚙ Ajustes ]`, y footer expandido a 5 métricas compactas con ToolTips enriquecidos.
+  - `tests/Nokto.ConsoleTest/Nokto.ConsoleTest.csproj` y `Program.cs`: Eliminadas dependencias de LAN y actualizado test automatizado `[TEST 09]` para validar telemetría de 5 métricas y persistencia de ajustes.
+  - `artifacts/Nokto-Portable-x64/`: Contiene EXCLUSIVAMENTE `Nokto.exe` (51.6 MB, sin .pdb ni archivos residuales).
+  - `artifacts/Nokto-v1.0.0-Portable-x64.zip`: Paquete zip actualizado con el binario final.
+- **Resultados de Validación:**
+  - Compilación de la solución: **0 advertencias, 0 errores** en todos los proyectos.
+  - Suite de verificación: **12/12 TESTS SUPERADOS [0 FALLOS]** en 9.26s.
+  - Ejecución portable: Validación en segundo plano (`--silent`) exitosa con 0 logs de caída.
+
+## [Auditoría QA Exhaustiva, Cobertura 12/12 Tests y Corrección Integral de Funciones y Controles] - 2026-10-01 21:28:00
+- **Fase del roadmap:** Certificación QA & Control de Calidad Integral
+- **Archivos modificados:**
+  - `src/Nokto.Core/Engine/WorkflowEngine.cs`: Reemplazados los bucles estáticos `for` en `RunCountdownAsync` y `RunGracePeriodCountdownAsync` por bucles dinámicos `while` reactivos a `_timeRemainingSeconds` y `_gracePeriodRemainingSeconds`, permitiendo que `Postpone` (+10m, +15m) extienda efectivamente el tiempo restante en caliente sin ser ignorado.
+  - `src/Nokto.UI/Views/GraceOverlayWindow.axaml.cs`: `UpdateCountdown` ajusta dinámicamente `ProgressBarGrace.Maximum` y formatea el texto en `mm:ss` (soportando periodos de gracia de hasta 300s sin distorsión de formato).
+  - `src/Nokto.UI/ViewModels/MainViewModel.cs`:
+    * `HandleGracePeriodTick`: Formateo estricto del tiempo restante con `TimeSpan.FromSeconds(secondsRemaining).ToString(@"hh\:mm\:ss")`.
+    * `RefreshAvailableProcesses`: Detección robusta con fallback a lista de procesos estándar si no hay ventanas activas.
+    * `AddCountdownMinutes`: Limitador superior a 23h 59m para evitar desbordamientos de cálculo de hora en saltos rápidos.
+    * `LoadPresetIntoStudio` / `BuildPresetFromStudio`: Roundtrip AOT perfecto de disparadores con "Hora Fija" (`isFixedTime`, `timeOfDay`) y acciones terminales de "Apagar Monitores Solamente" (`subType: MonitorsOff`) sin duplicar pasos en serie.
+    * `DeleteSelectedPreset`: Manejo seguro de borrado que recrea automáticamente un preset base si la lista queda vacía.
+    * `OnSelectedPresetChanged`: Limpieza instantánea de campos de Modo Studio si se deselecciona o vacía el catálogo.
+  - `tests/Nokto.ConsoleTest/Program.cs`: Suite de pruebas automatizadas ampliada a 12 tests ([TEST 11] Control de Flujo Dinámico Postpone/Abort y [TEST 12] Presets Avanzados y Fidelidad AOT de Pipeline).
+  - `artifacts/Nokto-Portable-x64/Nokto.exe`: Binario único portable certificado y re-publicado (51.9 MB).
+  - `artifacts/Nokto-v1.0.0-Portable-x64.zip`: Paquete zip actualizado (46.1 MB).
+- **Resultados de Validación QA:**
+  - Compilación de la solución: 0 advertencias, 0 errores en todos los proyectos.
+  - Suite de pruebas de sistema: **12/12 TESTS SUPERADOS [0 FALLOS]** en 10.93s.
+  - Verificación visual de controles: Todos los botones, selectores, contadores y atajos operando al 100% de manera determinista.
+
+## [Corrección de Fallo Crítico en Modo Studio (XamlTypeResolver en DataTemplate Single-File)] - 2026-10-01 21:08:00
+- **Fase del roadmap:** Mantenimiento y Estabilidad (Single-File Runtime Fix)
+- **Archivos modificados:**
+  - `src/Nokto.UI/ViewModels/StudioStepItem.cs`: Añadidos comandos `MoveUpCommand`, `MoveDownCommand` y `RemoveCommand` con delegados `Action<StudioStepItem>` cableados directamente en el ViewModel del elemento.
+  - `src/Nokto.UI/ViewModels/MainViewModel.cs`: Implementado `AttachStepCallbacks` para conectar las operaciones de reordenamiento y eliminación (`MoveStudioStepUp`, `MoveStudioStepDown`, `RemoveStudioStep`) en `AddStudioStep` y `LoadPresetIntoStudio`.
+  - `src/Nokto.UI/Views/MainWindow.axaml`: Eliminado el casteo dinámico `#RootWindow.((vm:MainViewModel)DataContext)` dentro del `DataTemplate` de pasos intermedios, sustituyéndolo por enlace directo a nivel de elemento (`{Binding MoveUpCommand}`, etc.).
+  - `artifacts/Nokto-Portable-x64/Nokto.exe`: Binario único re-publicado y verificado.
+  - `artifacts/Nokto-v1.0.0-Portable-x64.zip`: Paquete zip actualizado.
+- **Resumen técnico del cambio:**
+  - **Diagnóstico del Crash Log (`crash.log`):** `System.ArgumentException: Unable to resolve type vm:MainViewModel from any of the following locations: at Avalonia.Markup.Xaml.XamlIl.Runtime.XamlIlRuntimeHelpers.XamlTypeResolver.Resolve(String qualifiedTypeName) at Nokto.UI.Views.MainWindow.XamlClosure_2.Build_2(IServiceProvider)` al instanciar el `DataTemplate` de los pasos de la tubería en Modo Studio.
+  - **Causa Raíz:** En distribuciones Single-File empaquetadas, Avalonia compila y evalúa los DataTemplates mediante cierres diferidos. La sintaxis de casteo `#RootWindow.((vm:MainViewModel)DataContext)` fuerza una resolución dinámica de tipos en tiempo de ejecución por prefijo XML (`vm:`) que falla fatalmente en el ensamblado unificado.
+  - **Solución:** Arquitectura MVVM desacoplada donde el propio `StudioStepItem` encapsula sus comandos `MoveUp`, `MoveDown` y `Remove` invocando delegados provistos por el `MainViewModel`. Cero resolución de tipos por reflexión en tiempo de ejecución, tipado 100% estático y compatibilidad perfecta con SingleFile.
+
 ## [Modo Studio 100% Interactivo, Control LAN Bajo Demanda, Ciclo de Vida Nativo e IPC, Flags de Inicio y Distribución Portable Limpia] - 2026-10-01 20:45:00
 - **Fase del roadmap:** Post-Fase 6 (Modo Studio Avanzado, Resiliencia de Red, Ciclo de Vida y Distribución)
 - **Archivos creados o modificados:**

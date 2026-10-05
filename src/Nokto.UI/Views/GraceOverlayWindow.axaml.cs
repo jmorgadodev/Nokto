@@ -24,8 +24,13 @@ public partial class GraceOverlayWindow : Window
 
     public void UpdateCountdown(int secondsRemaining)
     {
-        TxtCountdown.Text = $"Apagando en 00:{secondsRemaining:D2} s...";
-        ProgressBarGrace.Value = secondsRemaining;
+        if (secondsRemaining > ProgressBarGrace.Maximum)
+        {
+            ProgressBarGrace.Maximum = secondsRemaining;
+        }
+        TxtCountdown.Text = $"Aviso: {secondsRemaining} s";
+        ToolTip.SetTip(TxtCountdown, _viewModel?.GraceRoutineName);
+        ProgressBarGrace.Value = Math.Max(0, secondsRemaining);
     }
 
     protected override void OnOpened(EventArgs e)
@@ -50,7 +55,7 @@ public partial class GraceOverlayWindow : Window
     {
         if (e.Key == Key.Escape)
         {
-            _viewModel?.AbortTask();
+            _viewModel?.FinishGraceRoutine();
             Hide();
             e.Handled = true;
         }
@@ -64,7 +69,7 @@ public partial class GraceOverlayWindow : Window
 
     private void OnCancelClicked(object? sender, RoutedEventArgs e)
     {
-        _viewModel?.AbortTask();
+        _viewModel?.FinishGraceRoutine();
         Hide();
     }
 

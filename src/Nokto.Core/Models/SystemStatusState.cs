@@ -9,6 +9,7 @@ public record MonitoredProcessInfo
 
 public record SystemStatusState
 {
+    public IReadOnlyList<RunningWorkflowInfo> ActiveWorkflows { get; init; } = [];
     public DateTimeOffset Timestamp { get; init; } = DateTimeOffset.UtcNow;
     public EngineState EngineState { get; init; } = EngineState.Idle;
     public string? ActivePresetId { get; init; }

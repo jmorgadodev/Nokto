@@ -1,5 +1,4 @@
 using Avalonia.Controls;
-using Avalonia.Media.Imaging;
 using SkiaSharp;
 
 namespace Nokto.UI.Tray;
@@ -18,12 +17,45 @@ public enum TrayIconVisualState
 public static class DynamicTrayIconRenderer
 {
     private const int IconSize = 32;
+    private static readonly Lazy<WindowIcon> AppWindowIcon = new(CreateAppWindowIcon);
+    private static readonly Dictionary<(TrayIconVisualState State, int Progress, bool Warning, int Pulse), WindowIcon> TrayFrames = [];
+
+    // Avalonia 11.1.3's WindowIcon has no public disposal API or native finalizer.
+    // Keep at most 170 tray frames (21 progress steps × 2 colors × 4 pulse levels,
+    // plus idle/completed), instead of leaking a native icon on every metrics tick.
+    public static WindowIcon RenderAppWindowIcon() => AppWindowIcon.Value;
+
+    public static WindowIcon RenderTrayIcon(
+        TrayIconVisualState state,
+        double progressPercentage = 0,
+        int secondsRemaining = 0,
+        float pulsePhase = 1.0f)
+    {
+        if (state is not (TrayIconVisualState.Idle or TrayIconVisualState.InProgress or TrayIconVisualState.Completed))
+            state = TrayIconVisualState.Idle;
+        bool running = state == TrayIconVisualState.InProgress;
+        int progress = running && double.IsFinite(progressPercentage)
+            ? (int)Math.Round(Math.Clamp(progressPercentage, 0, 100) / 5) : 0;
+        int pulse = running && float.IsFinite(pulsePhase)
+            ? (int)Math.Round(Math.Clamp(pulsePhase, 0, 1) * 3) : 0;
+        bool warning = running && secondsRemaining > 0 && secondsRemaining <= 120;
+        var key = (state, progress, warning, pulse);
+        lock (TrayFrames)
+        {
+            if (!TrayFrames.TryGetValue(key, out var icon))
+            {
+                icon = CreateTrayIcon(state, progress * 5, warning ? 120 : 0, pulse / 3f);
+                TrayFrames.Add(key, icon);
+            }
+            return icon;
+        }
+    }
 
     /// <summary>
     /// Genera un WindowIcon de 64x64 px de alta fidelidad con el emblema de Nokto (disco oscuro, arco cian luminoso y núcleo blanco)
     /// directamente en memoria sin depender de lectura de archivos en disco ni converters XAML.
     /// </summary>
-    public static WindowIcon RenderAppWindowIcon()
+    private static WindowIcon CreateAppWindowIcon()
     {
         const int size = 64;
         using var bitmap = new SKBitmap(size, size, SKColorType.Bgra8888, SKAlphaType.Premul);
@@ -77,11 +109,10 @@ public static class DynamicTrayIconRenderer
         data.SaveTo(stream);
         stream.Seek(0, SeekOrigin.Begin);
 
-        var avaloniaBitmap = new Bitmap(stream);
-        return new WindowIcon(avaloniaBitmap);
+        return new WindowIcon(stream);
     }
 
-    public static WindowIcon RenderTrayIcon(
+    private static WindowIcon CreateTrayIcon(
         TrayIconVisualState state,
         double progressPercentage = 0,
         int secondsRemaining = 0,
@@ -112,8 +143,7 @@ public static class DynamicTrayIconRenderer
         data.SaveTo(stream);
         stream.Seek(0, SeekOrigin.Begin);
 
-        var avaloniaBitmap = new Bitmap(stream);
-        return new WindowIcon(avaloniaBitmap);
+        return new WindowIcon(stream);
     }
 
     private static void DrawIdleGlyph(SKCanvas canvas)

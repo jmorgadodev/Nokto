@@ -2,10 +2,10 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.ApplicationLifetimes;
 using Avalonia.Markup.Xaml;
+using Avalonia.Threading;
 using Nokto.Core.Abstractions;
 using Nokto.Core.Engine;
 using Nokto.Core.Persistence;
-using Nokto.LanServer;
 using Nokto.Platform.Windows;
 using Nokto.UI.Tray;
 using Nokto.UI.ViewModels;
@@ -15,13 +15,19 @@ namespace Nokto.UI;
 
 public partial class App : Application
 {
+    public static Avalonia.Styling.ThemeVariant SlateTheme { get; } = new("Slate", Avalonia.Styling.ThemeVariant.Dark);
     public static App? CurrentInstance { get; private set; }
 
     private ISystemAdapter? _systemAdapter;
     private MainViewModel? _mainViewModel;
     private MainWindow? _mainWindow;
     private TrayIcon? _trayIcon;
-    private LanHttpServer? _lanServer;
+    private bool _trayUpdateFailureLogged;
+    private bool _isExiting;
+    private DispatcherTimer? _scheduleThemeTimer;
+    private string _currentThemeMode = "Dark";
+    private TimeSpan _scheduleDayTime = new(8, 0, 0);
+    private TimeSpan _scheduleNightTime = new(20, 0, 0);
 
     public override void Initialize()
     {
@@ -38,23 +44,23 @@ public partial class App : Application
             var engine = new WorkflowEngine(_systemAdapter, persistence);
             _mainViewModel = new MainViewModel(_systemAdapter, engine, persistence);
 
-            try
-            {
-                var config = persistence.LoadConfig();
-                _lanServer = new LanHttpServer(engine, _systemAdapter, config.LanServer);
-                // Servidor estrictamente bajo demanda: NO se inicia al arrancar para evitar alertas de red
-                _mainViewModel.AttachLanServer(_lanServer);
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Microservidor LAN no disponible: {ex.Message}");
-            }
+            var config = persistence.LoadConfig();
+
+            // Aplicar Idioma y Tema desde Config
+            SetLanguage(config.Settings.Language);
+            SetTheme(config.Settings.Theme, config.Settings.ScheduleDayTime, config.Settings.ScheduleNightTime);
 
             desktop.Exit += (s, e) =>
             {
-                _lanServer?.Dispose();
-                _systemAdapter?.Dispose();
+                _isExiting = true;
+                _scheduleThemeTimer?.Stop();
+                // Remove the shell icon before releasing services: it must not outlive its UI.
+                _trayIcon?.Dispose();
+                _trayIcon = null;
+                TrayIcon.SetIcons(this, new TrayIcons());
+                _mainViewModel.Dispose();
                 engine.Dispose();
+                _systemAdapter?.Dispose();
             };
 
             _mainWindow = new MainWindow();
@@ -69,19 +75,19 @@ public partial class App : Application
             ConfigureTrayIcon(desktop);
 
             // Tarea 4: Soporte de argumentos de línea de comandos (Modo Sigiloso / Modo Trabajo)
-            bool isSilent = desktop.Args?.Any(a =>
+            bool isSilent = config.Settings.StartMinimizedToTray || desktop.Args?.Any(a =>
                 a.Equals("--silent", StringComparison.OrdinalIgnoreCase) ||
                 a.Equals("--tray", StringComparison.OrdinalIgnoreCase) ||
                 a.Equals("-s", StringComparison.OrdinalIgnoreCase)) == true;
 
-            bool startWork = desktop.Args?.Any(a =>
+            bool startWork = config.Settings.StartInWorkMode || desktop.Args?.Any(a =>
                 a.Equals("--work", StringComparison.OrdinalIgnoreCase) ||
                 a.Equals("-w", StringComparison.OrdinalIgnoreCase)) == true;
 
             if (!isSilent)
             {
                 _mainWindow.Show();
-                _mainWindow.WindowState = WindowState.Normal;
+                _mainWindow.WindowState = WindowState.Maximized;
                 _mainWindow.Activate();
             }
 
@@ -94,7 +100,80 @@ public partial class App : Application
         base.OnFrameworkInitializationCompleted();
     }
 
+    public void SetLanguage(string language)
+    {
+        string uri = language == "en"
+            ? "avares://Nokto/Resources/Locale.en.axaml"
+            : "avares://Nokto/Resources/Locale.es.axaml";
 
+        try
+        {
+            var dict = (ResourceDictionary)AvaloniaXamlLoader.Load(new Uri(uri));
+            Resources.MergedDictionaries.Clear();
+            Resources.MergedDictionaries.Add(dict);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Error switching locale: {ex.Message}");
+        }
+    }
+
+    public void SetTheme(string themeMode, TimeSpan dayTime, TimeSpan nightTime)
+    {
+        _currentThemeMode = themeMode;
+        _scheduleDayTime = dayTime;
+        _scheduleNightTime = nightTime;
+
+        ApplyCurrentTheme();
+
+        if (themeMode == "Schedule")
+        {
+            if (_scheduleThemeTimer == null)
+            {
+                _scheduleThemeTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(60) };
+                _scheduleThemeTimer.Tick += (s, e) =>
+                {
+                    if (_currentThemeMode == "Schedule")
+                    {
+                        ApplyCurrentTheme();
+                    }
+                };
+            }
+            if (!_scheduleThemeTimer.IsEnabled)
+            {
+                _scheduleThemeTimer.Start();
+            }
+        }
+        else
+        {
+            _scheduleThemeTimer?.Stop();
+        }
+    }
+
+    private void ApplyCurrentTheme()
+    {
+        switch (_currentThemeMode)
+        {
+            case "Light":
+                RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Light;
+                break;
+            case "Dark":
+                RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Dark;
+                break;
+            case "Slate":
+                RequestedThemeVariant = SlateTheme;
+                break;
+            case "Schedule":
+                var now = DateTime.Now.TimeOfDay;
+                bool isDay = now >= _scheduleDayTime && now < _scheduleNightTime;
+                RequestedThemeVariant = isDay ? Avalonia.Styling.ThemeVariant.Light : Avalonia.Styling.ThemeVariant.Dark;
+                break;
+            case "Windows":
+            default:
+                RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Default;
+                break;
+        }
+    }
 
     private void ConfigureTrayIcon(IClassicDesktopStyleApplicationLifetime desktop)
     {
@@ -115,8 +194,8 @@ public partial class App : Application
         var itemPostpone = new NativeMenuItem("⏱ +15 Minutos");
         itemPostpone.Click += (s, e) => _mainViewModel?.PostponeTask("15");
 
-        var itemAbort = new NativeMenuItem("⛔ Abortar Flujo Activo");
-        itemAbort.Click += (s, e) => _mainViewModel?.AbortTask();
+        var itemFinish = new NativeMenuItem("⏹ Finalizar todas las rutinas");
+        itemFinish.Click += (s, e) => _mainViewModel?.FinishTask();
 
         var itemExit = new NativeMenuItem("Salir de Nokto");
         itemExit.Click += (s, e) =>
@@ -129,7 +208,7 @@ public partial class App : Application
         menu.Items.Add(new NativeMenuItemSeparator());
         menu.Items.Add(itemDisplays);
         menu.Items.Add(itemPostpone);
-        menu.Items.Add(itemAbort);
+        menu.Items.Add(itemFinish);
         menu.Items.Add(new NativeMenuItemSeparator());
         menu.Items.Add(itemExit);
 
@@ -152,15 +231,32 @@ public partial class App : Application
             {
                 Avalonia.Threading.Dispatcher.UIThread.Post(() =>
                 {
-                    if (_trayIcon != null)
+                    if (!_isExiting && _trayIcon != null)
                     {
-                        _trayIcon.Icon = DynamicTrayIconRenderer.RenderTrayIcon(state, progress, secondsRemaining, pulsePhase);
-                        _trayIcon.ToolTipText = state switch
+                        try
                         {
-                            TrayIconVisualState.InProgress => $"Nokto: {progress:F0}% ({secondsRemaining}s)",
-                            TrayIconVisualState.Completed => "Nokto: Tarea completada con éxito",
-                            _ => "Nokto — Sistema de Energía (Listo)"
-                        };
+                            _trayIcon.Icon = DynamicTrayIconRenderer.RenderTrayIcon(state, progress, secondsRemaining, pulsePhase);
+                            _trayIcon.ToolTipText = state switch
+                            {
+                                TrayIconVisualState.InProgress => $"Nokto: {progress:F0}% ({secondsRemaining}s)",
+                                TrayIconVisualState.Completed => "Nokto: Tarea completada con éxito",
+                                _ => "Nokto — Sistema de Energía (Listo)"
+                            };
+                        }
+                        catch (System.ComponentModel.Win32Exception ex)
+                        {
+                            // A shell icon failure must not terminate the dashboard or active routines.
+                            if (!_trayUpdateFailureLogged)
+                            {
+                                _trayUpdateFailureLogged = true;
+                                try
+                                {
+                                    System.IO.File.WriteAllText(System.IO.Path.Combine(AppContext.BaseDirectory, "tray-error.log"),
+                                        $"[{DateTime.UtcNow:O}] {ex}{Environment.NewLine}");
+                                }
+                                catch { }
+                            }
+                        }
                     }
                 });
             };
@@ -169,17 +265,25 @@ public partial class App : Application
 
     public void ShowMainWindow()
     {
-        if (_mainWindow != null)
+        try
         {
-            if (!_mainWindow.IsVisible)
+            var window = _mainWindow;
+            if (_isExiting || window is null || window.IsExiting || window.PlatformImpl is null) return;
+            // Restore the state before Show; a minimized window hides itself when shown.
+            if (window.WindowState == WindowState.Minimized)
+                window.WindowState = WindowState.Maximized;
+            if (!window.IsVisible)
             {
-                _mainWindow.Show();
+                window.Show();
             }
-            _mainWindow.WindowState = WindowState.Normal;
-            _mainWindow.Activate();
-            _mainWindow.Topmost = true;
-            _mainWindow.Topmost = false;
-            _mainWindow.Focus();
+            window.Activate();
+            window.Topmost = true;
+            window.Topmost = false;
+            window.Focus();
+        }
+        catch (InvalidOperationException)
+        {
+            // A queued tray click can arrive while the native window is being destroyed.
         }
     }
 }

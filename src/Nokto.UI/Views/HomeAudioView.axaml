@@ -1,0 +1,31 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:Nokto.UI.ViewModels" xmlns:models="using:Nokto.Core.Models" x:Class="Nokto.UI.Views.HomeAudioView" x:DataType="vm:MainViewModel">
+    <Border Background="{DynamicResource ThemeCardBackground}" BorderBrush="{DynamicResource ThemeCardBorder}" BorderThickness="1" CornerRadius="8" Padding="14,12">
+        <StackPanel Spacing="7">
+            <TextBlock Text="◖ CONTROL DE AUDIO" Foreground="{DynamicResource ThemeAccent}" FontWeight="Bold" FontSize="10" Margin="0,0,0,3"/>
+            <TextBlock Text="SALIDA · ALTAVOCES / AURICULARES" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="9" FontWeight="SemiBold"/>
+            <ComboBox ItemsSource="{Binding OutputAudioDevices}" SelectedItem="{Binding SelectedOutputAudioDevice, Mode=TwoWay}" HorizontalAlignment="Stretch" Background="{DynamicResource ThemeInputBackground}" Foreground="{DynamicResource ThemeTextPrimary}" FontSize="11" MinHeight="30" AutomationProperties.Name="Salida de audio predeterminada">
+                <ComboBox.ItemTemplate><DataTemplate x:DataType="models:AudioEndpointInfo"><TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Name}"/></DataTemplate></ComboBox.ItemTemplate>
+            </ComboBox>
+            <Grid ColumnDefinitions="*,40,Auto" IsEnabled="{Binding HasOutputAudio}">
+                <Slider Value="{Binding MasterVolumePercent, Mode=TwoWay}" Minimum="0" Maximum="100" TickFrequency="1" IsSnapToTickEnabled="True" AutomationProperties.Name="Volumen maestro" Margin="0,0,6,0"/>
+                <TextBlock Grid.Column="1" Text="{Binding MasterVolumeText}" FontFamily="Consolas" Foreground="{DynamicResource ThemeTextPrimary}" FontSize="11" VerticalAlignment="Center"/>
+                <Button Grid.Column="2" Content="{Binding OutputMuteIcon}" Classes.muted="{Binding IsOutputMuted}" Command="{Binding ToggleOutputMuteCommand}" ToolTip.Tip="{Binding OutputMuteButtonText}" AutomationProperties.Name="{Binding OutputMuteButtonText}" Background="{DynamicResource ThemeInputBackground}" Padding="8,4">
+                    <Button.Styles>
+                        <Style Selector="Button"><Setter Property="Foreground" Value="{DynamicResource ThemeAccent}"/></Style>
+                        <Style Selector="Button.muted"><Setter Property="Foreground" Value="{DynamicResource ThemeAccentWarning}"/><Setter Property="BorderBrush" Value="{DynamicResource ThemeAccentWarning}"/><Setter Property="BorderThickness" Value="1"/></Style>
+                    </Button.Styles>
+                </Button>
+            </Grid>
+            <TextBlock Text="ENTRADA · MICRÓFONO" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="9" FontWeight="SemiBold"/>
+            <ComboBox ItemsSource="{Binding InputAudioDevices}" SelectedItem="{Binding SelectedInputAudioDevice, Mode=TwoWay}" HorizontalAlignment="Stretch" Background="{DynamicResource ThemeInputBackground}" Foreground="{DynamicResource ThemeTextPrimary}" FontSize="11" MinHeight="30" AutomationProperties.Name="Micrófono predeterminado">
+                <ComboBox.ItemTemplate><DataTemplate x:DataType="models:AudioEndpointInfo"><TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Name}"/></DataTemplate></ComboBox.ItemTemplate>
+            </ComboBox>
+            <Button Content="{Binding InputMuteButtonText}" Command="{Binding ToggleInputMuteCommand}" IsEnabled="{Binding HasInputAudio}" Background="{DynamicResource ThemeInputBackground}" Foreground="{DynamicResource ThemeAccent}" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="8,5" FontSize="11"/>
+            <Grid ColumnDefinitions="*,*" Margin="0,2,0,0">
+                <TextBlock Text="{Binding MicHotkeyDisplay, StringFormat='Mic: {0}'}" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="9" TextTrimming="CharacterEllipsis"/>
+                <TextBlock Grid.Column="1" Text="{Binding AudioHotkeyDisplay, StringFormat='Salida: {0}'}" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="9" TextTrimming="CharacterEllipsis"/>
+            </Grid>
+        </StackPanel>
+    </Border>
+</UserControl>
+

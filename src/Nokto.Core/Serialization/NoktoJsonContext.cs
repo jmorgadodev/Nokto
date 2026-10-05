@@ -9,13 +9,18 @@ namespace Nokto.Core.Serialization;
     DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
 )]
 [JsonSerializable(typeof(AppConfig))]
+[JsonSerializable(typeof(AppSettings))]
 [JsonSerializable(typeof(PresetsFile))]
+[JsonSerializable(typeof(WorkflowActionItem))]
 [JsonSerializable(typeof(SystemStatusState))]
 [JsonSerializable(typeof(AuditLogEntry))]
 [JsonSerializable(typeof(QuickPowerRequest))]
 [JsonSerializable(typeof(PostponeRequest))]
 [JsonSerializable(typeof(SystemMetrics))]
 [JsonSerializable(typeof(BatteryStatus))]
+[JsonSerializable(typeof(RemoteStatusSnapshot))]
+[JsonSerializable(typeof(RemoteCommandResult))]
+[JsonSerializable(typeof(ApplicationCloseTarget[]))]
 public partial class NoktoJsonContext : JsonSerializerContext
 {
 }

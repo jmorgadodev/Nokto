@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="dark"><title>Nokto · Control móvil</title>
+<style nonce="__NONCE__">
+:root{font-family:Segoe UI,system-ui,sans-serif;color:#e8edf5;background:#0e1015;font-size:15px;--accent:#00d2ff;--line:#2b303b;--muted:#969eae}
+*{box-sizing:border-box}body{margin:0;padding:20px 16px 32px;max-width:720px;margin-inline:auto}header{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px}h1{font-size:23px;margin:0;letter-spacing:-.7px}h1 span{color:var(--accent)}header small{color:var(--muted)}#connection{font-size:11px;background:#16181d;border:1px solid var(--line);border-radius:20px;padding:7px 10px}
+section{background:#16181d;border:1px solid var(--line);border-radius:12px;padding:16px;margin:14px 0}h2{font-size:12px;margin:0 0 14px;color:var(--accent);letter-spacing:.8px}p{color:var(--muted);font-size:12px;margin:8px 0}
+button{font:600 14px Segoe UI,system-ui;min-height:46px;border:1px solid var(--line);border-radius:8px;background:#0e1015;color:#e8edf5;padding:10px 14px;cursor:pointer;touch-action:manipulation}button:active{border-color:var(--accent);background:#152d37}button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:3px}button:disabled{opacity:.45;cursor:default}
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.metric{background:#16181d;border:1px solid var(--line);border-radius:10px;padding:10px 7px;text-align:center}.metric span{display:block;color:var(--muted);font-size:10px;margin-bottom:5px}.metric strong{font:600 14px Consolas,monospace}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px}.row h2{margin:0}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}.wide{width:100%}.danger{background:#3a1c1c;color:#ff8080;border-color:#593030}
+#screen{width:100%;aspect-ratio:16/9;object-fit:contain;background:#0e1015;border-radius:8px;margin-top:12px;cursor:zoom-in}
+label{color:var(--muted);font-size:12px}input[type=range]{width:100%;accent-color:var(--accent);min-height:44px;margin:7px 0}.volume{font:600 18px Consolas;color:var(--accent)}#audio-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.task{border:1px solid var(--line);background:#0e1015;border-radius:8px;padding:11px;margin-top:8px}.task strong{font-size:13px;overflow-wrap:anywhere}.task .time{color:var(--accent);font:12px Consolas;margin:5px 0}.task p{overflow-wrap:anywhere}.task button{min-height:40px;font-size:12px}
+#notice{min-height:18px;color:var(--accent);font-size:12px;overflow-wrap:anywhere}dialog{width:calc(100vw - 20px);max-width:1300px;background:#16181d;border:1px solid var(--line);border-radius:12px;padding:12px;color:white}dialog::backdrop{background:#000c}dialog img{width:100%;height:auto;display:block;margin-top:10px}dialog .zoomed{width:auto;max-width:none}#zoom-wrap{overflow:auto;max-height:80vh}
+@media(max-width:370px){.metrics{grid-template-columns:1fr 1fr}.grid2{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:no-preference){button{transition:border-color .15s,background .15s}}
+</style></head><body>
+<header><div><h1><span>◐</span> Nokto</h1><small>Cabina móvil · red local</small></div><span id="connection" role="status">Conectando…</span></header>
+<div class="metrics"><div class="metric"><span>CPU</span><strong id="cpu">—</strong></div><div class="metric"><span>RAM</span><strong id="ram">—</strong></div><div class="metric"><span>ENCENDIDO</span><strong id="uptime">—</strong></div><div class="metric"><span>BATERÍA / AC</span><strong id="battery">—</strong></div></div>
+<section><div class="row"><h2>PANTALLA EN VIVO</h2><button id="refresh-screen">📸 Actualizar</button></div><img id="screen" alt="Captura actual del escritorio; toca para ampliar" role="button" tabindex="0"><div class="row"><p>Toca la imagen para ampliar.</p><label><input id="live-screen" type="checkbox" checked> En vivo · 5 s</label></div></section>
+<section><h2>AUDIO Y MICRÓFONO</h2><p id="audio-name">Consultando salida predeterminada…</p><div class="row"><label for="volume">Volumen maestro</label><span id="volume-value" class="volume">—</span></div><input id="volume" type="range" min="0" max="100" value="0" aria-label="Volumen maestro"><div class="grid2"><button id="output-mute">🔇 Silenciar salida</button><button id="mic-mute">🎙 Micrófono</button></div></section>
+<section><h2 id="task-heading">TAREAS Y RUTINAS</h2><div id="tasks"><p id="no-tasks">Sin tareas ni rutinas en ejecución.</p></div></section>
+<section><h2>ENERGÍA Y SESIÓN</h2><div class="grid2"><button data-power="monitors-off">☾ Apagar pantallas</button><button data-power="lock">▣ Bloquear</button><button data-power="sleep">☾ Modo Dormir</button><button data-power="shutdown" class="danger">⏻ Apagar PC</button></div></section>
+<p id="notice" role="status" aria-live="polite"></p>
+<dialog id="zoom"><div class="row"><h2>PANTALLA</h2><button id="close-zoom">✕ Cerrar</button></div><div id="zoom-wrap"><img id="zoom-image" alt="Escritorio ampliado; toca para alternar el zoom"></div></dialog>
+<script nonce="__NONCE__">
+'use strict';
+const key = new URLSearchParams(location.hash.slice(1)).get('key') || '';
+const el = id => document.getElementById(id);
+let imageUrl = '', snapshotBusy = false, statusBusy = false, dragging = false;
+const tasks = new Map();
+async function api(path, body) {
+  if (!key) throw new Error('Escanea el QR de Ajustes para conectar.');
+  const response = await fetch(path, { method: body === undefined ? 'GET' : 'POST', cache: 'no-store',
+    headers: { 'X-Nokto-Key': key, ...(body === undefined ? {} : {'Content-Type':'application/json'}) },
+    ...(body === undefined ? {} : {body: JSON.stringify(body)}) });
+  if (!response.ok) {
+    let message = 'No se pudo completar la acción.';
+    try { message = (await response.json()).message || message; } catch {}
+    throw new Error(message);
+  }
+  return response;
+}
+function notice(text) { el('notice').textContent = text; }
+async function command(path, body = {}) {
+  try { const response = await api(path, body); notice((await response.json()).message); await status(); }
+  catch (error) { notice(error.message); }
+}
+function duration(seconds) {
+  return Math.floor(seconds / 3600).toString().padStart(2,'0') + ':' + Math.floor(seconds % 3600 / 60).toString().padStart(2,'0');
+}
+function renderTasks(values) {
+  const ids = new Set(values.map(task => task.routineId));
+  for (const [id, node] of tasks) if (!ids.has(id)) {node.remove(); tasks.delete(id);}
+  el('no-tasks').hidden = values.length > 0;
+  el('task-heading').textContent = 'TAREAS Y RUTINAS (' + values.length + (values.length === 1 ? ' activa)' : ' activas)');
+  for (const task of values) {
+    let node = tasks.get(task.routineId);
+    if (!node) {
+      node = document.createElement('article'); node.className = 'task';
+      const title = document.createElement('strong'), time = document.createElement('div'), detail = document.createElement('p'), stop = document.createElement('button');
+      time.className = 'time'; stop.className = 'danger'; stop.textContent = '✕ Finalizar';
+      stop.addEventListener('click', () => command('/api/tasks/stop', {taskId:task.routineId}));
+      node.append(title,time,detail,stop); el('tasks').append(node); tasks.set(task.routineId,node);
+    }
+    node.children[0].textContent = (task.routineId.startsWith('manual_') ? '⏱ ' : '↻ ') + task.name;
+    node.children[1].textContent = task.statusText; node.children[2].textContent = task.description;
+  }
+}
+async function status() {
+  if (statusBusy || document.hidden) return;
+  statusBusy = true;
+  try {
+    const data = await (await api('/api/status')).json();
+    el('cpu').textContent = Math.round(data.metrics.cpuUsagePercentage) + '%';
+    el('ram').textContent = Math.round(data.metrics.ramUsedMb / 1024 * 10) / 10 + ' GB';
+    el('uptime').textContent = duration(data.uptimeSeconds);
+    el('battery').textContent = data.battery.isOnAcPower ? 'AC' : data.battery.batteryLifePercent >= 0 ? data.battery.batteryLifePercent + '%' : '—';
+    el('audio-name').textContent = data.audio.outputName;
+    if (!dragging) {el('volume').value = data.audio.outputVolumePercent ?? 0; el('volume-value').textContent = data.audio.outputVolumePercent == null ? '—' : data.audio.outputVolumePercent + '%';}
+    el('output-mute').textContent = data.audio.outputMuted ? '🔇 Salida silenciada' : '🔊 Silenciar salida';
+    el('mic-mute').textContent = data.audio.inputMuted == null ? 'Mic no disponible' : data.audio.inputMuted ? '🔴 Mic: Silenciado' : '🟢 Mic: Listo';
+    el('mic-mute').disabled = data.audio.inputMuted == null; el('output-mute').disabled = data.audio.outputMuted == null; el('volume').disabled = data.audio.outputVolumePercent == null;
+    renderTasks(data.tasks); el('connection').textContent = '● En línea';
+  } catch (error) { el('connection').textContent = 'Sin conexión'; notice(error.message); }
+  finally { statusBusy = false; }
+}
+async function snapshot() {
+  if (snapshotBusy || document.hidden) return;
+  snapshotBusy = true; el('refresh-screen').disabled = true;
+  try {
+    const blob = await (await api('/api/snapshot')).blob();
+    const next = URL.createObjectURL(blob); el('screen').src = next; el('zoom-image').src = next;
+    if (imageUrl) URL.revokeObjectURL(imageUrl); imageUrl = next;
+  } catch (error) { notice(error.message); }
+  finally { snapshotBusy = false; el('refresh-screen').disabled = false; }
+}
+el('refresh-screen').addEventListener('click', snapshot);
+el('screen').addEventListener('click', () => {if (imageUrl) el('zoom').showModal();});
+el('screen').addEventListener('keydown', event => {if (event.key === 'Enter' && imageUrl) el('zoom').showModal();});
+el('close-zoom').addEventListener('click', () => el('zoom').close());
+el('zoom-image').addEventListener('click', () => el('zoom-image').classList.toggle('zoomed'));
+el('volume').addEventListener('input', () => {dragging = true; el('volume-value').textContent = el('volume').value + '%';});
+el('volume').addEventListener('change', async () => {await command('/api/audio/volume', {volume:Number(el('volume').value)}); dragging = false;});
+el('output-mute').addEventListener('click', () => command('/api/audio/toggle-output-mute'));
+el('mic-mute').addEventListener('click', () => command('/api/audio/toggle-mic-mute'));
+document.querySelectorAll('[data-power]').forEach(button => button.addEventListener('click', () => {
+  const action = button.dataset.power;
+  if (['sleep','shutdown'].includes(action) && !confirm(action === 'shutdown' ? '¿Apagar este PC ahora?' : '¿Suspender este PC ahora?')) return;
+  command('/api/power/' + action);
+}));
+if (key) {status(); snapshot(); setInterval(status,2000); setInterval(() => {if (el('live-screen').checked) snapshot();},5000);}
+else {el('connection').textContent = 'Sin emparejar'; notice('Escanea el QR de Ajustes en Nokto para conectar.'); document.querySelectorAll('button,input').forEach(control => control.disabled = true);}
+</script></body></html>
+

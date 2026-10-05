@@ -1,0 +1,63 @@
+<ResourceDictionary xmlns="https://github.com/avaloniaui"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:sys="clr-namespace:System;assembly=mscorlib">
+    <sys:String x:Key="TabHome">◈ Home</sys:String>
+    <sys:String x:Key="TabManual">⏱ Manual Control</sys:String>
+    <sys:String x:Key="TabQuick">⚡ Quick Actions</sys:String>
+    <sys:String x:Key="TabRoutines">🔄 Routines</sys:String>
+    <sys:String x:Key="TabSettings">⚙ Settings</sys:String>
+
+    <sys:String x:Key="HomeConnection">LOCAL NETWORK &amp; CONNECTION</sys:String>
+    <sys:String x:Key="HomeWorkAndPower">WORK &amp; POWER STATE</sys:String>
+    <sys:String x:Key="HomeAiRadar">AI TOOLS RADAR</sys:String>
+    <sys:String x:Key="HomeHardwareSpecifications">WORKSTATION</sys:String>
+    <sys:String x:Key="SettingsDiskSpace">SYSTEM DISK SPACE</sys:String>
+    <sys:String x:Key="DiskAlertPrompt">Notify when free space drops below</sys:String>
+    <sys:String x:Key="SettingsHomeModularity">HOME DASHBOARD MODULARITY</sys:String>
+    <sys:String x:Key="ShowNetworkCardInHome">Show Local Network and VPN Diagnostics</sys:String>
+    <sys:String x:Key="ShowEnergyStatusCardInHome">Show Work Mode and Power Status</sys:String>
+    <sys:String x:Key="ShowHardwareCardInHome">Show Hardware and System Specifications</sys:String>
+    <sys:String x:Key="ShowAiRadarCardInHome">Show AI Tools Radar</sys:String>
+    <sys:String x:Key="ShowQuickActionsInHome">Show Quick Actions (Timer, Routines, Sleep Mode)</sys:String>
+    <sys:String x:Key="ShowAudioControlCardInHome">Show Audio Configuration and Controls</sys:String>
+    <sys:String x:Key="HomeQuickActions">QUICK ACTIONS</sys:String>
+    <sys:String x:Key="HomeBtnQuickTimer">⏱ Quick Timer</sys:String>
+    <sys:String x:Key="HomeBtnViewRoutines">🔄 View Routines</sys:String>
+    <sys:String x:Key="HomeBtnSleepMode">🌙 Sleep Mode</sys:String>
+
+    <sys:String x:Key="WhenToExecute">WHEN TO ACTIVATE?</sys:String>
+    <sys:String x:Key="WhatToDo">WHAT TO DO NEXT? (Intermediate actions in series)</sys:String>
+    <sys:String x:Key="HowToFinish">WHAT SHOULD HAPPEN AT THE END?</sys:String>
+    <sys:String x:Key="WhenToActivateLabel">When to activate?</sys:String>
+    <sys:String x:Key="OnCompletionLabel">What should happen at the end?</sys:String>
+    <sys:String x:Key="FadeAudioLabel">Lower volume gradually</sys:String>
+    <sys:String x:Key="PreExecutionNoticeLabel">Show a notice before executing</sys:String>
+    <sys:String x:Key="PreExecutionNoticeRange">Show a notice before executing (0 to 300 seconds):</sys:String>
+
+    <sys:String x:Key="BtnVerifyRoutine">🔍 Verify Routine</sys:String>
+    <sys:String x:Key="BtnSaveRoutine">💾 Save Routine</sys:String>
+    <sys:String x:Key="BtnStartRoutine">▶ START ROUTINE</sys:String>
+    <sys:String x:Key="BtnStartTimer">▶ START TIMER</sys:String>
+    <sys:String x:Key="BtnFinish">⏹ FINISH</sys:String>
+    <sys:String x:Key="BtnDelete">🗑 Delete</sys:String>
+    <sys:String x:Key="BtnRestoreFactory">↺ Restore Factory Routines</sys:String>
+    <sys:String x:Key="BtnNewRoutine">+ New Routine</sys:String>
+
+    <sys:String x:Key="SettingsLanguage">LANGUAGE</sys:String>
+    <sys:String x:Key="SettingsAppearance">APPEARANCE</sys:String>
+    <sys:String x:Key="SettingsStartup">TELEWORK &amp; STARTUP</sys:String>
+    <sys:String x:Key="SettingsPanicHotkey">PANIC GLOBAL HOTKEY (Panic Hotkey)</sys:String>
+    <sys:String x:Key="SettingsBattery">BATTERY GUARDIAN (Laptops)</sys:String>
+    <sys:String x:Key="SettingsEvidence">EVIDENCE &amp; MAINTENANCE</sys:String>
+    <sys:String x:Key="SettingsAiOptions">MODULARITY &amp; AI INTEGRATION</sys:String>
+
+    <sys:String x:Key="StartWithWindows">Start with Windows</sys:String>
+    <sys:String x:Key="StartMinimized">Start minimized to system tray</sys:String>
+    <sys:String x:Key="StartInWorkMode">Start automatically in Work Mode (anti-away)</sys:String>
+    <sys:String x:Key="EnableBatteryProtection">Enable battery protection</sys:String>
+    <sys:String x:Key="TakeEvidenceScreenshots">Take evidence screenshots (max 20)</sys:String>
+    <sys:String x:Key="ShowAiRadarInHome">Show AI Quota Radar in Home tab</sys:String>
+    <sys:String x:Key="BtnViewGallery">🖼 View Evidence Gallery</sys:String>
+    <sys:String x:Key="BtnOpenData">📂 Open data folder</sys:String>
+    <sys:String x:Key="BtnResetSettings">🔄 Reset Settings</sys:String>
+</ResourceDictionary>

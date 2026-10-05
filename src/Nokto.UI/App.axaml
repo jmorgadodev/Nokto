@@ -1,28 +1,122 @@
 <Application xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="using:Nokto.UI"
              x:Class="Nokto.UI.App"
              RequestedThemeVariant="Dark">
 
     <Application.Resources>
-        <!-- Fluent StreamGeometry Vector Icons -->
-        <StreamGeometry x:Key="IconSliders">M3 5a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v1h14a1 1 0 1 1 0 2H6v1a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5zm17 6a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1v-1H3a1 1 0 1 1 0-2h15v-1a1 1 0 0 1 1-1h1zm-8 6a1 1 0 0 1 1 1v1a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1v-1H3a1 1 0 1 1 0-2h7v-1a1 1 0 0 1 1-1h1z</StreamGeometry>
-        <StreamGeometry x:Key="IconLightning">M11 2L3 13h6v9l9-12h-7l1-8z</StreamGeometry>
-        <StreamGeometry x:Key="IconWorkflow">M3 3h5v5H3V3zm13 0h5v5h-5V3zM9.5 16h5v5h-5v-5zM6.5 8v3h11V8h2v5h-6v3h-2v-3h-7V8h2z</StreamGeometry>
-        <StreamGeometry x:Key="IconPower">M11 2h2v10h-2V2zm5.66 3.34l1.41-1.41A10 10 0 1 1 5.93 3.93l1.41 1.41a8 8 0 1 0 9.32 0z</StreamGeometry>
-        <StreamGeometry x:Key="IconRestart">M12 4V1L7 6l5 5V7a6 6 0 1 1-6 6H4a8 8 0 1 0 8-9z</StreamGeometry>
-        <StreamGeometry x:Key="IconMoon">M12.3 2a10 10 0 0 0 9.7 13.7 10 10 0 1 1-9.7-13.7z</StreamGeometry>
-        <StreamGeometry x:Key="IconHibernate">M4 5h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zm0 2v10h16V7H4zm14 7a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm-3 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm-6-5h4l-4 4h4v1H8l4-4H8V9z</StreamGeometry>
-        <StreamGeometry x:Key="IconLock">M12 2a5 5 0 0 0-5 5v3H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-2V7a5 5 0 0 0-5-5zm-3 5a3 3 0 0 1 6 0v3H9V7zm3 8a1.5 1.5 0 0 1 1 1.41v2.18a1 1 0 1 1-2 0v-2.18A1.5 1.5 0 0 1 12 15z</StreamGeometry>
-        <StreamGeometry x:Key="IconMonitorOff">M20 3H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h6v2H8v2h8v-2h-2v-2h6a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm0 12H4V5h16v10zm-9-8h2v6h-2V7z</StreamGeometry>
-        <StreamGeometry x:Key="IconClock">M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 11h-4V7h2v4h2z</StreamGeometry>
-        <StreamGeometry x:Key="IconPlay">M8 5v14l11-7z</StreamGeometry>
-        <StreamGeometry x:Key="IconStop">M6 6h12v12H6z</StreamGeometry>
+        <ResourceDictionary>
+            <!-- PALETAS DINÁMICAS LIGHT / DARK (THEME DICTIONARIES) -->
+            <ResourceDictionary.ThemeDictionaries>
+                <!-- Gris intermedio; controles Fluent heredan la variante Dark. -->
+                <ResourceDictionary x:Key="{x:Static local:App.SlateTheme}">
+                    <SolidColorBrush x:Key="ThemeBackground" Color="#303641"/>
+                    <SolidColorBrush x:Key="ThemeCardBackground" Color="#39414D"/>
+                    <SolidColorBrush x:Key="ThemeCardBorder" Color="#596575"/>
+                    <SolidColorBrush x:Key="ThemeTextPrimary" Color="#F1F5F9"/>
+                    <SolidColorBrush x:Key="ThemeTextSecondary" Color="#BAC5D3"/>
+                    <SolidColorBrush x:Key="ThemeAccent" Color="#69E0F2"/>
+                    <SolidColorBrush x:Key="ThemeAccentWarning" Color="#FFC66E"/>
+                    <SolidColorBrush x:Key="ThemeAccentSuccess" Color="#65E5A2"/>
+                    <SolidColorBrush x:Key="ThemeInputBackground" Color="#2A3039"/>
+                    <SolidColorBrush x:Key="ThemeInputBorder" Color="#667385"/>
+                    <SolidColorBrush x:Key="ThemeCardHover" Color="#46505E"/>
+                    <SolidColorBrush x:Key="ThemeHeaderBackground" Color="#333B47"/>
+                    <SolidColorBrush x:Key="ThemeFooterBackground" Color="#333B47"/>
+                </ResourceDictionary>
+                <!-- TEMA OSCURO (DEFAULT TÉCNICO NOKTO) -->
+                <ResourceDictionary x:Key="Dark">
+                    <SolidColorBrush x:Key="ThemeBackground" Color="#0E1015"/>
+                    <SolidColorBrush x:Key="ThemeCardBackground" Color="#16181D"/>
+                    <SolidColorBrush x:Key="ThemeCardBorder" Color="#252830"/>
+                    <SolidColorBrush x:Key="ThemeTextPrimary" Color="#F0F2F5"/>
+                    <SolidColorBrush x:Key="ThemeTextSecondary" Color="#7D8390"/>
+                    <SolidColorBrush x:Key="ThemeAccent" Color="#00D2FF"/>
+                    <SolidColorBrush x:Key="ThemeAccentWarning" Color="#FFB300"/>
+                    <SolidColorBrush x:Key="ThemeAccentSuccess" Color="#00E676"/>
+                    <SolidColorBrush x:Key="ThemeInputBackground" Color="#101216"/>
+                    <SolidColorBrush x:Key="ThemeInputBorder" Color="#2A2E38"/>
+                    <SolidColorBrush x:Key="ThemeCardHover" Color="#1D2027"/>
+                    <SolidColorBrush x:Key="ThemeHeaderBackground" Color="#121418"/>
+                    <SolidColorBrush x:Key="ThemeFooterBackground" Color="#121418"/>
+                </ResourceDictionary>
+
+                <!-- TEMA CLARO (SOFT SLATE / GRIS TÉCNICO ERGONÓMICO) -->
+                <ResourceDictionary x:Key="Light">
+                    <SolidColorBrush x:Key="ThemeBackground" Color="#E5E9EE"/>
+                    <SolidColorBrush x:Key="ThemeCardBackground" Color="#F4F6F9"/>
+                    <SolidColorBrush x:Key="ThemeCardBorder" Color="#CBD5E1"/>
+                    <SolidColorBrush x:Key="ThemeTextPrimary" Color="#0F172A"/>
+                    <SolidColorBrush x:Key="ThemeTextSecondary" Color="#475569"/>
+                    <SolidColorBrush x:Key="ThemeAccent" Color="#0284C7"/>
+                    <SolidColorBrush x:Key="ThemeAccentWarning" Color="#D97706"/>
+                    <SolidColorBrush x:Key="ThemeAccentSuccess" Color="#059669"/>
+                    <SolidColorBrush x:Key="ThemeInputBackground" Color="#E2E8F0"/>
+                    <SolidColorBrush x:Key="ThemeInputBorder" Color="#94A3B8"/>
+                    <SolidColorBrush x:Key="ThemeCardHover" Color="#E2E8F0"/>
+                    <SolidColorBrush x:Key="ThemeHeaderBackground" Color="#E5E9EE"/>
+                    <SolidColorBrush x:Key="ThemeFooterBackground" Color="#E5E9EE"/>
+                </ResourceDictionary>
+            </ResourceDictionary.ThemeDictionaries>
+
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceInclude Source="avares://Nokto/Resources/Locale.es.axaml" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <!-- SISTEMA DE ICONOGRAFÍA "NOKTO INSTRUMENT" -->
+            <!-- Pestaña 1: Inicio (Hexágono angular con radar/punto focal) -->
+            <StreamGeometry x:Key="IconRadar">M12 2L21 7V17L12 22L3 17V7L12 2ZM12 4.2L5 8.1V15.9L12 19.8L19 15.9V8.1L12 4.2ZM12 9A3 3 0 1 0 12 15A3 3 0 0 0 12 9ZM12 11A1 1 0 1 1 12 13A1 1 0 0 1 12 11Z</StreamGeometry>
+
+            <!-- Pestaña 2: Control Manual (Cronógrafo seccionado a 45°) -->
+            <StreamGeometry x:Key="IconChrono">M12 2A10 10 0 1 0 22 12A10 10 0 0 0 12 2ZM12 4A8 8 0 1 1 4 12A8 8 0 0 1 12 4ZM11 6V11.5L14.9 15.4L16.3 14L13 10.7V6H11ZM16.5 2.5L21.5 7.5L20.1 8.9L15.1 3.9L16.5 2.5Z</StreamGeometry>
+
+            <!-- Pestaña 3: Rutinas (Tres nodos interconectados estilo circuito PCB) -->
+            <StreamGeometry x:Key="IconWorkflowCircuit">M3 3H9V9H3V3ZM5 5V7H7V5H5ZM15 3H21V9H15V3ZM17 5V7H19V5H17ZM9 15H15V21H9V15ZM11 17V19H13V17H11ZM6 9V12H11V15H13V12H18V9H16V10H14V11H10V10H8V9H6Z</StreamGeometry>
+
+            <!-- Pestaña 4: Ajustes (Retícula de enfoque con cuatro crucetas) -->
+            <StreamGeometry x:Key="IconReticle">M11 2H13V5H11V2ZM11 19H13V22H11V19ZM2 11H5V13H2V11ZM19 11H22V13H19V11ZM5 5H8V7H7V8H5V5ZM19 5V8H17V7H16V5H19ZM5 19H8V17H7V16H5V19ZM19 19V16H17V17H16V19H19ZM12 8A4 4 0 1 0 12 16A4 4 0 0 0 12 8ZM12 10A2 2 0 1 1 12 14A2 2 0 0 1 12 10Z</StreamGeometry>
+
+            <!-- Hardware Telemetría Footer -->
+            <!-- CPU: Chip de silicio con pines perimetrales -->
+            <StreamGeometry x:Key="IconCpuSilicon">M5 5H19V19H5V5ZM7 7V17H17V7H7ZM9 9H15V15H9V9ZM3 8H5V10H3V8ZM3 14H5V16H3V14ZM19 8H21V10H19V8ZM19 14H21V16H19V14ZM8 3V5H10V3H8ZM14 3V5H16V3H14ZM8 19V21H10V19H8ZM14 19V21H16V19H14Z</StreamGeometry>
+
+            <!-- RAM: Módulo DIMM con contactos y muesca -->
+            <StreamGeometry x:Key="IconRamDimm">M2 7H22V17H2V7ZM4 9V15H9V13.5H10.5V15H20V9H4ZM5 10.5H7V13H5V10.5ZM12 10.5H14V13H12V10.5ZM16.5 10.5H18.5V13H16.5V10.5Z</StreamGeometry>
+
+            <!-- GPU: Aspas axiales de refrigeración de tarjeta gráfica -->
+            <StreamGeometry x:Key="IconGpuAxial">M12 2A10 10 0 1 0 22 12A10 10 0 0 0 12 2ZM12 4A8 8 0 0 1 19.3 8.5L14.5 10.5C13.9 9.6 13 9 12 9A3 3 0 0 0 9 12C9 13 9.6 13.9 10.5 14.5L8.5 19.3A8 8 0 0 1 4.7 15.5L9.5 13.5C10.1 14.4 11 15 12 15A3 3 0 0 0 15 12C15 11 14.4 10.1 13.5 9.5L15.5 4.7A7.9 7.9 0 0 1 19.3 8.5Z</StreamGeometry>
+
+            <!-- Disco: Chip de memoria flash SSD -->
+            <StreamGeometry x:Key="IconDiskFlash">M6 2H18A2 2 0 0 1 20 4V20A2 2 0 0 1 18 22H6A2 2 0 0 1 4 20V4A2 2 0 0 1 6 2ZM6 4V7H18V4H6ZM6 9V20H18V9H6ZM8 11H16V13H8V11ZM8 15H13V17H8V15Z</StreamGeometry>
+
+            <!-- Red: Pulso de transmisión en tiempo real -->
+            <StreamGeometry x:Key="IconNetPulse">M2 13H5.5L7.5 7L11.5 21L15.5 11L17.5 15H22V13H18.5L16.5 17L12.5 3L8.5 17L6.5 13H2Z</StreamGeometry>
+
+            <!-- Iconos de soporte operacional -->
+            <StreamGeometry x:Key="IconPower">M11 2h2v10h-2V2zm5.66 3.34l1.41-1.41A10 10 0 1 1 5.93 3.93l1.41 1.41a8 8 0 1 0 9.32 0z</StreamGeometry>
+            <StreamGeometry x:Key="IconRestart">M12 4V1L7 6l5 5V7a6 6 0 1 1-6 6H4a8 8 0 1 0 8-9z</StreamGeometry>
+            <StreamGeometry x:Key="IconMoon">M12.3 2a10 10 0 0 0 9.7 13.7 10 10 0 1 1-9.7-13.7z</StreamGeometry>
+            <StreamGeometry x:Key="IconHibernate">M4 5h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2zm0 2v10h16V7H4zm14 7a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm-3 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2zm-6-5h4l-4 4h4v1H8l4-4H8V9z</StreamGeometry>
+            <StreamGeometry x:Key="IconLock">M12 2a5 5 0 0 0-5 5v3H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-2V7a5 5 0 0 0-5-5zm-3 5a3 3 0 0 1 6 0v3H9V7zm3 8a1.5 1.5 0 0 1 1 1.41v2.18a1 1 0 1 1-2 0v-2.18A1.5 1.5 0 0 1 12 15z</StreamGeometry>
+            <StreamGeometry x:Key="IconMonitorOff">M20 3H4a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h6v2H8v2h8v-2h-2v-2h6a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zm0 12H4V5h16v10zm-9-8h2v6h-2V7z</StreamGeometry>
+            <StreamGeometry x:Key="IconClock">M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 11h-4V7h2v4h2z</StreamGeometry>
+            <StreamGeometry x:Key="IconPlay">M8 5v14l11-7z</StreamGeometry>
+            <StreamGeometry x:Key="IconStop">M6 6h12v12H6z</StreamGeometry>
+            <StreamGeometry x:Key="IconSettings">M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54A.484.484 0 0 0 14 2h-4c-.25 0-.46.18-.49.42l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.63 8.47c-.13.22-.08.49.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h4c.25 0 .46-.18.49-.42l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z</StreamGeometry>
+            <StreamGeometry x:Key="IconFolder">M10 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2h-8l-2-2z</StreamGeometry>
+            <StreamGeometry x:Key="IconImage">M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z</StreamGeometry>
+            <StreamGeometry x:Key="IconSearch">M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z</StreamGeometry>
+            <StreamGeometry x:Key="IconLightning">M11 2L3 13h6v9l9-12h-7l1-8z</StreamGeometry>
+            <StreamGeometry x:Key="IconVolumeFade">M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z</StreamGeometry>
+            <StreamGeometry x:Key="IconMediaPause">M6 19h4V5H6v14zm8-14v14h4V5h-4z</StreamGeometry>
+            <StreamGeometry x:Key="IconTerminal">M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 14H4V8h16v10zm-12-3l3-3-3-3 1.4-1.4 4.4 4.4-4.4 4.4L8 15zm5 0h5v-2h-5v2z</StreamGeometry>
+        </ResourceDictionary>
     </Application.Resources>
 
     <Application.Styles>
         <FluentTheme />
         
-        <!-- Estilos globales para controles neominimalistas -->
+        <!-- Estilos globales para controles neominimalistas técnicos -->
         <Style Selector="Button">
             <Setter Property="CornerRadius" Value="6"/>
             <Setter Property="Cursor" Value="Hand"/>
@@ -30,6 +124,25 @@
 
         <Style Selector="Border">
             <Setter Property="CornerRadius" Value="6"/>
+        </Style>
+
+        <!-- Pestañas TabItem con indicadores activos nítidos -->
+        <Style Selector="TabItem">
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{DynamicResource ThemeTextSecondary}"/>
+            <Setter Property="Padding" Value="14,8"/>
+        </Style>
+        <Style Selector="TabItem:selected">
+            <Setter Property="Foreground" Value="{DynamicResource ThemeAccent}"/>
+        </Style>
+
+        <!-- Cajas de texto y campos numéricos -->
+        <Style Selector="TextBox">
+            <Setter Property="CornerRadius" Value="5"/>
+        </Style>
+        <Style Selector="NumericUpDown">
+            <Setter Property="CornerRadius" Value="5"/>
         </Style>
     </Application.Styles>
 </Application>

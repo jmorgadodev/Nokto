@@ -6,8 +6,9 @@ using Nokto.Core.Engine;
 using Nokto.Core.Models;
 using Nokto.Core.Persistence;
 using Nokto.Core.Serialization;
-using Nokto.LanServer;
+using Nokto.Core.Services;
 using Nokto.Platform.Windows;
+using Nokto.Platform.Windows.Network;
 
 namespace Nokto.ConsoleTest;
 
@@ -16,9 +17,88 @@ internal static class Program
     private static async Task<int> Main(string[] args)
     {
         Console.OutputEncoding = System.Text.Encoding.UTF8;
+        if (args.Contains("--installed-apps-test")) return await InstalledAppsTests.RunAsync();
+        if (args.Contains("--linear-workflow-test")) return await LinearWorkflowTests.RunAsync();
+        if (args.Contains("--ai-tools-test"))
+            return AiToolDiscoveryTests.Run();
+        if (args.Contains("--concurrency-test"))
+            return await ConcurrentWorkflowTests.RunAsync();
+        if (args.Contains("--remote-test"))
+            return await RemoteServerTests.RunAsync();
+        if (args.Length == 2 && args[0] == "--remote-preview")
+            return await RemoteServerTests.PreviewAsync(args[1]);
+        if (args.Contains("--station-test"))
+        {
+            return StationRegressionTests.Run();
+        }
+        if (args.Contains("--cabin-test"))
+        {
+            return CabinRegressionTests.Run();
+        }
+        if (args.Contains("--regression-test"))
+        {
+            return RegressionTests.Run();
+        }
         using ISystemAdapter adapter = new WindowsSystemAdapter();
         var persistence = new PersistenceService();
         using var engine = new WorkflowEngine(adapter, persistence);
+
+        if (args.Length > 0 && args[0] == "--forensic-test")
+        {
+            string appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            string[] candidatePaths = [
+                Path.Combine(appData, "Antigravity IDE", "User", "globalStorage", "state.vscdb"),
+                Path.Combine(appData, "Antigravity", "User", "globalStorage", "state.vscdb"),
+                Path.Combine(appData, "Codex", "User", "globalStorage", "state.vscdb"),
+                Path.Combine(appData, "Code", "User", "globalStorage", "state.vscdb"),
+                Path.Combine(appData, "Cursor", "User", "globalStorage", "state.vscdb")
+            ];
+
+            foreach (var src in candidatePaths)
+            {
+                if (!File.Exists(src)) continue;
+                Console.WriteLine($"=== EVALUANDO: {src} ===");
+                var fi = new FileInfo(src);
+                Console.WriteLine($"Tamaño: {fi.Length} bytes ({fi.Length / 1024.0:F1} KB)");
+                string temp = Path.Combine(Path.GetTempPath(), $"nokto_forensic_{Path.GetFileName(src)}");
+                try
+                {
+                    File.Copy(src, temp, true);
+                    var builder = new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder
+                    {
+                        DataSource = temp,
+                        Mode = Microsoft.Data.Sqlite.SqliteOpenMode.ReadOnly
+                    };
+                    using var conn = new Microsoft.Data.Sqlite.SqliteConnection(builder.ConnectionString);
+                    conn.Open();
+                    using var cmd = conn.CreateCommand();
+                    cmd.CommandText = "SELECT key, substr(CAST(value AS TEXT), 1, 300) FROM ItemTable WHERE key LIKE '%quota%' OR key LIKE '%antigravity%' OR key LIKE '%copilot%' OR key LIKE '%model%' OR key LIKE '%auth%' LIMIT 100;";
+                    using var r = cmd.ExecuteReader();
+                    int count = 0;
+                    while (r.Read())
+                    {
+                        count++;
+                        string k = r.GetString(0);
+                        string v = r.IsDBNull(1) ? "<NULL>" : r.GetString(1);
+                        Console.WriteLine($"[KEY #{count}] {k}");
+                        Console.WriteLine($"   VAL: {v.Replace("\r", " ").Replace("\n", " ")}");
+                    }
+                    if (count == 0)
+                    {
+                        Console.WriteLine("--> Ninguna clave coincidió con el filtro.");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error de lectura: {ex.Message}");
+                }
+                finally
+                {
+                    try { if (File.Exists(temp)) File.Delete(temp); } catch { }
+                }
+            }
+            return 0;
+        }
 
         if (args.Length > 0 && args[0] == "--generate-icon")
         {
@@ -59,7 +139,7 @@ internal static class Program
             Console.WriteLine("  [4] Leer métricas en vivo (CPU, RAM, Red)");
             Console.WriteLine("  [5] Validar serialización JSON AOT (Data Contracts)");
             Console.WriteLine("  [6] Probar Motor de Flujos (WorkflowEngine, Pipeline y Auditoría)");
-            Console.WriteLine("  [7] Probar Microservidor LAN y Generador de QR");
+            Console.WriteLine("  [7] Probar Telemetría Expandida (5 Métricas) y Ajustes");
             Console.WriteLine("  [8] Salir");
             Console.WriteLine();
             Console.Write(" >> Ingrese opción [1-8]: ");
@@ -95,7 +175,7 @@ internal static class Program
                     break;
 
                 case '7':
-                    TestLanServerInteractive(engine, adapter);
+                    TestTelemetryAndSettingsInteractive(adapter, persistence);
                     break;
 
                 case '8':
@@ -133,7 +213,7 @@ internal static class Program
         PrintBanner();
         Console.ForegroundColor = ConsoleColor.Cyan;
         Console.WriteLine("================================================================================");
-        Console.WriteLine("    NOKTO - SUITE DE VERIFICACIÓN AUTOMATIZADA DEL SISTEMA (10/10 TESTS)        ");
+        Console.WriteLine("    NOKTO - SUITE DE VERIFICACIÓN AUTOMATIZADA DEL SISTEMA (12/12 TESTS)        ");
         Console.WriteLine("================================================================================");
         Console.ResetColor();
 
@@ -342,35 +422,31 @@ internal static class Program
             }
         }
 
-        // [TEST 09] Arranque del Microservidor HTTP LAN y respuesta HTTP 200 en /api/status
+        // [TEST 09] Telemetría expandida de 5 métricas (CPU kernel/user, RAM, GPU, Disco IOCTL, Red) y persistencia
         {
             var sw = Stopwatch.StartNew();
-            Console.Write("[TEST 09] Microservidor HTTP LAN y HTTP 200 en /api/status ... ");
+            Console.Write("[TEST 09] Telemetría expandida (5 métricas) y Ajustes ... ");
             try
             {
-                int testPort = 4889;
-                string testToken = "autotest_token_99";
-                var settings = new LanServerSettings
-                {
-                    Enabled = true,
-                    Port = testPort,
-                    RequireAuth = true,
-                    AuthToken = testToken
-                };
-                using var lanServer = new LanHttpServer(engine, adapter, settings);
-                lanServer.Start();
+                var metrics = adapter.GetCurrentMetrics();
+                if (metrics.RamTotalMb <= 0)
+                    throw new InvalidOperationException("Lectura de RAM inválida.");
+                if (string.IsNullOrWhiteSpace(metrics.GpuAdapterName))
+                    throw new InvalidOperationException("Lectura de GPU Adapter inválida.");
 
-                using var http = new HttpClient { Timeout = TimeSpan.FromSeconds(3) };
-                var res = await http.GetAsync($"http://localhost:{testPort}/api/status?auth={testToken}");
-                if (!res.IsSuccessStatusCode)
-                    throw new InvalidOperationException($"HTTP GET /api/status falló con código {res.StatusCode}");
-                string content = await res.Content.ReadAsStringAsync();
-                var status = JsonSerializer.Deserialize(content, NoktoJsonContext.Default.SystemStatusState);
-                if (status == null) throw new InvalidOperationException("Deserialización de SystemStatusState nula.");
+                var cfg = persistence.LoadConfig();
+                cfg.Settings.Language = "es";
+                cfg.Settings.Theme = "Dark";
+                cfg.Settings.BatteryProtectionEnabled = true;
+                cfg.Settings.MaxEvidenceRetention = 20;
+                persistence.SaveConfig(cfg);
 
-                lanServer.Stop();
+                var reloaded = persistence.LoadConfig();
+                if (reloaded.Settings.Language != "es" || !reloaded.Settings.BatteryProtectionEnabled)
+                    throw new InvalidOperationException("Fallo en la persistencia de Ajustes.");
+
                 sw.Stop();
-                PrintPass(sw.ElapsedMilliseconds, $"Puerto {testPort}, HTTP {(int)res.StatusCode} OK, PWA OLED lista y JSON autenticado");
+                PrintPass(sw.ElapsedMilliseconds, $"CPU {metrics.CpuUsagePercentage:F0}% (K:{metrics.CpuKernelPercentage:F1}%), RAM {metrics.RamUsedMb:F0}MB, GPU '{metrics.GpuAdapterName}', Disco {metrics.DiskTotalMBs:F1}MB/s, Red {metrics.NetworkDownKBs:F1}KB/s");
                 passedCount++;
             }
             catch (Exception ex)
@@ -456,6 +532,233 @@ internal static class Program
             }
         }
 
+        // [TEST 11] Control de Flujo Dinámico (Postpone y Finish reactivos en WorkflowEngine)
+        {
+            var sw = Stopwatch.StartNew();
+            Console.Write("[TEST 11] Control de Flujo Dinámico (Postpone & Finish) ... ");
+            try
+            {
+                engine.IsDryRunMode = true;
+                adapter.IsDryRunMode = true;
+
+                var countdownPreset = new PresetDefinition
+                {
+                    Id = "preset_postpone_test",
+                    Name = "Test Postpone & Finish",
+                    Trigger = new TriggerDefinition
+                    {
+                        Type = TriggerType.Countdown,
+                        Parameters = new Dictionary<string, JsonElement>
+                        {
+                            ["durationSeconds"] = JsonSerializer.SerializeToElement(5)
+                        }
+                    },
+                    Pipeline = [],
+                    TerminalAction = new TerminalActionDefinition
+                    {
+                        Type = TerminalActionType.Shutdown,
+                        Parameters = new Dictionary<string, JsonElement>
+                        {
+                            ["gracePeriodSeconds"] = JsonSerializer.SerializeToElement(0)
+                        }
+                    }
+                };
+
+                _ = engine.StartPresetAsync(countdownPreset);
+                await Task.Delay(300);
+
+                var statusBefore = engine.GetStatusSnapshot();
+                if (statusBefore.TimeRemainingSeconds <= 0)
+                    throw new InvalidOperationException("Cuenta regresiva no iniciada.");
+
+                // Aplicar Postpone de 10 segundos
+                engine.Postpone(TimeSpan.FromSeconds(10));
+                var statusAfter = engine.GetStatusSnapshot();
+                if (statusAfter.TimeRemainingSeconds < statusBefore.TimeRemainingSeconds + 5)
+                    throw new InvalidOperationException("El tiempo restante no aumentó tras Postpone.");
+
+                // Finalizar inmediatamente
+                engine.FinishAll();
+                await Task.Delay(200);
+
+                var statusFinalized = engine.GetStatusSnapshot();
+                if (statusFinalized.EngineState != EngineState.Idle)
+                    throw new InvalidOperationException($"El motor no retornó a Idle tras Finish. Estado actual: {statusFinalized.EngineState}");
+
+                sw.Stop();
+                PrintPass(sw.ElapsedMilliseconds, "Postpone (+10s) extendió contador y Finish restauró Idle instantáneamente");
+                passedCount++;
+            }
+            catch (Exception ex)
+            {
+                sw.Stop();
+                PrintFail(sw.ElapsedMilliseconds, ex.Message);
+                failedCount++;
+            }
+            finally
+            {
+                engine.IsDryRunMode = false;
+                adapter.IsDryRunMode = false;
+            }
+        }
+
+        // [TEST 12] Roundtrip Determinista de Modo Studio (Triggers, Pipeline y Terminal AOT)
+        {
+            var sw = Stopwatch.StartNew();
+            Console.Write("[TEST 12] Presets Avanzados y Fidelidad AOT de Pipeline ... ");
+            try
+            {
+                var complexPreset = new PresetDefinition
+                {
+                    Id = "preset_studio_roundtrip_test",
+                    Name = "Flujo Multi-Acción Determinista",
+                    Description = "Validación QA de captura, atenuación WASAPI, comando y corte de pantalla.",
+                    Trigger = new TriggerDefinition
+                    {
+                        Type = TriggerType.Countdown,
+                        Parameters = new Dictionary<string, JsonElement>
+                        {
+                            ["durationSeconds"] = JsonSerializer.SerializeToElement(60),
+                            ["isFixedTime"] = JsonSerializer.SerializeToElement(true),
+                            ["timeOfDay"] = JsonSerializer.SerializeToElement("18:30:00")
+                        }
+                    },
+                    Pipeline =
+                    [
+                        new PipelineStepDefinition
+                        {
+                            StepOrder = 1,
+                            ActionType = ActionType.CaptureScreenshot,
+                            IgnoreFailure = true
+                        },
+                        new PipelineStepDefinition
+                        {
+                            StepOrder = 2,
+                            ActionType = ActionType.AudioFadeOut,
+                            Parameters = new Dictionary<string, JsonElement>
+                            {
+                                ["durationSeconds"] = JsonSerializer.SerializeToElement(12),
+                                ["targetVolumePercentage"] = JsonSerializer.SerializeToElement(5)
+                            },
+                            IgnoreFailure = true
+                        },
+                        new PipelineStepDefinition
+                        {
+                            StepOrder = 3,
+                            ActionType = ActionType.MediaControl,
+                            Parameters = new Dictionary<string, JsonElement>
+                            {
+                                ["pauseOnly"] = JsonSerializer.SerializeToElement(true)
+                            },
+                            IgnoreFailure = true
+                        },
+                        new PipelineStepDefinition
+                        {
+                            StepOrder = 4,
+                            ActionType = ActionType.ExecuteCommand,
+                            Parameters = new Dictionary<string, JsonElement>
+                            {
+                                ["executablePath"] = JsonSerializer.SerializeToElement("cmd.exe"),
+                                ["arguments"] = JsonSerializer.SerializeToElement("/c echo Test OK"),
+                                ["timeoutSeconds"] = JsonSerializer.SerializeToElement(15),
+                                ["expectedExitCode"] = JsonSerializer.SerializeToElement(0)
+                            },
+                            IgnoreFailure = false
+                        }
+                    ],
+                    TerminalAction = new TerminalActionDefinition
+                    {
+                        Type = TerminalActionType.None,
+                        Parameters = new Dictionary<string, JsonElement>
+                        {
+                            ["subType"] = JsonSerializer.SerializeToElement("MonitorsOff"),
+                            ["gracePeriodSeconds"] = JsonSerializer.SerializeToElement(15),
+                            ["forced"] = JsonSerializer.SerializeToElement(true)
+                        }
+                    }
+                };
+
+                // Serializar y deserializar AOT
+                byte[] jsonBytes = JsonSerializer.SerializeToUtf8Bytes(complexPreset, NoktoJsonContext.Default.PresetDefinition);
+                var deserialized = JsonSerializer.Deserialize(jsonBytes, NoktoJsonContext.Default.PresetDefinition);
+
+                if (deserialized == null)
+                    throw new InvalidOperationException("Deserialización AOT produjo resultado nulo.");
+                if (deserialized.Pipeline.Count != 4)
+                    throw new InvalidOperationException($"Conteo de pasos de pipeline inconsistente: {deserialized.Pipeline.Count}/4");
+                if (deserialized.Pipeline[1].ActionType != ActionType.AudioFadeOut)
+                    throw new InvalidOperationException("Tipo de acción en paso 2 inconsistente.");
+                if (deserialized.Trigger.Parameters?["isFixedTime"].GetBoolean() != true)
+                    throw new InvalidOperationException("Metadato isFixedTime no preservado.");
+                if (deserialized.TerminalAction.Parameters?["subType"].GetString() != "MonitorsOff")
+                    throw new InvalidOperationException("Metadato subType MonitorsOff no preservado.");
+
+                sw.Stop();
+                PrintPass(sw.ElapsedMilliseconds, "Preset con 4 pasos (Screenshot, WASAPI, Media, CLI) verificado 100% AOT");
+                passedCount++;
+            }
+            catch (Exception ex)
+            {
+                sw.Stop();
+                PrintFail(sw.ElapsedMilliseconds, ex.Message);
+                failedCount++;
+            }
+        }
+
+        // [TEST 13] Diagnóstico de Red LAN y Detección Pasiva de VPN (100% offline, cero sockets)
+        {
+            var sw = Stopwatch.StartNew();
+            Console.Write("[TEST 13] Diagnóstico de Red LAN y Detección Pasiva de VPN ... ");
+            try
+            {
+                var snapshot = NetworkDiagnostics.GetSnapshot();
+                if (string.IsNullOrWhiteSpace(snapshot.IpAddress))
+                    throw new InvalidOperationException("Dirección IP resuelta está vacía.");
+                if (string.IsNullOrWhiteSpace(snapshot.NetworkNameAndType))
+                    throw new InvalidOperationException("Tipo de interfaz no detectado.");
+                if (string.IsNullOrWhiteSpace(snapshot.VpnStatusText))
+                    throw new InvalidOperationException("Estado de VPN no generado.");
+
+                sw.Stop();
+                PrintPass(sw.ElapsedMilliseconds, $"IP={snapshot.IpAddress} | Red='{snapshot.NetworkNameAndType}' | VPN={(snapshot.IsVpnActive ? "Activa" : "Inactiva")}");
+                passedCount++;
+            }
+            catch (Exception ex)
+            {
+                sw.Stop();
+                PrintFail(sw.ElapsedMilliseconds, ex.Message);
+                failedCount++;
+            }
+        }
+
+        // [TEST 14] Radar de Cuotas IA (Inspección pasiva local en SQLite/disco de Antigravity, Codex y OpenCode)
+        {
+            var sw = Stopwatch.StartNew();
+            Console.Write("[TEST 14] Radar de Cuotas IA (Inspección Pasiva SQLite/JSON) ... ");
+            try
+            {
+                var aiService = new AiQuotaService();
+                var snapshot = aiService.InspectLocalQuotas();
+
+                if (snapshot.Environments.Count == 0)
+                    throw new InvalidOperationException("La lista de entornos evaluados no debe ser vacía.");
+
+                string info = snapshot.AnyDetected
+                    ? $"Detectados: {snapshot.Environments.Count(e => e.IsDetected)} entorno(s) | Recomendado: '{snapshot.RecommendedEnvironmentName}'"
+                    : "Modo seguro: Cero entornos detectados en disco (comportamiento gracioso verificado)";
+
+                sw.Stop();
+                PrintPass(sw.ElapsedMilliseconds, info);
+                passedCount++;
+            }
+            catch (Exception ex)
+            {
+                sw.Stop();
+                PrintFail(sw.ElapsedMilliseconds, ex.Message);
+                failedCount++;
+            }
+        }
+
         totalStopwatch.Stop();
         Console.WriteLine();
         Console.ForegroundColor = ConsoleColor.Cyan;
@@ -463,12 +766,12 @@ internal static class Program
         if (failedCount == 0)
         {
             Console.ForegroundColor = ConsoleColor.Green;
-            Console.WriteLine($"  RESULTADO: {passedCount}/10 TESTS SUPERADOS [0 FALLOS] - TIEMPO TOTAL: {totalStopwatch.Elapsed.TotalSeconds:F2}s");
+            Console.WriteLine($"  RESULTADO: {passedCount}/14 TESTS SUPERADOS [0 FALLOS] - TIEMPO TOTAL: {totalStopwatch.Elapsed.TotalSeconds:F2}s");
         }
         else
         {
             Console.ForegroundColor = ConsoleColor.Red;
-            Console.WriteLine($"  RESULTADO: {passedCount}/10 SUPERADOS, {failedCount} FALLADOS - TIEMPO TOTAL: {totalStopwatch.Elapsed.TotalSeconds:F2}s");
+            Console.WriteLine($"  RESULTADO: {passedCount}/14 SUPERADOS, {failedCount} FALLADOS - TIEMPO TOTAL: {totalStopwatch.Elapsed.TotalSeconds:F2}s");
         }
         Console.ForegroundColor = ConsoleColor.Cyan;
         Console.WriteLine("================================================================================");
@@ -493,37 +796,24 @@ internal static class Program
         Console.WriteLine($" ({elapsedMs} ms) - ERROR: {error}");
     }
 
-    private static void TestLanServerInteractive(IWorkflowEngine engine, ISystemAdapter adapter)
+    private static void TestTelemetryAndSettingsInteractive(ISystemAdapter adapter, PersistenceService persistence)
     {
         Console.ForegroundColor = ConsoleColor.Magenta;
-        Console.WriteLine("=== [7] PRUEBA: MICROSERVIDOR LAN Y CONTROL REMOTO WEB ===");
+        Console.WriteLine("=== [7] PRUEBA: TELEMETRÍA EXPANDIDA Y AJUSTES ===");
         Console.ResetColor();
 
-        int port = 4884;
-        string token = "nokto_dev_" + Guid.NewGuid().ToString("N")[..6];
-        var settings = new LanServerSettings
-        {
-            Enabled = true,
-            Port = port,
-            RequireAuth = true,
-            AuthToken = token
-        };
+        var metrics = adapter.GetCurrentMetrics();
+        Console.WriteLine($"• CPU Global: {metrics.CpuUsagePercentage:F1}% (Kernel: {metrics.CpuKernelPercentage:F1}%, Usuario: {metrics.CpuUserPercentage:F1}%)");
+        Console.WriteLine($"• RAM: {metrics.RamUsedMb:F0} MB en uso / {metrics.RamTotalMb:F0} MB total");
+        Console.WriteLine($"• GPU Adaptador: {metrics.GpuAdapterName} | Motor 3D: {metrics.GpuUsagePercentage:F1}%");
+        Console.WriteLine($"• Disco: Total {metrics.DiskTotalMBs:F2} MB/s (Lectura: {metrics.DiskReadMBs:F2} MB/s, Escritura: {metrics.DiskWriteMBs:F2} MB/s)");
+        Console.WriteLine($"• Red: Bajada {metrics.NetworkDownKBs:F1} KB/s | Subida {metrics.NetworkUpKBs:F1} KB/s");
 
-        using var server = new LanHttpServer(engine, adapter, settings);
-        server.Start();
+        var cfg = persistence.LoadConfig();
+        Console.WriteLine($"• Configuración: Idioma={cfg.Settings.Language}, Tema={cfg.Settings.Theme}, GuardiánBatería={cfg.Settings.BatteryProtectionEnabled}");
 
-        string url = server.GetConnectionUrl();
-        Console.WriteLine($"Servidor iniciado en: {url}");
-        Console.WriteLine("Abra la URL anterior en el navegador de su teléfono o PC.");
-        Console.WriteLine("Generando código QR...");
-
-        byte[] qrPng = QrCodeService.GeneratePngBytes(url, 6);
-        Console.WriteLine($"Código QR generado exitosamente ({qrPng.Length} bytes PNG).");
-        Console.WriteLine("\nPresione cualquier tecla para detener el servidor LAN y regresar al menú...");
+        Console.WriteLine("\nPresione cualquier tecla para regresar al menú...");
         Console.ReadKey(intercept: true);
-
-        server.Stop();
-        Console.WriteLine("Servidor detenido.");
     }
 
     private static async Task TestWorkflowEngineAsync(IWorkflowEngine engine, PersistenceService persistence)
@@ -740,7 +1030,7 @@ internal static class Program
                 if (k.Key == ConsoleKey.Escape)
                 {
                     cts.Cancel();
-                    Console.WriteLine("\n[Usuario] Desvanecimiento abortado.");
+                    Console.WriteLine("\n[Usuario] Desvanecimiento finalizado.");
                     break;
                 }
             }

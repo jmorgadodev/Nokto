@@ -1,0 +1,29 @@
+<UserControl xmlns="https://github.com/avaloniaui" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:vm="using:Nokto.UI.ViewModels" x:Class="Nokto.UI.Views.ActiveTasksView" x:DataType="vm:MainViewModel">
+    <Border Background="{DynamicResource ThemeCardBackground}" BorderBrush="{DynamicResource ThemeCardBorder}" BorderThickness="1" CornerRadius="8" Padding="12,10">
+        <Grid RowDefinitions="Auto,Auto,*">
+            <TextBlock Text="{Binding ActiveTasksHeaderText}" Foreground="{DynamicResource ThemeAccent}" FontWeight="Bold" FontSize="10" Margin="0,0,0,6"/>
+            <TextBlock Grid.Row="1" Text="⚪ Sin tareas ni rutinas en ejecución" IsVisible="{Binding !HasActiveRoutines}" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="11" Margin="2,6"/>
+            <ScrollViewer Grid.Row="2" IsVisible="{Binding HasActiveRoutines}" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                <ItemsControl ItemsSource="{Binding ActiveRoutines}">
+                    <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel Orientation="Horizontal"/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate x:DataType="vm:ActiveRoutineItem">
+                            <Border Width="270" Height="95" Margin="6" Background="{DynamicResource ThemeCardBackground}" BorderBrush="{DynamicResource ThemeCardBorder}" BorderThickness="1" CornerRadius="6" Padding="9,7">
+                                <Grid RowDefinitions="Auto,Auto,*" ColumnDefinitions="*,Auto">
+                                    <Grid Grid.ColumnSpan="2" ColumnDefinitions="20,*">
+                                        <TextBlock Text="{Binding IconText}" Foreground="{DynamicResource ThemeAccent}" FontSize="12"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding Info.Name}" Foreground="{DynamicResource ThemeTextPrimary}" FontSize="11" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTip.Tip="{Binding Info.Name}"/>
+                                    </Grid>
+                                    <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{Binding Info.StatusText}" Foreground="{DynamicResource ThemeAccent}" FontSize="10" Margin="0,3,0,2" TextTrimming="CharacterEllipsis"/>
+                                    <TextBlock Grid.Row="2" Text="{Binding Info.Description}" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="9" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" ToolTip.Tip="{Binding Info.Description}" Margin="0,0,6,0"/>
+                                    <Button Grid.Row="2" Grid.Column="1" Content="✕ Finalizar" Command="{Binding FinishCommand}" Background="#3A1C1C" Foreground="#FF6B6B" FontSize="11" Padding="6,3" VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+        </Grid>
+    </Border>
+</UserControl>
+

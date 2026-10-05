@@ -1,0 +1,49 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="using:Nokto.UI.ViewModels"
+             xmlns:models="using:Nokto.Core.Models"
+             x:Class="Nokto.UI.Views.AudioSettingsView"
+             x:DataType="vm:MainViewModel">
+    <Border Background="{DynamicResource ThemeCardBackground}" BorderBrush="{DynamicResource ThemeCardBorder}" BorderThickness="1" CornerRadius="8" Padding="16">
+        <StackPanel Spacing="14">
+            <TextBlock Text="CONFIGURACIÓN Y CONTROL DE AUDIO" Foreground="{DynamicResource ThemeAccent}" FontWeight="Bold" FontSize="11"/>
+            <Grid ColumnDefinitions="*,*">
+                <StackPanel Spacing="10" Margin="0,0,12,0">
+                    <TextBlock Text="Dispositivo de Entrada (Micrófono)" Foreground="{DynamicResource ThemeTextPrimary}" FontWeight="SemiBold" FontSize="12"/>
+                    <ComboBox ItemsSource="{Binding InputAudioDevices}" SelectedItem="{Binding SelectedInputAudioDevice, Mode=TwoWay}" HorizontalAlignment="Stretch" Background="{DynamicResource ThemeInputBackground}" Foreground="{DynamicResource ThemeTextPrimary}" FontSize="11" AutomationProperties.Name="Micrófono predeterminado">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate x:DataType="models:AudioEndpointInfo"><TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"/></DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <Button Content="{Binding InputMuteButtonText}" Command="{Binding ToggleInputMuteCommand}" IsEnabled="{Binding HasInputAudio}" Background="{DynamicResource ThemeInputBackground}" Foreground="{DynamicResource ThemeTextPrimary}" BorderBrush="{DynamicResource ThemeAccent}" BorderThickness="1" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="12,8"/>
+                    <TextBlock Text="Atajo global para conmutar micrófono:" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="11"/>
+                    <TextBox Text="{Binding MicMuteHotkeyText, Mode=TwoWay}" Background="{DynamicResource ThemeInputBackground}" Foreground="{DynamicResource ThemeTextPrimary}" FontSize="12" AutomationProperties.Name="Atajo global del micrófono"/>
+                    <TextBlock Text="{Binding MicHotkeyDisplay, StringFormat='[ {0} ]'}" Foreground="{DynamicResource ThemeAccent}" FontSize="11"/>
+                    <TextBlock Text="{Binding MicHotkeyStatus}" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="10" TextWrapping="Wrap"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Spacing="10" Margin="12,0,0,0">
+                    <TextBlock Text="Dispositivo de Salida (Sonido / Auriculares)" Foreground="{DynamicResource ThemeTextPrimary}" FontWeight="SemiBold" FontSize="12"/>
+                    <ComboBox ItemsSource="{Binding OutputAudioDevices}" SelectedItem="{Binding SelectedOutputAudioDevice, Mode=TwoWay}" HorizontalAlignment="Stretch" Background="{DynamicResource ThemeInputBackground}" Foreground="{DynamicResource ThemeTextPrimary}" FontSize="11" AutomationProperties.Name="Salida de audio predeterminada">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate x:DataType="models:AudioEndpointInfo"><TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"/></DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <Grid ColumnDefinitions="*,48" IsEnabled="{Binding HasOutputAudio}">
+                        <Slider Minimum="0" Maximum="100" Value="{Binding MasterVolumePercent, Mode=TwoWay}" TickFrequency="1" IsSnapToTickEnabled="True" AutomationProperties.Name="Volumen maestro"/>
+                        <TextBlock Grid.Column="1" Text="{Binding MasterVolumeText}" Foreground="{DynamicResource ThemeTextPrimary}" FontFamily="Consolas" VerticalAlignment="Center" TextAlignment="Right"/>
+                    </Grid>
+                    <Button Content="{Binding OutputMuteButtonText}" Command="{Binding ToggleOutputMuteCommand}" IsEnabled="{Binding HasOutputAudio}" Background="{DynamicResource ThemeInputBackground}" Foreground="{DynamicResource ThemeTextPrimary}" BorderBrush="{DynamicResource ThemeAccent}" BorderThickness="1" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Padding="12,8"/>
+                    <TextBlock Text="Atajo global para silenciar sonido:" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="11"/>
+                    <TextBox Text="{Binding AudioMuteHotkeyText, Mode=TwoWay}" Background="{DynamicResource ThemeInputBackground}" Foreground="{DynamicResource ThemeTextPrimary}" FontSize="12" AutomationProperties.Name="Atajo global de la salida"/>
+                    <TextBlock Text="{Binding AudioHotkeyDisplay, StringFormat='[ {0} ]'}" Foreground="{DynamicResource ThemeAccent}" FontSize="11"/>
+                    <TextBlock Text="{Binding AudioHotkeyStatus}" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="10" TextWrapping="Wrap"/>
+                </StackPanel>
+            </Grid>
+            <Grid ColumnDefinitions="Auto,*,Auto">
+                <Button Content="Guardar atajos globales" Command="{Binding ApplyAudioHotkeysCommand}" Background="{DynamicResource ThemeInputBackground}" Foreground="{DynamicResource ThemeAccent}" FontSize="11" Padding="12,6"/>
+                <Button Grid.Column="2" Content="⚙ Abrir Configuración de Sonido de Windows" Command="{Binding OpenWindowsSoundSettingsCommand}" Background="{DynamicResource ThemeInputBackground}" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="11" Padding="12,6"/>
+            </Grid>
+            <TextBlock Text="{Binding AudioControlStatusText}" IsVisible="{Binding HasAudioControlStatus}" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="11" TextWrapping="Wrap"/>
+        </StackPanel>
+    </Border>
+</UserControl>

@@ -66,7 +66,7 @@ internal interface IMMDevice
 }
 
 [ComImport]
-[Guid("5BC69FDE-8A07-440E-A43D-64F0F0748237")]
+[Guid("5CDF2C82-841E-4546-9722-0CF74078229A")]
 [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
 internal interface IAudioEndpointVolume
 {
@@ -156,6 +156,7 @@ public sealed class WasapiAudioController : IDisposable
     private IAudioEndpointVolume? _endpointVolume;
     private IAudioMeterInformation? _audioMeter;
     private bool _disposed;
+    private readonly object _endpointGate = new();
 
     public WasapiAudioController()
     {
@@ -164,10 +165,12 @@ public sealed class WasapiAudioController : IDisposable
 
     private void InitializeVolumeEndpoint()
     {
+        IMMDeviceEnumerator? enumerator = null;
+        IMMDevice? device = null;
         try
         {
-            var enumerator = (IMMDeviceEnumerator)new MMDeviceEnumeratorComObject();
-            int hr = enumerator.GetDefaultAudioEndpoint(EDataFlow.eRender, ERole.eMultimedia, out var device);
+            enumerator = (IMMDeviceEnumerator)new MMDeviceEnumeratorComObject();
+            int hr = enumerator.GetDefaultAudioEndpoint(EDataFlow.eRender, ERole.eMultimedia, out device);
             if (hr != 0 || device == null)
             {
                 // Fallback a eConsole si no hay multimedia
@@ -197,6 +200,36 @@ public sealed class WasapiAudioController : IDisposable
             _endpointVolume = null;
             _audioMeter = null;
         }
+        finally
+        {
+            if (device != null) Marshal.ReleaseComObject(device);
+            if (enumerator != null) Marshal.ReleaseComObject(enumerator);
+        }
+    }
+
+    public IReadOnlyList<Nokto.Core.Models.AudioEndpointInfo> GetOutputAudioDevices() => AudioDeviceProfileService.Enumerate(false);
+    public Nokto.Core.Models.AudioDeviceProfile GetDefaultAudioProfile() => AudioDeviceProfileService.Capture();
+    public IReadOnlyList<Nokto.Core.Models.AudioEndpointInfo> GetInputAudioDevices() => AudioDeviceProfileService.Enumerate(true);
+    public bool? GetOutputMute() => AudioDeviceProfileService.GetMute(false);
+    public bool? GetInputMute() => AudioDeviceProfileService.GetMute(true);
+    public bool ToggleOutputMute() => AudioDeviceProfileService.ToggleMute(false);
+    public bool ToggleInputMute() => AudioDeviceProfileService.ToggleMute(true);
+
+    public bool SetDefaultAudioDevice(string deviceId, bool input)
+    {
+        if (!DefaultAudioDeviceSwitcher.Set(deviceId, input)) return false;
+        if (!input)
+        {
+            lock (_endpointGate)
+            {
+                if (_endpointVolume != null) Marshal.ReleaseComObject(_endpointVolume);
+                if (_audioMeter != null) Marshal.ReleaseComObject(_audioMeter);
+                _endpointVolume = null;
+                _audioMeter = null;
+                InitializeVolumeEndpoint();
+            }
+        }
+        return true;
     }
 
     /// <summary>
@@ -205,38 +238,32 @@ public sealed class WasapiAudioController : IDisposable
     /// </summary>
     public float GetPeakValue()
     {
-        if (_audioMeter == null) return 0f;
-        int hr = _audioMeter.GetPeakValue(out float peak);
-        return hr == 0 ? Math.Clamp(peak, 0f, 1f) : 0f;
+        lock (_endpointGate)
+        {
+            if (_audioMeter == null) return 0f;
+            int hr = _audioMeter.GetPeakValue(out float peak);
+            return hr == 0 ? Math.Clamp(peak, 0f, 1f) : 0f;
+        }
     }
 
     public float GetMasterVolume()
     {
-        if (_endpointVolume == null) return 0f;
-        int hr = _endpointVolume.GetMasterVolumeLevelScalar(out float level);
-        return hr == 0 ? Math.Clamp(level, 0f, 1f) : 0f;
+        return AudioDeviceProfileService.GetMasterVolume();
     }
 
     public void SetMasterVolume(float volume)
     {
-        if (_endpointVolume == null) return;
-        float clamped = Math.Clamp(volume, 0f, 1f);
-        var context = Guid.Empty;
-        _endpointVolume.SetMasterVolumeLevelScalar(clamped, ref context);
+        AudioDeviceProfileService.SetMasterVolume(volume);
     }
 
     public bool GetMute()
     {
-        if (_endpointVolume == null) return false;
-        int hr = _endpointVolume.GetMute(out bool isMuted);
-        return hr == 0 && isMuted;
+        return GetOutputMute() ?? false;
     }
 
     public void SetMute(bool mute)
     {
-        if (_endpointVolume == null) return;
-        var context = Guid.Empty;
-        _endpointVolume.SetMute(mute, ref context);
+        AudioDeviceProfileService.SetMute(false, mute);
     }
 
     /// <summary>
@@ -287,19 +314,22 @@ public sealed class WasapiAudioController : IDisposable
 
     public void Dispose()
     {
-        if (!_disposed)
+        lock (_endpointGate)
         {
-            if (_audioMeter != null && Marshal.IsComObject(_audioMeter))
+            if (!_disposed)
             {
-                Marshal.ReleaseComObject(_audioMeter);
-                _audioMeter = null;
+                if (_audioMeter != null && Marshal.IsComObject(_audioMeter))
+                {
+                    Marshal.ReleaseComObject(_audioMeter);
+                    _audioMeter = null;
+                }
+                if (_endpointVolume != null && Marshal.IsComObject(_endpointVolume))
+                {
+                    Marshal.ReleaseComObject(_endpointVolume);
+                    _endpointVolume = null;
+                }
+                _disposed = true;
             }
-            if (_endpointVolume != null && Marshal.IsComObject(_endpointVolume))
-            {
-                Marshal.ReleaseComObject(_endpointVolume);
-                _endpointVolume = null;
-            }
-            _disposed = true;
         }
     }
 }

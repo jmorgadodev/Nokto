@@ -61,6 +61,9 @@ internal static class NativeConstants
     public const ushort VK_MEDIA_STOP = 0xB2;
 
     // System Metrics
+    public const int SM_CXSCREEN = 0;
+    public const int SM_CYSCREEN = 1;
+    public const int SM_CMONITORS = 80;
     public const int SM_XVIRTUALSCREEN = 76;
     public const int SM_YVIRTUALSCREEN = 77;
     public const int SM_CXVIRTUALSCREEN = 78;

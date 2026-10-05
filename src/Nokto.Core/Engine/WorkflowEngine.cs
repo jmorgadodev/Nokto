@@ -1,49 +1,40 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
-using System.Text.Json;
 using Nokto.Core.Abstractions;
 using Nokto.Core.Models;
 using Nokto.Core.Persistence;
 
 namespace Nokto.Core.Engine;
 
-/// <summary>
-/// Máquina de estados determinista y ejecutor de flujos encadenados de Nokto.
-/// Totalmente reactivo, sin busy-waiting, compatible con AOT.
-/// </summary>
+/// <summary>Coordinates independent executions; shared system actions remain local to Windows.</summary>
 public sealed class WorkflowEngine : IWorkflowEngine
 {
     private readonly ISystemAdapter _systemAdapter;
     private readonly PersistenceService _persistence;
-    private readonly object _stateLock = new();
-
-    private CancellationTokenSource? _activeWorkflowCts;
-    private PresetDefinition? _activePreset;
-    private EngineState _currentState = EngineState.Idle;
-    private string? _currentPhase;
-    private double _progressPercentage;
-    private int _timeRemainingSeconds;
-    private bool _gracePeriodActive;
-    private int _gracePeriodRemainingSeconds;
-    private MonitoredProcessInfo? _monitoredProcess;
-    private string? _lastGeneratedSnapshotPath;
-    private Stopwatch? _executionStopwatch;
+    private readonly object _lifecycleLock = new();
+    private readonly ConcurrentDictionary<string, RunningWorkflowContext> _activeWorkflows = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<Guid, RunningWorkflowContext> _executions = new();
+    private SystemStatusState _lastStatus = new();
     private bool _isDisposed;
 
-    public EngineState CurrentState
+    private sealed class RunningWorkflowContext(PresetDefinition routine, WorkflowRunner runner, CancellationTokenSource cancellation)
     {
-        get { lock (_stateLock) return _currentState; }
-        private set { lock (_stateLock) _currentState = value; }
+        public Guid ExecutionId { get; } = Guid.NewGuid();
+        public PresetDefinition Routine { get; } = routine;
+        public WorkflowRunner Runner { get; } = runner;
+        public CancellationTokenSource Cancellation { get; } = cancellation;
+        public DateTimeOffset StartedAt { get; } = DateTimeOffset.UtcNow;
+        public Stopwatch Elapsed { get; } = Stopwatch.StartNew();
+        public TaskCompletionSource Completion { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public SystemStatusState Status = new()
+        {
+            ActivePresetId = routine.Id, ActivePresetName = routine.Name,
+            EngineState = EngineState.WaitingTrigger, CurrentPhase = "TriggerEvaluation",
+            TimeRemainingSeconds = routine.Trigger.Type == TriggerType.Countdown
+                ? routine.Trigger.Parameters?.TryGetValue("durationSeconds", out var duration) == true && duration.ValueKind == System.Text.Json.JsonValueKind.Number && duration.TryGetInt32(out var seconds) ? seconds : 60
+                : 0
+        };
     }
-
-    public bool IsDryRunMode
-    {
-        get => _systemAdapter.IsDryRunMode;
-        set => _systemAdapter.IsDryRunMode = value;
-    }
-
-    public event Action<SystemStatusState>? StatusChanged;
-    public event Action<string>? LogMessageReceived;
-    public event Action<int>? GracePeriodTick;
 
     public WorkflowEngine(ISystemAdapter systemAdapter, PersistenceService persistence)
     {
@@ -51,782 +42,190 @@ public sealed class WorkflowEngine : IWorkflowEngine
         _persistence = persistence;
     }
 
+    public EngineState CurrentState => GetStatusSnapshot().EngineState;
+    public bool IsDryRunMode { get => _systemAdapter.IsDryRunMode; set => _systemAdapter.IsDryRunMode = value; }
+    public event Action<SystemStatusState>? StatusChanged;
+    public event Action<string>? LogMessageReceived;
+    public event Action<int>? GracePeriodTick;
+
+    public Task StartPresetAsync(PresetDefinition preset, CancellationToken cancellationToken = default) => StartRoutine(preset, cancellationToken);
+
+    // Repeated starts of the same ID join the existing execution, never run it twice.
+    public Task StartRoutine(PresetDefinition routine, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(routine);
+        ArgumentException.ThrowIfNullOrWhiteSpace(routine.Id);
+        if (cancellationToken.IsCancellationRequested) return Task.FromCanceled(cancellationToken);
+        RunningWorkflowContext context;
+        lock (_lifecycleLock)
+        {
+            ObjectDisposedException.ThrowIf(_isDisposed, this);
+            if (_activeWorkflows.TryGetValue(routine.Id, out var existing)) return existing.Completion.Task;
+            var frozen = routine with
+            {
+                Trigger = routine.Trigger with { Parameters = CopyParameters(routine.Trigger.Parameters) },
+                Actions = routine.Actions is null ? null : new(routine.Actions.Select(WorkflowDefinition.Copy)),
+                Pipeline = routine.Pipeline.Select(s => s with { Parameters = CopyParameters(s.Parameters) }).ToList(),
+                TerminalAction = routine.TerminalAction with { Parameters = CopyParameters(routine.TerminalAction.Parameters) }
+            };
+            var runner = new WorkflowRunner(_systemAdapter, _persistence);
+            context = new(frozen, runner, CancellationTokenSource.CreateLinkedTokenSource(cancellationToken));
+            _activeWorkflows.TryAdd(frozen.Id, context);
+            _executions.TryAdd(context.ExecutionId, context);
+            runner.LogMessageReceived += message => LogMessageReceived?.Invoke($"[{frozen.Name}] {message}");
+            runner.StatusChanged += status =>
+            {
+                Volatile.Write(ref context.Status, status);
+                if (IsCurrent(context)) NotifyStateChanged();
+            };
+            runner.GracePeriodTick += seconds => { if (IsCurrent(context)) GracePeriodTick?.Invoke(seconds); };
+            _ = Task.Run(() => RunRoutineAsync(context));
+        }
+        NotifyStateChanged();
+        return context.Completion.Task;
+    }
+
+    private static Dictionary<string, System.Text.Json.JsonElement>? CopyParameters(Dictionary<string, System.Text.Json.JsonElement>? values) =>
+        values?.ToDictionary(pair => pair.Key, pair => pair.Value.Clone(), StringComparer.Ordinal);
+
+    private bool IsCurrent(RunningWorkflowContext context) =>
+        _activeWorkflows.TryGetValue(context.Routine.Id, out var current) && ReferenceEquals(current, context);
+
+    private async Task RunRoutineAsync(RunningWorkflowContext context)
+    {
+        Exception? error = null;
+        try { await context.Runner.StartPresetAsync(context.Routine, context.Cancellation.Token); }
+        catch (Exception ex) { error = ex; }
+        finally
+        {
+            context.Elapsed.Stop();
+            lock (_lifecycleLock)
+            {
+                // A stopped execution may finish after a replacement with the same ID starts.
+                if (IsCurrent(context))
+                {
+                    _activeWorkflows.TryRemove(context.Routine.Id, out _);
+                    Volatile.Write(ref _lastStatus, Volatile.Read(ref context.Status));
+                }
+                context.Runner.Dispose();
+                context.Cancellation.Dispose();
+                _executions.TryRemove(context.ExecutionId, out _);
+            }
+            NotifyStateChanged();
+            if (error is null) context.Completion.TrySetResult();
+            else context.Completion.TrySetException(error);
+        }
+    }
+
+    public bool IsRoutineRunning(string routineId) => _activeWorkflows.ContainsKey(routineId);
+
+    public void StopRoutine(string routineId)
+    {
+        lock (_lifecycleLock)
+        {
+            if (_activeWorkflows.TryRemove(routineId, out var context))
+            {
+                context.Cancellation.Cancel();
+                Volatile.Write(ref _lastStatus, new SystemStatusState());
+            }
+        }
+        NotifyStateChanged();
+    }
+
+    public void FinishAll()
+    {
+        lock (_lifecycleLock)
+        {
+            _activeWorkflows.Clear();
+            foreach (var context in _executions.Values) context.Cancellation.Cancel();
+            Volatile.Write(ref _lastStatus, new SystemStatusState());
+        }
+        NotifyStateChanged();
+    }
+
+    public IReadOnlyList<RunningWorkflowInfo> GetActiveWorkflows() => _activeWorkflows.Values
+        .OrderBy(c => c.StartedAt).Select(context =>
+        {
+            var status = Volatile.Read(ref context.Status);
+            bool countdown = status.GracePeriodActive ||
+                status.EngineState == EngineState.WaitingTrigger &&
+                context.Routine.Trigger.Type is TriggerType.Countdown or TriggerType.FixedTime or TriggerType.Schedule or TriggerType.ScheduledTime;
+            return new RunningWorkflowInfo
+            {
+                RoutineId = context.Routine.Id, Name = context.Routine.Name, Description = context.Routine.Description, StartedAt = context.StartedAt,
+                Elapsed = context.Elapsed.Elapsed, State = status.EngineState, Phase = status.CurrentPhase, TriggerType = context.Routine.Trigger.Type,
+                RemainingSeconds = status.GracePeriodActive ? status.GracePeriodRemainingSeconds : countdown ? status.TimeRemainingSeconds : null,
+                ProgressPercentage = status.ProgressPercentage, GracePeriodActive = status.GracePeriodActive,
+                GracePeriodRemainingSeconds = status.GracePeriodRemainingSeconds, KeepAliveActive = status.KeepAliveActive
+            };
+        }).ToArray();
+
+    private static RunningWorkflowInfo? Focus(IReadOnlyList<RunningWorkflowInfo> active) =>
+        active.Where(info => info.GracePeriodActive).OrderBy(info => info.GracePeriodRemainingSeconds).FirstOrDefault() ?? active.FirstOrDefault();
+
     public SystemStatusState GetStatusSnapshot()
     {
-        lock (_stateLock)
+        var active = GetActiveWorkflows();
+        var focus = Focus(active);
+        var result = focus is null ? Volatile.Read(ref _lastStatus) : new SystemStatusState
         {
-            var metrics = _systemAdapter.GetCurrentMetrics();
-            return new SystemStatusState
-            {
-                Timestamp = DateTimeOffset.UtcNow,
-                EngineState = _currentState,
-                ActivePresetId = _activePreset?.Id,
-                ActivePresetName = _activePreset?.Name,
-                CurrentPhase = _currentPhase,
-                ProgressPercentage = Math.Round(_progressPercentage, 1),
-                TimeRemainingSeconds = _timeRemainingSeconds,
-                GracePeriodActive = _gracePeriodActive,
-                GracePeriodRemainingSeconds = _gracePeriodRemainingSeconds,
-                Metrics = metrics,
-                MonitoredProcess = _monitoredProcess,
-                KeepAliveActive = _currentState == EngineState.WaitingTrigger && _activePreset?.Pipeline.Any(p => p.ActionType == ActionType.KeepAliveEngine) == true
-            };
-        }
+            EngineState = focus.State, ActivePresetId = focus.RoutineId, ActivePresetName = focus.Name,
+            CurrentPhase = focus.Phase, ProgressPercentage = focus.ProgressPercentage,
+            TimeRemainingSeconds = focus.RemainingSeconds ?? 0, GracePeriodActive = focus.GracePeriodActive,
+            GracePeriodRemainingSeconds = focus.GracePeriodRemainingSeconds,
+            KeepAliveActive = active.Any(info => info.KeepAliveActive)
+        };
+        return result with { Timestamp = DateTimeOffset.UtcNow, ActiveWorkflows = active, Metrics = _systemAdapter.GetCurrentMetrics() };
     }
 
     private void NotifyStateChanged()
     {
-        var snapshot = GetStatusSnapshot();
-        StatusChanged?.Invoke(snapshot);
-    }
-
-    private void Log(string message)
-    {
-        LogMessageReceived?.Invoke($"[{DateTime.Now:HH:mm:ss.fff}] {message}");
-    }
-
-    public async Task StartPresetAsync(PresetDefinition preset, CancellationToken cancellationToken = default)
-    {
-        Abort();
-
-        _activeWorkflowCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        var ct = _activeWorkflowCts.Token;
-
-        _activePreset = preset;
-        _executionStopwatch = Stopwatch.StartNew();
-        _lastGeneratedSnapshotPath = null;
-
-        Log($"Iniciando flujo: '{preset.Name}' (ID: {preset.Id})");
-
-        try
-        {
-            // 1. FASE DE EVALUACIÓN DE DISPARADOR
-            CurrentState = EngineState.WaitingTrigger;
-            _currentPhase = "TriggerEvaluation";
-            NotifyStateChanged();
-
-            await EvaluateTriggerAsync(preset.Trigger, ct);
-
-            // 2. FASE DE EJECUCIÓN DE ACCIONES INTERMEDIAS
-            CurrentState = EngineState.ExecutingActions;
-            _currentPhase = "PipelineExecution";
-            NotifyStateChanged();
-
-            await ExecutePipelineAsync(preset.Pipeline, ct);
-
-            // 3. FASE DE PERIODO DE GRACIA (SI APLICA)
-            int graceSeconds = ExtractGraceSeconds(preset.TerminalAction);
-            if (graceSeconds > 0 && preset.TerminalAction.Type != TerminalActionType.None)
-            {
-                CurrentState = EngineState.GracePeriod;
-                _currentPhase = "GracePeriod";
-                _gracePeriodActive = true;
-                _gracePeriodRemainingSeconds = graceSeconds;
-                NotifyStateChanged();
-
-                await RunGracePeriodCountdownAsync(graceSeconds, ct);
-            }
-
-            // 4. ACCIÓN TERMINAL
-            _currentPhase = "TerminalAction";
-            NotifyStateChanged();
-
-            await ExecuteTerminalActionAsync(preset.TerminalAction, ct);
-
-            CurrentState = EngineState.Completed;
-            _currentPhase = "Completed";
-            NotifyStateChanged();
-
-            _executionStopwatch.Stop();
-            RecordAudit(preset.Id, "Success", (int)_executionStopwatch.Elapsed.TotalSeconds,
-                $"Trigger:{preset.Trigger.Type}", preset.TerminalAction.Type.ToString(),
-                _lastGeneratedSnapshotPath, "All pipeline steps completed gracefully.");
-
-            Log($"Flujo '{preset.Name}' completado exitosamente.");
-        }
-        catch (OperationCanceledException)
-        {
-            CurrentState = EngineState.Idle;
-            _currentPhase = "Aborted";
-            NotifyStateChanged();
-
-            _executionStopwatch?.Stop();
-            int elapsed = (int)(_executionStopwatch?.Elapsed.TotalSeconds ?? 0);
-            RecordAudit(preset.Id, "Aborted", elapsed, $"Trigger:{preset.Trigger.Type}", "None", null, "Operación abortada por el usuario o timeout.");
-            Log($"Flujo '{preset.Name}' abortado por el usuario.");
-        }
-        catch (Exception ex)
-        {
-            CurrentState = EngineState.Failed;
-            _currentPhase = "Failed";
-            NotifyStateChanged();
-
-            _executionStopwatch?.Stop();
-            int elapsed = (int)(_executionStopwatch?.Elapsed.TotalSeconds ?? 0);
-            RecordAudit(preset.Id, "Failed", elapsed, $"Trigger:{preset.Trigger.Type}", "None", null, $"Error: {ex.Message}");
-            Log($"[ERROR EN FLUJO]: {ex.Message}");
-            throw;
-        }
-        finally
-        {
-            _gracePeriodActive = false;
-            _gracePeriodRemainingSeconds = 0;
-            _monitoredProcess = null;
-        }
+        if (!_isDisposed) StatusChanged?.Invoke(GetStatusSnapshot());
     }
 
     public Task StartQuickCountdownAsync(string title, TimeSpan duration, TerminalActionType terminalAction, CancellationToken cancellationToken = default)
     {
-        var quickPreset = new PresetDefinition
+        var routine = new PresetDefinition
         {
-            Id = "preset_quick_" + Guid.NewGuid().ToString("N")[..8],
-            Name = title,
+            Id = "preset_quick_" + Guid.NewGuid().ToString("N"), Name = title,
             Trigger = new TriggerDefinition
             {
                 Type = TriggerType.Countdown,
-                Parameters = new Dictionary<string, JsonElement>
-                {
-                    ["durationSeconds"] = JsonSerializer.SerializeToElement((int)duration.TotalSeconds)
-                }
+                Parameters = new() { ["durationSeconds"] = System.Text.Json.JsonSerializer.SerializeToElement((int)duration.TotalSeconds) }
             },
-            Pipeline = [],
             TerminalAction = new TerminalActionDefinition
             {
                 Type = terminalAction,
-                Parameters = new Dictionary<string, JsonElement>
-                {
-                    ["gracePeriodSeconds"] = JsonSerializer.SerializeToElement(30)
-                }
+                Parameters = new() { ["gracePeriodSeconds"] = System.Text.Json.JsonSerializer.SerializeToElement(30) }
             }
         };
-
-        return StartPresetAsync(quickPreset, cancellationToken);
+        return StartRoutine(routine, cancellationToken);
     }
 
-    private async Task EvaluateTriggerAsync(TriggerDefinition trigger, CancellationToken ct)
+    public void PostponeRoutine(string routineId, TimeSpan extraTime)
     {
-        Log($"Evaluando disparador: {trigger.Type}");
-
-        switch (trigger.Type)
-        {
-            case TriggerType.Countdown:
-                int durationSeconds = GetIntParam(trigger.Parameters, "durationSeconds", 60);
-                await RunCountdownAsync(durationSeconds, ct);
-                break;
-
-            case TriggerType.ProcessExit:
-                string processName = GetStringParam(trigger.Parameters, "processName", "notepad.exe");
-                int debounceSeconds = GetIntParam(trigger.Parameters, "debounceSeconds", 5);
-                await WaitForProcessExitAsync(processName, debounceSeconds, ct);
-                break;
-
-            case TriggerType.SustainedLoad:
-                double threshold = GetDoubleParam(trigger.Parameters, "thresholdPercentage", 8.0);
-                int durationSec = GetIntParam(trigger.Parameters, "durationSeconds", 60);
-                await WaitForSustainedLoadAsync(threshold, durationSec, ct);
-                break;
-
-            case TriggerType.NetworkThroughput:
-                double netThresholdKBs = GetDoubleParam(trigger.Parameters, "thresholdKBs", 50.0);
-                int netDurationSec = GetIntParam(trigger.Parameters, "durationSeconds", 60);
-                await WaitForNetworkThroughputAsync(netThresholdKBs, netDurationSec, ct);
-                break;
-
-            case TriggerType.UserIdle:
-                int idleMinutes = GetIntParam(trigger.Parameters, "idleMinutes", 15);
-                await WaitForUserIdleAsync(idleMinutes, ct);
-                break;
-
-            case TriggerType.AudioSilence:
-                int silenceThresholdSec = GetIntParam(trigger.Parameters, "silenceThresholdSeconds", 30);
-                double thresholdPeak = GetDoubleParam(trigger.Parameters, "thresholdPeak", 0.001);
-                await WaitForAudioSilenceAsync(silenceThresholdSec, (float)thresholdPeak, ct);
-                break;
-
-            case TriggerType.BatteryState:
-                bool onAcDisconnect = GetBoolParam(trigger.Parameters, "onAcDisconnect", true);
-                int batteryLevelThreshold = GetIntParam(trigger.Parameters, "batteryLevelThreshold", 0);
-                await WaitForBatteryStateAsync(onAcDisconnect, batteryLevelThreshold, ct);
-                break;
-
-            case TriggerType.FixedTime:
-            case TriggerType.Schedule:
-            default:
-                // Countdown de seguridad si no se especifican parámetros
-                await RunCountdownAsync(10, ct);
-                break;
-        }
-
-        Log($"Disparador {trigger.Type} satisfecho.");
+        lock (_lifecycleLock)
+            if (_activeWorkflows.TryGetValue(routineId, out var context)) context.Runner.Postpone(extraTime);
     }
-
-    private async Task RunCountdownAsync(int seconds, CancellationToken ct)
-    {
-        _timeRemainingSeconds = seconds;
-        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
-
-        int total = seconds;
-        for (int i = seconds; i > 0; i--)
-        {
-            _timeRemainingSeconds = i;
-            _progressPercentage = Math.Clamp(((double)(total - i) / total) * 100.0, 0, 100);
-            NotifyStateChanged();
-
-            await timer.WaitForNextTickAsync(ct);
-        }
-
-        _timeRemainingSeconds = 0;
-        _progressPercentage = 100.0;
-        NotifyStateChanged();
-    }
-
-    private async Task WaitForProcessExitAsync(string processName, int debounceSeconds, CancellationToken ct)
-    {
-        string cleanName = processName.Replace(".exe", "", StringComparison.OrdinalIgnoreCase);
-        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(2));
-
-        bool observedRunning = false;
-        int absenceCounter = 0;
-
-        _monitoredProcess = new MonitoredProcessInfo
-        {
-            Name = processName,
-            IsRunning = true,
-            LastSeenSecondsAgo = 0
-        };
-
-        Log($"Esperando a que el proceso '{processName}' finalice (Debounce: {debounceSeconds}s)...");
-
-        while (!ct.IsCancellationRequested)
-        {
-            await timer.WaitForNextTickAsync(ct);
-
-            bool isRunning = Process.GetProcessesByName(cleanName).Length > 0;
-
-            if (isRunning)
-            {
-                observedRunning = true;
-                absenceCounter = 0;
-                _monitoredProcess = new MonitoredProcessInfo
-                {
-                    Name = processName,
-                    IsRunning = true,
-                    LastSeenSecondsAgo = 0
-                };
-            }
-            else
-            {
-                if (observedRunning)
-                {
-                    absenceCounter += 2;
-                    _monitoredProcess = new MonitoredProcessInfo
-                    {
-                        Name = processName,
-                        IsRunning = false,
-                        LastSeenSecondsAgo = absenceCounter
-                    };
-
-                    Log($"Proceso '{cleanName}' ausente durante {absenceCounter}/{debounceSeconds}s...");
-
-                    if (absenceCounter >= debounceSeconds)
-                    {
-                        Log($"Confirmado cierre del proceso '{processName}' tras periodo de debounce.");
-                        break;
-                    }
-                }
-                else
-                {
-                    // Si el proceso aún no ha arrancado, seguimos esperando
-                    Log($"Esperando arranque inicial de '{cleanName}'...");
-                }
-            }
-
-            NotifyStateChanged();
-        }
-    }
-
-    private async Task WaitForSustainedLoadAsync(double thresholdPercentage, int durationSeconds, CancellationToken ct)
-    {
-        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(2));
-        int sustainedSeconds = 0;
-
-        Log($"Supervisando carga sostenida < {thresholdPercentage}% durante {durationSeconds}s...");
-
-        while (!ct.IsCancellationRequested)
-        {
-            await timer.WaitForNextTickAsync(ct);
-
-            var metrics = _systemAdapter.GetCurrentMetrics();
-            if (metrics.CpuUsagePercentage <= thresholdPercentage)
-            {
-                sustainedSeconds += 2;
-                _progressPercentage = Math.Clamp(((double)sustainedSeconds / durationSeconds) * 100.0, 0, 100);
-                if (sustainedSeconds >= durationSeconds)
-                {
-                    Log($"Carga de CPU sostenida bajo {thresholdPercentage}% durante {durationSeconds}s cumplida.");
-                    break;
-                }
-            }
-            else
-            {
-                sustainedSeconds = 0;
-                _progressPercentage = 0;
-            }
-
-            NotifyStateChanged();
-        }
-    }
-
-    private async Task WaitForNetworkThroughputAsync(double thresholdKBs, int durationSeconds, CancellationToken ct)
-    {
-        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(2));
-        int sustainedSeconds = 0;
-
-        while (!ct.IsCancellationRequested)
-        {
-            await timer.WaitForNextTickAsync(ct);
-
-            var metrics = _systemAdapter.GetCurrentMetrics();
-            double combinedSpeed = metrics.NetworkDownKBs + metrics.NetworkUpKBs;
-
-            if (combinedSpeed <= thresholdKBs)
-            {
-                sustainedSeconds += 2;
-                _progressPercentage = Math.Clamp(((double)sustainedSeconds / durationSeconds) * 100.0, 0, 100);
-                if (sustainedSeconds >= durationSeconds)
-                {
-                    Log($"Tráfico de red sostenido bajo {thresholdKBs} KB/s cumplido.");
-                    break;
-                }
-            }
-            else
-            {
-                sustainedSeconds = 0;
-                _progressPercentage = 0;
-            }
-
-            NotifyStateChanged();
-        }
-    }
-
-    private async Task WaitForUserIdleAsync(int idleMinutes, CancellationToken ct)
-    {
-        int targetSeconds = idleMinutes * 60;
-        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(2));
-
-        while (!ct.IsCancellationRequested)
-        {
-            await timer.WaitForNextTickAsync(ct);
-
-            var metrics = _systemAdapter.GetCurrentMetrics();
-            if (metrics.UserIdleSeconds >= targetSeconds)
-            {
-                Log($"Inactividad de usuario alcanzada: {metrics.UserIdleSeconds}s >= {targetSeconds}s.");
-                break;
-            }
-
-            _progressPercentage = Math.Clamp(((double)metrics.UserIdleSeconds / targetSeconds) * 100.0, 0, 100);
-            NotifyStateChanged();
-        }
-    }
-
-    private async Task WaitForAudioSilenceAsync(int silenceThresholdSeconds, float thresholdPeak, CancellationToken ct)
-    {
-        int continuousSilenceSeconds = 0;
-        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
-        _timeRemainingSeconds = silenceThresholdSeconds;
-
-        while (!ct.IsCancellationRequested)
-        {
-            await timer.WaitForNextTickAsync(ct);
-
-            float peak = _systemAdapter.GetMasterPeakValue();
-
-            if (peak <= thresholdPeak)
-            {
-                continuousSilenceSeconds++;
-                Log($"Silencio de audio detectado: {continuousSilenceSeconds}/{silenceThresholdSeconds}s (Pico: {peak:F4})");
-            }
-            else
-            {
-                if (continuousSilenceSeconds > 0)
-                {
-                    Log($"Sonido detectado (Pico: {peak:F4}). Reiniciando contador de silencio.");
-                }
-                continuousSilenceSeconds = 0;
-            }
-
-            _timeRemainingSeconds = Math.Max(0, silenceThresholdSeconds - continuousSilenceSeconds);
-            _progressPercentage = Math.Clamp(((double)continuousSilenceSeconds / silenceThresholdSeconds) * 100.0, 0, 100);
-            NotifyStateChanged();
-
-            if (continuousSilenceSeconds >= silenceThresholdSeconds)
-            {
-                Log($"Umbral de silencio de audio alcanzado: {silenceThresholdSeconds}s continuos.");
-                break;
-            }
-        }
-    }
-
-    private async Task WaitForBatteryStateAsync(bool onAcDisconnect, int batteryLevelThreshold, CancellationToken ct)
-    {
-        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(2));
-
-        while (!ct.IsCancellationRequested)
-        {
-            await timer.WaitForNextTickAsync(ct);
-
-            var status = _systemAdapter.GetBatteryStatus();
-
-            bool conditionMet = false;
-            string reason = "";
-
-            if (onAcDisconnect && !status.IsOnAcPower)
-            {
-                conditionMet = true;
-                reason = "Desconexión de corriente alterna (AC Offline / En Batería)";
-            }
-            else if (batteryLevelThreshold > 0 && status.BatteryLifePercent >= 0 && status.BatteryLifePercent <= batteryLevelThreshold)
-            {
-                conditionMet = true;
-                reason = $"Nivel de batería crítico ({status.BatteryLifePercent}% <= {batteryLevelThreshold}%)";
-            }
-
-            if (conditionMet)
-            {
-                Log($"Disparador de batería satisfecho: {reason}.");
-                _progressPercentage = 100.0;
-                _timeRemainingSeconds = 0;
-                NotifyStateChanged();
-                break;
-            }
-
-            if (status.BatteryLifePercent >= 0)
-            {
-                _progressPercentage = status.BatteryLifePercent;
-                _timeRemainingSeconds = status.BatteryLifeSecondsRemaining > 0 ? status.BatteryLifeSecondsRemaining : 0;
-            }
-            else
-            {
-                _progressPercentage = 0;
-                _timeRemainingSeconds = 0;
-            }
-
-            NotifyStateChanged();
-        }
-    }
-
-    private async Task ExecutePipelineAsync(List<PipelineStepDefinition> pipeline, CancellationToken ct)
-    {
-        var sortedSteps = pipeline.OrderBy(s => s.StepOrder).ToList();
-
-        for (int i = 0; i < sortedSteps.Count; i++)
-        {
-            ct.ThrowIfCancellationRequested();
-            var step = sortedSteps[i];
-
-            Log($"Ejecutando paso {step.StepOrder}: {step.ActionType}");
-
-            try
-            {
-                switch (step.ActionType)
-                {
-                    case ActionType.CaptureScreenshot:
-                        await ExecuteScreenshotStepAsync(step, ct);
-                        break;
-
-                    case ActionType.AudioFadeOut:
-                        int fadeDuration = GetIntParam(step.Parameters, "durationSeconds", 15);
-                        int targetVolPct = GetIntParam(step.Parameters, "targetVolumePercentage", 0);
-                        await _systemAdapter.SetMasterVolumeFadeAsync(targetVolPct / 100f, TimeSpan.FromSeconds(fadeDuration), ct);
-                        break;
-
-                    case ActionType.MuteAudio:
-                        bool muted = GetBoolParam(step.Parameters, "muted", true);
-                        await _systemAdapter.SetMuteAsync(muted, ct);
-                        break;
-
-                    case ActionType.TurnOffMonitors:
-                        await _systemAdapter.SetDisplayPowerAsync(false, ct);
-                        break;
-
-                    case ActionType.ExecuteCommand:
-                        await ExecuteCommandStepAsync(step, ct);
-                        break;
-
-                    case ActionType.MediaControl:
-                        _systemAdapter.SendMediaControl(pauseOnly: true);
-                        break;
-
-                    case ActionType.KeepAliveEngine:
-                        _systemAdapter.SimulateKeepAlivePulse(KeepAliveMode.Mixed);
-                        break;
-                }
-            }
-            catch (Exception ex)
-            {
-                Log($"Error en paso {step.StepOrder} ({step.ActionType}): {ex.Message}");
-                if (!step.IgnoreFailure)
-                {
-                    throw; // Aborta inmediatamente el pipeline y el apagado
-                }
-            }
-        }
-    }
-
-    private async Task ExecuteScreenshotStepAsync(PipelineStepDefinition step, CancellationToken ct)
-    {
-        byte[] imageBytes = await _systemAdapter.CaptureScreenAsync(stampMetadata: true, label: _activePreset?.Name, cancellationToken: ct);
-        if (imageBytes.Length > 0)
-        {
-            string outputDir = _persistence.Storage.SnapshotsDirectory;
-            string fileName = $"snapshot_{DateTime.UtcNow:yyyyMMdd_HHmmss}.bmp";
-            string fullPath = Path.Combine(outputDir, fileName);
-
-            await File.WriteAllBytesAsync(fullPath, imageBytes, ct);
-            _lastGeneratedSnapshotPath = fullPath;
-            Log($"Captura guardada en: {fullPath}");
-        }
-    }
-
-    private static async Task ExecuteCommandStepAsync(PipelineStepDefinition step, CancellationToken ct)
-    {
-        string executable = GetStringParam(step.Parameters, "executablePath", "cmd.exe");
-        string arguments = GetStringParam(step.Parameters, "arguments", "");
-        int timeoutSeconds = GetIntParam(step.Parameters, "timeoutSeconds", 30);
-        int expectedExitCode = GetIntParam(step.Parameters, "expectedExitCode", 0);
-
-        var startInfo = new ProcessStartInfo
-        {
-            FileName = executable,
-            Arguments = arguments,
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            CreateNoWindow = true
-        };
-
-        using var process = new Process { StartInfo = startInfo };
-        process.Start();
-
-        using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds));
-        using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
-
-        await process.WaitForExitAsync(linked.Token);
-
-        if (process.ExitCode != expectedExitCode)
-        {
-            throw new InvalidOperationException($"El comando '{executable}' finalizó con código de salida {process.ExitCode} (Esperado: {expectedExitCode}).");
-        }
-    }
-
-    private async Task RunGracePeriodCountdownAsync(int seconds, CancellationToken ct)
-    {
-        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
-        Log($"Periodo de gracia iniciado ({seconds}s). Presione Esc para cancelar.");
-
-        for (int i = seconds; i > 0; i--)
-        {
-            _gracePeriodRemainingSeconds = i;
-            _timeRemainingSeconds = i;
-            _progressPercentage = 100.0;
-            GracePeriodTick?.Invoke(i);
-            NotifyStateChanged();
-
-            await timer.WaitForNextTickAsync(ct);
-        }
-
-        _gracePeriodActive = false;
-        _gracePeriodRemainingSeconds = 0;
-        NotifyStateChanged();
-    }
-
-    private async Task ExecuteTerminalActionAsync(TerminalActionDefinition terminalAction, CancellationToken ct)
-    {
-        bool force = GetBoolParam(terminalAction.Parameters, "forced", false);
-        Log($"Ejecutando acción terminal: {terminalAction.Type} (Force: {force})");
-
-        if (IsDryRunMode)
-        {
-            switch (terminalAction.Type)
-            {
-                case TerminalActionType.Shutdown:
-                case TerminalActionType.Sleep:
-                case TerminalActionType.Hibernate:
-                case TerminalActionType.Restart:
-                    string dryRunMsg = $"[DRY-RUN] Acción de energía simulada con éxito: {terminalAction.Type} (Forzado: {force})";
-                    Console.WriteLine(dryRunMsg);
-                    Log(dryRunMsg);
-                    await _systemAdapter.SetPowerStateAsync(PowerAction.Shutdown, force, ct);
-                    return;
-            }
-        }
-
-        switch (terminalAction.Type)
-        {
-            case TerminalActionType.Shutdown:
-                await _systemAdapter.SetPowerStateAsync(PowerAction.Shutdown, force, ct);
-                break;
-
-            case TerminalActionType.Sleep:
-                await _systemAdapter.SetPowerStateAsync(PowerAction.Sleep, force, ct);
-                break;
-
-            case TerminalActionType.Hibernate:
-                await _systemAdapter.SetPowerStateAsync(PowerAction.Hibernate, force, ct);
-                break;
-
-            case TerminalActionType.Restart:
-                await _systemAdapter.SetPowerStateAsync(PowerAction.Restart, force, ct);
-                break;
-
-            case TerminalActionType.LockStation:
-                await _systemAdapter.SetPowerStateAsync(PowerAction.LockStation, force, ct);
-                break;
-
-            case TerminalActionType.Logoff:
-                await _systemAdapter.SetPowerStateAsync(PowerAction.Logoff, force, ct);
-                break;
-
-            case TerminalActionType.None:
-            default:
-                Log("Acción terminal 'None': el sistema no cambiará de estado.");
-                break;
-        }
-    }
-
-    private void RecordAudit(string presetId, string status, int duration, string triggerFired, string terminalAction, string? snapshot, string notes)
-    {
-        try
-        {
-            string finalNotes = notes;
-            if (IsDryRunMode && (terminalAction == "Shutdown" || terminalAction == "Sleep" || terminalAction == "Hibernate" || terminalAction == "Restart"))
-            {
-                finalNotes = $"[DRY-RUN] Acción de energía simulada con éxito: {terminalAction} (Forzado: False)";
-            }
-
-            var entry = new AuditLogEntry
-            {
-                Timestamp = DateTimeOffset.UtcNow,
-                PresetId = presetId,
-                Status = status,
-                ExecutionDurationSeconds = duration,
-                TriggerFired = triggerFired,
-                TerminalActionExecuted = terminalAction,
-                SnapshotFile = snapshot,
-                ExitNotes = finalNotes
-            };
-
-            _persistence.AppendAuditLog(entry);
-        }
-        catch
-        {
-            // Silently prevent audit logging failures from crashing engine
-        }
-    }
-
-    private static int ExtractGraceSeconds(TerminalActionDefinition action)
-    {
-        return GetIntParam(action.Parameters, "gracePeriodSeconds", 60);
-    }
-
-    public void Abort()
-    {
-        if (_activeWorkflowCts != null)
-        {
-            _activeWorkflowCts.Cancel();
-            _activeWorkflowCts.Dispose();
-            _activeWorkflowCts = null;
-        }
-
-        CurrentState = EngineState.Idle;
-        _currentPhase = null;
-        _progressPercentage = 0;
-        _timeRemainingSeconds = 0;
-        _gracePeriodActive = false;
-        _gracePeriodRemainingSeconds = 0;
-        _monitoredProcess = null;
-
-        NotifyStateChanged();
-    }
-
     public void Postpone(TimeSpan extraTime)
     {
-        int extraSec = (int)extraTime.TotalSeconds;
-        _timeRemainingSeconds += extraSec;
-        if (_gracePeriodActive)
-        {
-            _gracePeriodRemainingSeconds += extraSec;
-        }
-        Log($"Flujo pospuesto +{extraTime.TotalMinutes} minutos.");
-        NotifyStateChanged();
+        var focus = Focus(GetActiveWorkflows());
+        if (focus is not null) PostponeRoutine(focus.RoutineId, extraTime);
     }
-
-    public void Pause()
-    {
-        if (CurrentState != EngineState.Idle && CurrentState != EngineState.Completed && CurrentState != EngineState.Failed)
-        {
-            CurrentState = EngineState.Paused;
-            NotifyStateChanged();
-        }
-    }
-
-    public void Resume()
-    {
-        if (CurrentState == EngineState.Paused)
-        {
-            CurrentState = EngineState.WaitingTrigger;
-            NotifyStateChanged();
-        }
-    }
-
-    private static int GetIntParam(Dictionary<string, JsonElement>? dict, string key, int defaultValue)
-    {
-        if (dict != null && dict.TryGetValue(key, out var el))
-        {
-            if (el.ValueKind == JsonValueKind.Number && el.TryGetInt32(out int val)) return val;
-            if (el.ValueKind == JsonValueKind.String && int.TryParse(el.GetString(), out int sVal)) return sVal;
-        }
-        return defaultValue;
-    }
-
-    private static double GetDoubleParam(Dictionary<string, JsonElement>? dict, string key, double defaultValue)
-    {
-        if (dict != null && dict.TryGetValue(key, out var el))
-        {
-            if (el.ValueKind == JsonValueKind.Number && el.TryGetDouble(out double val)) return val;
-            if (el.ValueKind == JsonValueKind.String && double.TryParse(el.GetString(), out double sVal)) return sVal;
-        }
-        return defaultValue;
-    }
-
-    private static string GetStringParam(Dictionary<string, JsonElement>? dict, string key, string defaultValue)
-    {
-        if (dict != null && dict.TryGetValue(key, out var el))
-        {
-            if (el.ValueKind == JsonValueKind.String) return el.GetString() ?? defaultValue;
-            return el.ToString();
-        }
-        return defaultValue;
-    }
-
-    private static bool GetBoolParam(Dictionary<string, JsonElement>? dict, string key, bool defaultValue)
-    {
-        if (dict != null && dict.TryGetValue(key, out var el))
-        {
-            if (el.ValueKind == JsonValueKind.True) return true;
-            if (el.ValueKind == JsonValueKind.False) return false;
-            if (el.ValueKind == JsonValueKind.String && bool.TryParse(el.GetString(), out bool b)) return b;
-        }
-        return defaultValue;
-    }
+    public void Pause() { var focus = Focus(GetActiveWorkflows()); if (focus is not null && _activeWorkflows.TryGetValue(focus.RoutineId, out var c)) c.Runner.Pause(); }
+    public void Resume() { var focus = Focus(GetActiveWorkflows()); if (focus is not null && _activeWorkflows.TryGetValue(focus.RoutineId, out var c)) c.Runner.Resume(); }
 
     public void Dispose()
     {
-        if (!_isDisposed)
+        Task[] pending;
+        lock (_lifecycleLock)
         {
-            Abort();
+            if (_isDisposed) return;
             _isDisposed = true;
+            pending = _executions.Values.Select(c => c.Completion.Task).ToArray();
+            FinishAll();
         }
+        try { Task.WhenAll(pending).Wait(TimeSpan.FromSeconds(5)); }
+        catch (AggregateException) { }
     }
 }

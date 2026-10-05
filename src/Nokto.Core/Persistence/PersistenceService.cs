@@ -65,11 +65,42 @@ public sealed class PersistenceService
         {
             byte[] bytes = File.ReadAllBytes(path);
             var file = JsonSerializer.Deserialize(bytes, NoktoJsonContext.Default.PresetsFile);
-            return file ?? CreateDefaultPresets();
+            if (file != null && file.Presets != null && file.Presets.Count > 0)
+            {
+                bool mutated = false;
+                foreach (var defPreset in Presets.GetDefaultPresets())
+                {
+                    int existingIdx = file.Presets.FindIndex(p => p.Id == defPreset.Id);
+                    if (existingIdx >= 0)
+                    {
+                        var p = file.Presets[existingIdx];
+                        if (!p.IsSystemPreset)
+                        {
+                            file.Presets[existingIdx] = p with { IsSystemPreset = true };
+                            mutated = true;
+                        }
+                    }
+                    else
+                    {
+                        file.Presets.Add(defPreset with { IsSystemPreset = true });
+                        mutated = true;
+                    }
+                }
+                if (mutated)
+                {
+                    SavePresets(file);
+                }
+                return file;
+            }
+            var def = CreateDefaultPresets();
+            SavePresets(def);
+            return def;
         }
         catch
         {
-            return CreateDefaultPresets();
+            var def = CreateDefaultPresets();
+            SavePresets(def);
+            return def;
         }
     }
 
@@ -132,70 +163,5 @@ public sealed class PersistenceService
         }
     }
 
-    private static PresetsFile CreateDefaultPresets()
-    {
-        return new PresetsFile
-        {
-            Version = 1,
-            Presets =
-            [
-                new PresetDefinition
-                {
-                    Id = "preset_workday_keepalive",
-                    Name = "Jornada Laboral Anti-Ausente",
-                    Description = "Mantiene el estado activo en Teams y bloquea la estación a las 18:00.",
-                    IsFavorite = true,
-                    Icon = "Sun",
-                    Trigger = new TriggerDefinition
-                    {
-                        Type = TriggerType.Schedule
-                    },
-                    Pipeline =
-                    [
-                        new PipelineStepDefinition
-                        {
-                            StepOrder = 1,
-                            ActionType = ActionType.KeepAliveEngine,
-                            IgnoreFailure = false
-                        }
-                    ],
-                    TerminalAction = new TerminalActionDefinition
-                    {
-                        Type = TerminalActionType.LockStation
-                    }
-                },
-                new PresetDefinition
-                {
-                    Id = "preset_blender_night_render",
-                    Name = "Render Nocturno Blender",
-                    Description = "Supervisa blender.exe; al terminar toma captura de evidencia y apaga el PC.",
-                    IsFavorite = true,
-                    Icon = "Movie",
-                    Trigger = new TriggerDefinition
-                    {
-                        Type = TriggerType.ProcessExit
-                    },
-                    Pipeline =
-                    [
-                        new PipelineStepDefinition
-                        {
-                            StepOrder = 1,
-                            ActionType = ActionType.CaptureScreenshot,
-                            IgnoreFailure = true
-                        },
-                        new PipelineStepDefinition
-                        {
-                            StepOrder = 2,
-                            ActionType = ActionType.AudioFadeOut,
-                            IgnoreFailure = true
-                        }
-                    ],
-                    TerminalAction = new TerminalActionDefinition
-                    {
-                        Type = TerminalActionType.Shutdown
-                    }
-                }
-            ]
-        };
-    }
+    public static PresetsFile CreateDefaultPresets() => PresetsFile.CreateDefault();
 }
