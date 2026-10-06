@@ -7,12 +7,13 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>Nokto — El centro de control y automatización para tu PC con Windows</title>
-  <meta name="description" content="Nokto es una herramienta rápida y ligera para Windows 11 y 10. Monitorea tu hardware, silencia tu audio con un atajo, automatiza tareas pesadas y controla tu PC desde el móvil por Wi-Fi. 100% offline y gratis.">
+  <meta name="description" content="Nokto es una herramienta rápida y ligera para Windows 11 y 10. Monitorea tu hardware, silencia tu audio con atajos personalizables, automatiza tareas pesadas y controla tu PC desde el móvil por Wi-Fi. 100% offline y gratis.">
   
-  <!-- Favicon con el logo oficial -->
-  <link rel="icon" type="image/png" href="assets/logo.png">
+  <!-- Favicon Vectorial Oficial -->
+  <link rel="icon" type="image/svg+xml" href="assets/logo.svg">
+  <link rel="alternate icon" type="image/png" href="assets/logo.png">
   
-  <!-- Tipografía moderna y legible -->
+  <!-- Tipografía de Alto Rendimiento -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -20,14 +21,14 @@
   <style>
     :root {
       --bg: #0B0F19;
-      --bg-card: #111726;
-      --bg-card-hover: #161F33;
+      --bg-card: #121826;
+      --bg-card-hover: #182236;
       --border: rgba(255, 255, 255, 0.08);
-      --border-focus: rgba(56, 189, 248, 0.4);
+      --border-focus: rgba(0, 210, 255, 0.45);
       --cyan: #00D2FF;
-      --cyan-glow: rgba(0, 210, 255, 0.25);
+      --cyan-soft: rgba(0, 210, 255, 0.12);
+      --cyan-glow: rgba(0, 210, 255, 0.28);
       --blue: #0A66C2;
-      --blue-hover: #08529C;
       --green: #10B981;
       --amber: #F59E0B;
       --text: #F1F5F9;
@@ -35,6 +36,22 @@
       --text-dim: #64748B;
       --font-main: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       --font-code: 'JetBrains Mono', Consolas, monospace;
+      
+      /* Variables del marco de la ventana */
+      --win-bg: #0C111D;
+      --win-header-bg: #080D17;
+      --win-border: rgba(255, 255, 255, 0.12);
+      --win-tab-active-bg: #0C111D;
+      --win-text: #F1F5F9;
+    }
+
+    /* Estado de tema claro para el marco de demostración */
+    .theme-light-preview {
+      --win-bg: #F8FAFC;
+      --win-header-bg: #E2E8F0;
+      --win-border: rgba(0, 0, 0, 0.15);
+      --win-tab-active-bg: #F8FAFC;
+      --win-text: #0F172A;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -46,8 +63,8 @@
       line-height: 1.6;
       overflow-x: hidden;
       background-image: 
-        radial-gradient(circle at 50% 0%, rgba(0, 210, 255, 0.09) 0%, transparent 55%),
-        radial-gradient(circle at 85% 30%, rgba(10, 102, 194, 0.06) 0%, transparent 45%),
+        radial-gradient(circle at 50% 0%, rgba(0, 210, 255, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 90% 35%, rgba(10, 102, 194, 0.05) 0%, transparent 45%),
         linear-gradient(rgba(255, 255, 255, 0.015) 1px, transparent 1px),
         linear-gradient(90deg, rgba(255, 255, 255, 0.015) 1px, transparent 1px);
       background-size: 100% 100%, 100% 100%, 40px 40px, 40px 40px;
@@ -59,12 +76,12 @@
       padding: 0 24px;
     }
 
-    /* Barra Superior Limpia */
+    /* Navegación */
     nav {
       position: sticky;
       top: 0;
       z-index: 100;
-      background: rgba(11, 15, 25, 0.85);
+      background: rgba(11, 15, 25, 0.88);
       backdrop-filter: blur(16px);
       -webkit-backdrop-filter: blur(16px);
       border-bottom: 1px solid var(--border);
@@ -82,15 +99,14 @@
       text-decoration: none;
       color: var(--text);
     }
-    .brand-logo-img {
+    .brand-logo-svg {
       width: 36px;
       height: 36px;
-      border-radius: 50%;
       display: block;
-      box-shadow: 0 0 16px var(--cyan-glow);
+      filter: drop-shadow(0 0 10px var(--cyan-glow));
     }
     .brand-title {
-      font-size: 1.25rem;
+      font-size: 1.3rem;
       font-weight: 800;
       letter-spacing: -0.02em;
     }
@@ -98,7 +114,7 @@
       font-size: 0.72rem;
       font-weight: 700;
       font-family: var(--font-code);
-      background: rgba(0, 210, 255, 0.12);
+      background: var(--cyan-soft);
       color: var(--cyan);
       border: 1px solid rgba(0, 210, 255, 0.3);
       padding: 2px 8px;
@@ -107,7 +123,7 @@
 
     .nav-links {
       display: flex;
-      gap: 24px;
+      gap: 26px;
       list-style: none;
       align-items: center;
     }
@@ -120,22 +136,16 @@
     }
     .nav-links a:hover { color: #FFF; }
 
-    .nav-cta {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-
     /* Botones */
     .btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
+      gap: 10px;
       font-family: var(--font-main);
       font-size: 0.95rem;
       font-weight: 600;
-      padding: 12px 22px;
+      padding: 12px 24px;
       border-radius: 10px;
       text-decoration: none;
       cursor: pointer;
@@ -166,20 +176,10 @@
       color: var(--cyan);
       transform: translateY(-2px);
     }
-    .btn-text-block {
-      text-align: left;
-    }
-    .btn-sub {
-      display: block;
-      font-size: 0.72rem;
-      font-weight: 400;
-      opacity: 0.85;
-      font-family: var(--font-code);
-    }
 
-    /* Hero Section */
+    /* Hero */
     .hero {
-      padding: 60px 0 40px;
+      padding: 65px 0 40px;
       text-align: center;
     }
     .badge-pill {
@@ -188,13 +188,12 @@
       gap: 8px;
       padding: 6px 16px;
       border-radius: 999px;
-      background: rgba(22, 24, 29, 0.8);
+      background: rgba(22, 24, 29, 0.85);
       border: 1px solid rgba(0, 210, 255, 0.3);
       font-size: 0.82rem;
       font-weight: 600;
       color: var(--cyan);
       margin-bottom: 24px;
-      box-shadow: 0 0 20px rgba(0, 210, 255, 0.1);
     }
     .pulse-green {
       width: 7px;
@@ -210,7 +209,7 @@
       letter-spacing: -0.04em;
       line-height: 1.15;
       margin-bottom: 20px;
-      max-width: 900px;
+      max-width: 920px;
       margin-left: auto;
       margin-right: auto;
     }
@@ -223,22 +222,47 @@
     .hero-subtitle {
       font-size: clamp(1.05rem, 1.8vw, 1.25rem);
       color: var(--text-muted);
-      max-width: 720px;
+      max-width: 740px;
       margin: 0 auto 36px;
       font-weight: 400;
       line-height: 1.6;
     }
 
-    /* Descargas Hero */
-    .hero-actions {
+    /* Descarga Principal Directa */
+    .hero-download-box {
       display: flex;
-      justify-content: center;
+      flex-direction: column;
+      align-items: center;
       gap: 16px;
+      margin-bottom: 36px;
+    }
+    .download-pills-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
       flex-wrap: wrap;
-      margin-bottom: 28px;
+      justify-content: center;
+      font-size: 0.85rem;
+      color: var(--text-dim);
+    }
+    .download-pills-row a {
+      color: var(--text-muted);
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      transition: all 0.15s;
+    }
+    .download-pills-row a:hover {
+      color: var(--cyan);
+      border-color: var(--cyan);
+      background: var(--cyan-soft);
     }
 
-    /* Atributos Clave */
     .trust-badges {
       display: flex;
       justify-content: center;
@@ -248,46 +272,72 @@
       color: var(--text-muted);
       margin-bottom: 40px;
     }
-    .trust-badge-item {
+    .trust-item {
       display: flex;
       align-items: center;
       gap: 6px;
     }
-    .check-icon {
-      color: var(--cyan);
-      font-weight: bold;
-    }
 
-    /* Marco de Ventana Windows 11 Fluent */
+    /* Marco Windows 11 con Selector Día/Noche */
     .app-preview-wrapper {
       max-width: 1040px;
-      margin: 0 auto 80px;
+      margin: 0 auto 70px;
       border-radius: 14px;
-      background: #0E1422;
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      box-shadow: 0 25px 70px -15px rgba(0, 0, 0, 0.9), 0 0 35px rgba(0, 210, 255, 0.12);
+      background: var(--win-bg);
+      border: 1px solid var(--win-border);
+      box-shadow: 0 25px 70px -15px rgba(0, 0, 0, 0.9), 0 0 35px rgba(0, 210, 255, 0.08);
       overflow: hidden;
+      transition: all 0.3s ease;
     }
     .win-titlebar {
-      height: 44px;
-      background: #0A0F1A;
-      border-bottom: 1px solid var(--border);
+      height: 46px;
+      background: var(--win-header-bg);
+      border-bottom: 1px solid var(--win-border);
       display: flex;
       align-items: center;
       justify-content: space-between;
       padding: 0 16px;
+      user-select: none;
     }
     .win-title-left {
       display: flex;
       align-items: center;
       gap: 10px;
       font-size: 0.82rem;
-      color: var(--text-muted);
+      color: var(--win-text);
       font-weight: 500;
     }
-    .win-title-left img {
-      width: 18px;
-      height: 18px;
+    .win-title-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .theme-mode-switcher {
+      display: flex;
+      align-items: center;
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 2px 4px;
+    }
+    .theme-mode-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 14px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.2s;
+    }
+    .theme-mode-btn.active {
+      background: var(--cyan);
+      color: #060911;
+      font-weight: 700;
     }
     .win-controls {
       display: flex;
@@ -299,8 +349,8 @@
     /* Pestañas de Vista Previa */
     .preview-tabs {
       display: flex;
-      background: #070B13;
-      border-bottom: 1px solid var(--border);
+      background: var(--win-header-bg);
+      border-bottom: 1px solid var(--win-border);
       overflow-x: auto;
       padding: 6px 12px 0;
       gap: 4px;
@@ -312,7 +362,7 @@
       color: var(--text-dim);
       font-size: 0.85rem;
       font-weight: 600;
-      padding: 8px 18px;
+      padding: 8px 16px;
       border-radius: 8px 8px 0 0;
       cursor: pointer;
       display: flex;
@@ -322,13 +372,13 @@
       white-space: nowrap;
     }
     .p-tab:hover {
-      color: var(--text);
+      color: var(--win-text);
       background: rgba(255, 255, 255, 0.04);
     }
     .p-tab.active {
       color: var(--cyan);
-      background: #0E1422;
-      border-color: var(--border);
+      background: var(--win-tab-active-bg);
+      border-color: var(--win-border);
       border-top: 2px solid var(--cyan);
     }
 
@@ -344,8 +394,8 @@
       transition: opacity 0.2s ease;
     }
     .preview-caption-bar {
-      background: #090E18;
-      border-top: 1px solid var(--border);
+      background: var(--win-header-bg);
+      border-top: 1px solid var(--win-border);
       padding: 14px 20px;
       display: flex;
       justify-content: space-between;
@@ -356,7 +406,7 @@
     .caption-title {
       font-size: 0.92rem;
       font-weight: 700;
-      color: #FFF;
+      color: var(--win-text);
     }
     .caption-desc {
       font-size: 0.82rem;
@@ -422,7 +472,7 @@
       width: 46px;
       height: 46px;
       border-radius: 12px;
-      background: rgba(0, 210, 255, 0.1);
+      background: var(--cyan-soft);
       border: 1px solid rgba(0, 210, 255, 0.25);
       color: var(--cyan);
       display: flex;
@@ -468,7 +518,80 @@
       font-weight: 600;
     }
 
-    /* Bloque CLI de Instalación Rápida */
+    /* Sección Especial: Control Móvil en Acción */
+    .mobile-showcase-section {
+      padding: 40px 0 80px;
+      background: linear-gradient(180deg, rgba(18, 24, 38, 0) 0%, rgba(18, 24, 38, 0.6) 50%, rgba(18, 24, 38, 0) 100%);
+    }
+    .mobile-showcase-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 40px;
+      align-items: center;
+      max-width: 1040px;
+      margin: 0 auto;
+    }
+    .mobile-frame-container {
+      background: #0E1422;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+    }
+    .mobile-frame-header {
+      background: #090E17;
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      font-family: var(--font-code);
+    }
+    .mobile-frame-body img {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+    .mobile-steps-list {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .mobile-step-item {
+      display: flex;
+      gap: 16px;
+      align-items: flex-start;
+    }
+    .step-number {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--cyan-soft);
+      border: 1px solid rgba(0, 210, 255, 0.3);
+      color: var(--cyan);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 0.85rem;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .step-content h4 {
+      font-size: 1.05rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+      color: #FFF;
+    }
+    .step-content p {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    /* Instalación Rápida PowerShell Sin Barras Feas */
     .cli-section {
       padding: 30px 0 70px;
     }
@@ -489,7 +612,7 @@
       gap: 12px;
     }
     .cli-title {
-      font-size: 1rem;
+      font-size: 0.95rem;
       font-weight: 700;
       display: flex;
       align-items: center;
@@ -506,9 +629,9 @@
       background: none;
       border: none;
       color: var(--text-dim);
-      font-size: 0.8rem;
+      font-size: 0.78rem;
       font-weight: 600;
-      padding: 6px 14px;
+      padding: 5px 12px;
       border-radius: 6px;
       cursor: pointer;
       transition: all 0.2s;
@@ -529,17 +652,23 @@
     }
     .cli-code {
       font-family: var(--font-code);
-      font-size: 0.85rem;
+      font-size: 0.82rem;
       color: var(--cyan);
       overflow-x: auto;
       white-space: nowrap;
+      /* Oculta la barra de desplazamiento fea */
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+    .cli-code::-webkit-scrollbar {
+      display: none;
     }
     .cli-prompt {
       color: var(--text-dim);
       user-select: none;
     }
     .btn-copy {
-      background: rgba(0, 210, 255, 0.12);
+      background: var(--cyan-soft);
       border: 1px solid rgba(0, 210, 255, 0.3);
       color: var(--cyan);
       padding: 6px 14px;
@@ -555,65 +684,55 @@
       color: #060911;
     }
 
-    /* Tabla Comparativa Simple */
+    /* Centro de Descargas */
     .download-section {
       padding: 40px 0 80px;
     }
-    .dist-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 24px;
-      max-width: 860px;
-      margin: 0 auto;
-    }
-    .dist-card {
+    .download-hub-card {
       background: var(--bg-card);
       border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 30px;
-      display: flex;
-      flex-direction: column;
-      position: relative;
+      border-radius: 16px;
+      padding: 36px;
+      max-width: 860px;
+      margin: 0 auto;
+      text-align: center;
     }
-    .dist-card.featured {
-      border-color: var(--cyan);
-      box-shadow: 0 0 30px rgba(0, 210, 255, 0.12);
-    }
-    .dist-tag {
-      position: absolute;
-      top: -12px;
-      right: 20px;
-      background: var(--cyan);
-      color: #060911;
-      font-size: 0.72rem;
+    .hub-title {
+      font-size: 1.6rem;
       font-weight: 800;
-      text-transform: uppercase;
-      padding: 3px 10px;
-      border-radius: 999px;
+      margin-bottom: 10px;
     }
-    .dist-title {
-      font-size: 1.35rem;
-      font-weight: 700;
-      margin-bottom: 8px;
-    }
-    .dist-desc {
-      font-size: 0.9rem;
+    .hub-subtitle {
       color: var(--text-muted);
-      margin-bottom: 20px;
+      font-size: 0.95rem;
+      margin-bottom: 30px;
     }
-    .dist-features {
-      list-style: none;
-      margin-bottom: 24px;
+    .hub-options-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      text-align: left;
+    }
+    .hub-option-item {
+      background: rgba(0, 0, 0, 0.25);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      justify-content: space-between;
     }
-    .dist-features li {
-      font-size: 0.88rem;
-      color: var(--text);
-      display: flex;
-      align-items: center;
-      gap: 8px;
+    .hub-option-name {
+      font-size: 1.1rem;
+      font-weight: 700;
+      margin-bottom: 6px;
+      color: #FFF;
+    }
+    .hub-option-desc {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-bottom: 18px;
+      line-height: 1.5;
     }
 
     /* Footer */
@@ -659,7 +778,8 @@
     @media (max-width: 900px) {
       .use-cases-grid { grid-template-columns: 1fr; }
       .use-cases-grid-2 { grid-template-columns: 1fr; }
-      .dist-grid { grid-template-columns: 1fr; }
+      .mobile-showcase-grid { grid-template-columns: 1fr; }
+      .hub-options-grid { grid-template-columns: 1fr; }
       .nav-links { display: none; }
     }
   </style>
@@ -670,8 +790,12 @@
   <nav>
     <div class="container nav-inner">
       <a href="#" class="brand">
-        <!-- Logo Oficial Nokto -->
-        <img src="assets/logo.png" alt="Logo de Nokto" class="brand-logo-img">
+        <!-- Emblema Vectorial Oficial -->
+        <svg class="brand-logo-svg" viewBox="0 0 64 64" fill="none">
+          <circle cx="32" cy="32" r="29" fill="#16181D" stroke="#00D2FF" stroke-width="2" stroke-opacity="0.6"/>
+          <path d="M 45.435 45.435 A 19 19 0 1 1 45.435 18.565" stroke="#00D2FF" stroke-width="4.5" stroke-linecap="round"/>
+          <circle cx="32" cy="32" r="4.5" fill="#F0F2F5"/>
+        </svg>
         <span class="brand-title">Nokto</span>
         <span class="brand-badge">v1.0.1</span>
       </a>
@@ -679,6 +803,7 @@
       <ul class="nav-links">
         <li><a href="#que-puedes-hacer">¿Qué puedes hacer?</a></li>
         <li><a href="#capturas">Vistas previas</a></li>
+        <li><a href="#control-movil">Control Móvil</a></li>
         <li><a href="#descargar">Descargar</a></li>
         <li><a href="https://github.com/jmorgadodev/Nokto" target="_blank" rel="noopener noreferrer">GitHub</a></li>
       </ul>
@@ -705,67 +830,82 @@
       </h1>
 
       <p class="hero-subtitle">
-        Monitorea el rendimiento de tu hardware sin ralentizar tus juegos, silencia tu micrófono al instante con un atajo de teclado y programa el apagado automático de tus tareas pesadas. <strong>Sin cuentas, sin anuncios y sin enviar nada a internet.</strong>
+        Monitorea el rendimiento de tu hardware sin sobrecargar tu sistema, silencia tu micrófono con atajos que puedes cambiar a tu gusto y programa el apagado automático de tus tareas pesadas. <strong>Sin cuentas, sin anuncios y sin enviar nada a internet.</strong>
       </p>
 
-      <div class="hero-actions">
-        <!-- Botón 1: Portable -->
-        <a href="https://github.com/jmorgadodev/Nokto/releases/latest/download/Nokto-Portable-x64.exe" class="btn btn-primary">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+      <!-- Botón de Descarga Principal Directo -->
+      <div class="hero-download-box">
+        <a href="https://github.com/jmorgadodev/Nokto/releases/latest/download/Nokto-Portable-x64.exe" class="btn btn-primary" style="font-size: 1.05rem; padding: 14px 32px;">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
             <polyline points="7 10 12 15 17 10"/>
             <line x1="12" y1="15" x2="12" y2="3"/>
           </svg>
-          <div class="btn-text-block">
-            <div>Descargar Portable (x64)</div>
-            <span class="btn-sub">Solo 65 MB · Sin instalación · Listo para usar</span>
-          </div>
+          <span>Descargar Nokto para Windows (x64)</span>
         </a>
 
-        <!-- Botón 2: Instalador Setup -->
-        <a href="https://github.com/jmorgadodev/Nokto/releases/latest/download/Nokto-Setup-x64.exe" class="btn btn-secondary">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
-            <rect x="3" y="3" width="18" height="18" rx="2"/>
-            <path d="M9 12h6"/>
-            <path d="M12 9v6"/>
-          </svg>
-          <div class="btn-text-block">
-            <div>Descargar con Instalador</div>
-            <span class="btn-sub">Agrega acceso directo al Menú Inicio</span>
-          </div>
-        </a>
+        <div class="download-pills-row">
+          <span>Opciones directas:</span>
+          <a href="https://github.com/jmorgadodev/Nokto/releases/latest/download/Nokto-Portable-x64.exe">
+            <span>⚡ Edición Portable (~65 MB · Sin instalación)</span>
+          </a>
+          <a href="https://github.com/jmorgadodev/Nokto/releases/latest/download/Nokto-Setup-x64.exe">
+            <span>📦 Instalador Setup (.exe)</span>
+          </a>
+          <a href="https://github.com/jmorgadodev/Nokto" target="_blank" rel="noopener noreferrer">
+            <span>⭐ Código en GitHub</span>
+          </a>
+        </div>
       </div>
 
       <div class="trust-badges">
-        <div class="trust-badge-item">
-          <span class="check-icon">✓</span>
+        <div class="trust-item">
+          <span style="color: var(--cyan); font-weight: bold;">✓</span>
           <span>100% Privado (Cero telemetría)</span>
         </div>
-        <div class="trust-badge-item">
-          <span class="check-icon">✓</span>
+        <div class="trust-item">
+          <span style="color: var(--cyan); font-weight: bold;">✓</span>
           <span>Consumo de CPU casi invisible (&lt;0.2%)</span>
         </div>
-        <div class="trust-badge-item">
-          <span class="check-icon">✓</span>
-          <span>Sin registros ni tarjetas de crédito</span>
+        <div class="trust-item">
+          <span style="color: var(--cyan); font-weight: bold;">✓</span>
+          <span>Sin registros ni cuentas obligatorias</span>
         </div>
-        <div class="trust-badge-item">
-          <span class="check-icon">✓</span>
+        <div class="trust-item">
+          <span style="color: var(--cyan); font-weight: bold;">✓</span>
           <span>Licencia MIT Libre</span>
         </div>
       </div>
 
-      <!-- Marco Windows 11 con Capturas Reales -->
+      <!-- Marco Windows 11 con Selector Modo Día / Modo Noche y Capturas Reales -->
       <div class="app-preview-wrapper" id="capturas">
         <div class="win-titlebar">
           <div class="win-title-left">
-            <img src="assets/logo.png" alt="Icono de Nokto">
+            <!-- Icono Oficial en Barra de Título -->
+            <svg width="18" height="18" viewBox="0 0 64 64" fill="none">
+              <circle cx="32" cy="32" r="29" fill="#16181D" stroke="#00D2FF" stroke-width="3"/>
+              <path d="M 45.435 45.435 A 19 19 0 1 1 45.435 18.565" stroke="#00D2FF" stroke-width="5" stroke-linecap="round"/>
+              <circle cx="32" cy="32" r="5" fill="#F0F2F5"/>
+            </svg>
             <span>Nokto — Panel de Control y Automatización</span>
           </div>
-          <div class="win-controls">
-            <span>─</span>
-            <span>▢</span>
-            <span>✕</span>
+
+          <div class="win-title-right">
+            <!-- Selector de Tema Día / Noche -->
+            <div class="theme-mode-switcher" role="group" aria-label="Cambiar tema visual de la captura">
+              <button type="button" class="theme-mode-btn active" id="btn-theme-dark" onclick="switchThemeMode('dark')">
+                <span>🌙</span> Modo Noche
+              </button>
+              <button type="button" class="theme-mode-btn" id="btn-theme-light" onclick="switchThemeMode('light')">
+                <span>☀️</span> Modo Día
+              </button>
+            </div>
+
+            <div class="win-controls">
+              <span>─</span>
+              <span>▢</span>
+              <span>✕</span>
+            </div>
           </div>
         </div>
 
@@ -783,12 +923,12 @@
             <span>🔊</span> Audio &amp; Atajos
           </button>
           <button type="button" class="p-tab" onclick="showTab('05')">
-            <span>📱</span> Control Móvil por Wi-Fi
+            <span>📱</span> Control Remoto por Wi-Fi
           </button>
         </div>
 
         <div class="preview-screen">
-          <img id="main-screenshot" src="assets/screenshots/01_cockpit_telemetria.png" alt="Captura de Nokto">
+          <img id="main-screenshot" src="assets/screenshots/dark/01_cockpit_telemetria.png" alt="Captura de Nokto">
           <div class="preview-caption-bar">
             <div>
               <div class="caption-title" id="tab-caption-title">Monitoreo en vivo de tu equipo</div>
@@ -832,7 +972,7 @@
           </div>
         </div>
 
-        <!-- Caso 2 -->
+        <!-- Caso 2: Atajos 100% Configurables -->
         <div class="case-card">
           <div class="case-icon-box">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -840,17 +980,17 @@
               <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>
             </svg>
           </div>
-          <h3 class="case-title">Silencio de micrófono instantáneo en llamadas</h3>
+          <h3 class="case-title">Silencio de micrófono con atajos a tu medida</h3>
           <p class="case-desc">
-            ¿Alguien entró a tu habitación durante una reunión de trabajo o jugando online? Presiona un atajo y tu micrófono se silencia al instante a nivel de sistema, sin importar qué ventana o juego tengas abierto en pantalla.
+            ¿Alguien entró a tu habitación durante una llamada de Discord, Meet o jugando en vivo? Silencia tu micrófono al instante a nivel de sistema. <strong>Los atajos son 100% configurables:</strong> puedes usar la combinación por defecto o asignar la tecla que prefieras desde los Ajustes.
           </p>
           <div class="case-highlight">
-            <span>Atajo:</span>
-            <span><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>M</kbd> (Silencia Micrófono)</span>
+            <span>Atajo configurable:</span>
+            <span><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>M</kbd> <em>(o tu tecla favorita)</em></span>
           </div>
         </div>
 
-        <!-- Caso 3 -->
+        <!-- Caso 3: Control Móvil -->
         <div class="case-card">
           <div class="case-icon-box">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -858,13 +998,13 @@
               <line x1="12" y1="18" x2="12.01" y2="18"/>
             </svg>
           </div>
-          <h3 class="case-title">Mira tu PC desde el celular sin instalar aplicaciones</h3>
+          <h3 class="case-title">Mira tu PC desde el móvil sin instalar apps</h3>
           <p class="case-desc">
-            ¿Estás en la cocina o descansando en el sillón? Escanea el código QR que genera Nokto con la cámara de tu teléfono para ver capturas en vivo de tu pantalla por tu propia red Wi-Fi y apagar el equipo a distancia si ya terminó.
+            ¿Estás cocinando o en el sillón? Escanea el código QR que genera Nokto con la cámara de tu teléfono para ver capturas en vivo de tu pantalla por tu red Wi-Fi local y apagar el equipo a distancia si tu tarea ya terminó.
           </p>
           <div class="case-highlight">
             <span>📱</span>
-            <span>Transmisión en tu Wi-Fi de casa, sin pasar por internet</span>
+            <span>Transmisión en tu Wi-Fi de casa, sin pasar por la nube</span>
           </div>
         </div>
       </div>
@@ -897,7 +1037,7 @@
           </div>
           <h3 class="case-title">Privacidad absoluta y respeto por tus recursos</h3>
           <p class="case-desc">
-            Nokto no tiene rastreadores de datos, no vende anuncios ni envía reportes a servidores desconocidos. Consume menos del 0.2% de CPU para que no notes caídas de FPS mientras juegas ni demoras mientras programas o diseñas.
+            Nokto no tiene rastreadores de datos, no vende publicidad ni envía reportes a servidores externos. Consume menos del 0.2% de CPU para que no notes caídas de FPS mientras juegas ni demoras mientras programas o trabajas.
           </p>
           <div class="case-highlight">
             <span>🔒</span>
@@ -908,13 +1048,64 @@
     </div>
   </section>
 
-  <!-- Instalación Rápida con PowerShell (Opcional para usuarios avanzados) -->
+  <!-- Showcase Especial: Control Remoto Móvil y Uso -->
+  <section class="mobile-showcase-section" id="control-movil">
+    <div class="container">
+      <div class="section-head">
+        <div class="section-eyebrow">CONTROL REMOTO LOCAL</div>
+        <h2 class="section-title">Controla y vigila tu PC desde el teléfono</h2>
+        <p class="section-subtitle">Supervisa el avance de tus trabajos pesados sin estar atado a la silla del escritorio.</p>
+      </div>
+
+      <div class="mobile-showcase-grid">
+        <!-- Captura de la Versión Móvil Real -->
+        <div class="mobile-frame-container">
+          <div class="mobile-frame-header">
+            <span>Nokto · Control móvil local</span>
+            <span>192.168.x.x:4884</span>
+          </div>
+          <div class="mobile-frame-body">
+            <img src="assets/screenshots/dark/04_control_remoto_movil.png" alt="Captura real del control remoto móvil de Nokto">
+          </div>
+        </div>
+
+        <!-- Pasos de Uso -->
+        <div class="mobile-steps-list">
+          <div class="mobile-step-item">
+            <div class="step-number">1</div>
+            <div class="step-content">
+              <h4>Sin instalar aplicaciones en tu celular</h4>
+              <p>Funciona directo en el navegador de cualquier teléfono (iPhone, Android o tablet). Cero descargas en App Store o Google Play.</p>
+            </div>
+          </div>
+
+          <div class="mobile-step-item">
+            <div class="step-number">2</div>
+            <div class="step-content">
+              <h4>Emparejamiento instantáneo por código QR</h4>
+              <p>Abre la pestaña de Ajustes en Nokto, escanea el código QR con la cámara de tu smartphone y listo: estás conectado a tu PC a través de tu propia red Wi-Fi privada.</p>
+            </div>
+          </div>
+
+          <div class="mobile-step-item">
+            <div class="step-number">3</div>
+            <div class="step-content">
+              <h4>Transmisión de pantalla y acciones de energía</h4>
+              <p>Revisa capturas en vivo de tu escritorio para saber si tu render o descarga terminó, ajusta el volumen y suspende o apaga la computadora desde otra habitación.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Instalación Rápida con PowerShell (Limpio y Sin Barras) -->
   <section class="cli-section">
     <div class="container">
       <div class="cli-card">
         <div class="cli-card-header">
           <div class="cli-title">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#00D2FF" stroke-width="2">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00D2FF" stroke-width="2">
               <polyline points="4 17 10 11 4 5"/>
               <line x1="12" y1="19" x2="20" y2="19"/>
             </svg>
@@ -927,7 +1118,7 @@
         </div>
 
         <div class="cli-terminal">
-          <div class="cli-code">
+          <div class="cli-code" id="cli-code-container">
             <span class="cli-prompt">PS &gt; </span><span id="cli-str">irm https://github.com/jmorgadodev/Nokto/releases/latest/download/Nokto-Portable-x64.exe -OutFile "$HOME\Downloads\Nokto.exe"; Start-Process "$HOME\Downloads\Nokto.exe"</span>
           </div>
           <button type="button" class="btn-copy" id="copy-btn-action" onclick="copyCli()">Copiar</button>
@@ -939,45 +1130,33 @@
     </div>
   </section>
 
-  <!-- Descarga Directa -->
+  <!-- Centro de Descarga Limpio y Abierto (Sin tablas de compra) -->
   <section class="download-section" id="descargar">
     <div class="container">
-      <div class="section-head">
-        <div class="section-eyebrow">DESCARGA OFICIAL</div>
-        <h2 class="section-title">Elige cómo quieres usar Nokto</h2>
-        <p class="section-subtitle">Ambas versiones incluyen todas las funciones y son completamente gratuitas.</p>
-      </div>
+      <div class="download-hub-card">
+        <h2 class="hub-title">Centro de Descarga Oficial</h2>
+        <p class="hub-subtitle">Nokto es 100% gratuito y de código abierto. Elige tu formato preferido para comenzar.</p>
 
-      <div class="dist-grid">
-        <!-- Versión Portable -->
-        <div class="dist-card featured">
-          <div class="dist-tag">Recomendado</div>
-          <h3 class="dist-title">Edición Portable (Single-File)</h3>
-          <p class="dist-desc">Un único archivo ejecutable listo para usar. Llévalo en un pendrive o pruébalo sin instalar nada en tu computadora.</p>
-          <ul class="dist-features">
-            <li><span class="check-icon">✓</span> No requiere instalación ni permisos de administrador</li>
-            <li><span class="check-icon">✓</span> No escribe en el registro de Windows</li>
-            <li><span class="check-icon">✓</span> Tamaño liviano (~65 MB con .NET 8 incluido)</li>
-            <li><span class="check-icon">✓</span> Para Windows 11 y Windows 10 (64-bit)</li>
-          </ul>
-          <a href="https://github.com/jmorgadodev/Nokto/releases/latest/download/Nokto-Portable-x64.exe" class="btn btn-primary" style="margin-top: auto;">
-            <span>⬇ Descargar Portable (x64)</span>
-          </a>
-        </div>
+        <div class="hub-options-grid">
+          <div class="hub-option-item">
+            <div>
+              <div class="hub-option-name">⚡ Versión Portable (Recomendada)</div>
+              <p class="hub-option-desc">Un solo archivo .exe de ~65 MB. No requiere instalación, no pide permisos de administrador y no escribe en el registro de Windows. Ideal para pendrives o pruebas rápidas.</p>
+            </div>
+            <a href="https://github.com/jmorgadodev/Nokto/releases/latest/download/Nokto-Portable-x64.exe" class="btn btn-primary" style="width: 100%;">
+              <span>⬇ Descargar Portable (x64)</span>
+            </a>
+          </div>
 
-        <!-- Versión Instalador -->
-        <div class="dist-card">
-          <h3 class="dist-title">Instalador Oficial (Setup)</h3>
-          <p class="dist-desc">Asistente clásico para quienes prefieren tener la app integrada en el sistema con acceso rápido.</p>
-          <ul class="dist-features">
-            <li><span class="check-icon">✓</span> Acceso directo en el Menú Inicio y Escritorio</li>
-            <li><span class="check-icon">✓</span> Opción para iniciar automáticamente con Windows</li>
-            <li><span class="check-icon">✓</span> Desinstalador limpio desde el Panel de Control</li>
-            <li><span class="check-icon">✓</span> Para Windows 11 y Windows 10 (64-bit)</li>
-          </ul>
-          <a href="https://github.com/jmorgadodev/Nokto/releases/latest/download/Nokto-Setup-x64.exe" class="btn btn-secondary" style="margin-top: auto;">
-            <span>📦 Descargar Instalador (Setup)</span>
-          </a>
+          <div class="hub-option-item">
+            <div>
+              <div class="hub-option-name">📦 Asistente Instalador (Setup)</div>
+              <p class="hub-option-desc">Instalador clásico estándar para Windows. Crea accesos directos en el Menú Inicio y Escritorio, con opción de inicio automático y desinstalador limpio.</p>
+            </div>
+            <a href="https://github.com/jmorgadodev/Nokto/releases/latest/download/Nokto-Setup-x64.exe" class="btn btn-secondary" style="width: 100%;">
+              <span>📦 Descargar Instalador (.exe)</span>
+            </a>
+          </div>
         </div>
       </div>
     </div>
@@ -988,7 +1167,11 @@
     <div class="container">
       <div class="footer-content">
         <div class="footer-brand">
-          <img src="assets/logo.png" alt="Logo Nokto" style="width: 28px; height: 28px; border-radius: 50%;">
+          <svg class="brand-logo-svg" viewBox="0 0 64 64" fill="none" style="width: 28px; height: 28px;">
+            <circle cx="32" cy="32" r="29" fill="#16181D" stroke="#00D2FF" stroke-width="2"/>
+            <path d="M 45.435 45.435 A 19 19 0 1 1 45.435 18.565" stroke="#00D2FF" stroke-width="4.5" stroke-linecap="round"/>
+            <circle cx="32" cy="32" r="4.5" fill="#F0F2F5"/>
+          </svg>
           <strong>Nokto</strong>
           <span style="color: var(--text-dim); font-size: 0.85rem;">— Creado por <a href="https://www.linkedin.com/in/jorge-morgado/" target="_blank" rel="noopener noreferrer" style="color: var(--cyan); text-decoration: none;">Jorge Morgado</a></span>
         </div>
@@ -1002,60 +1185,94 @@
       </div>
 
       <div class="footer-bottom">
-        <div>Nokto es un proyecto de código abierto y gratuito para la comunidad de Windows.</div>
+        <div>Nokto es un proyecto de código abierto y gratuito para la comunidad de Windows 11 y 10.</div>
       </div>
     </div>
   </footer>
 
-  <!-- Lógica Interactiva Simple -->
+  <!-- Lógica Interactiva: Selector de Pestañas y Modo Día / Modo Noche -->
   <script>
-    const tabsData = {
+    let currentThemeMode = 'dark'; // 'dark' | 'light'
+    let currentTabKey = '01';
+
+    const tabsContent = {
       '01': {
-        img: 'assets/screenshots/01_cockpit_telemetria.png',
+        darkImg: 'assets/screenshots/dark/01_cockpit_telemetria.png',
+        lightImg: 'assets/screenshots/01_cockpit_telemetria.png',
         title: 'Monitoreo en vivo de tu equipo',
         desc: 'Revisa CPU, memoria RAM, ambas tarjetas de video (NVIDIA e Intel) y velocidad de red sin sobrecargar tu procesador.'
       },
       '02': {
-        img: 'assets/screenshots/02_control_manual.png',
+        darkImg: 'assets/screenshots/dark/02_control_manual.png',
+        lightImg: 'assets/screenshots/02_control_manual.png',
         title: 'Control Manual y Temporizadores',
         desc: 'Inicia cuentas regresivas independientes para apagar, suspender o bloquear tu PC con cancelación en un clic.'
       },
       '03': {
-        img: 'assets/screenshots/03_rutinas_pipeline.png',
+        darkImg: 'assets/screenshots/dark/03_rutinas_pipeline.png',
+        lightImg: 'assets/screenshots/03_rutinas_pipeline.png',
         title: 'Rutinas encadenadas y automatización',
         desc: 'Ejecuta acciones en cadena: espera a que termine tu render, baja el volumen, toma una captura y apaga la pantalla.'
       },
       '04': {
-        img: 'assets/screenshots/06_ajustes_audio_herramientas_ia.png',
-        title: 'Selector de Audio y Atajos Globales',
-        desc: 'Cambia entre altavoces y auriculares en milisegundos y silencia el micrófono con Ctrl + Shift + M desde cualquier programa.'
+        darkImg: 'assets/screenshots/dark/05_ajustes_sistema.png',
+        lightImg: 'assets/screenshots/06_ajustes_audio_herramientas_ia.png',
+        title: 'Selector de Audio y Atajos Globales Configurables',
+        desc: 'Cambia entre altavoces y auriculares en milisegundos y silencia el micrófono con atajos que puedes personalizar a tu gusto.'
       },
       '05': {
-        img: 'assets/screenshots/07_control_remoto_evidencias.png',
-        title: 'Control Remoto Móvil por Wi-Fi',
+        darkImg: 'assets/screenshots/dark/05_control_remoto_lan.png',
+        lightImg: 'assets/screenshots/07_control_remoto_evidencias.png',
+        title: 'Control Remoto Móvil por Wi-Fi Local',
         desc: 'Escanea el código QR con tu celular en la misma red Wi-Fi para ver qué pasa en tu pantalla y apagar el equipo a distancia.'
       }
     };
 
-    function showTab(tabKey) {
-      const data = tabsData[tabKey];
+    function updatePreviewImage() {
+      const data = tabsContent[currentTabKey];
       if (!data) return;
 
-      document.querySelectorAll('.p-tab').forEach((tab, i) => {
-        const keys = ['01', '02', '03', '04', '05'];
-        tab.classList.toggle('active', keys[i] === tabKey);
-      });
-
       const img = document.getElementById('main-screenshot');
-      img.style.opacity = '0.3';
+      const targetSrc = currentThemeMode === 'dark' ? data.darkImg : data.lightImg;
+      
+      img.style.opacity = '0.2';
       setTimeout(() => {
-        img.src = data.img;
+        img.src = targetSrc;
         img.style.opacity = '1';
         document.getElementById('tab-caption-title').textContent = data.title;
         document.getElementById('tab-caption-desc').textContent = data.desc;
       }, 100);
     }
 
+    function showTab(tabKey) {
+      currentTabKey = tabKey;
+      document.querySelectorAll('.p-tab').forEach((tab, i) => {
+        const keys = ['01', '02', '03', '04', '05'];
+        tab.classList.toggle('active', keys[i] === tabKey);
+      });
+      updatePreviewImage();
+    }
+
+    function switchThemeMode(mode) {
+      currentThemeMode = mode;
+      const previewWrapper = document.getElementById('capturas');
+      const btnDark = document.getElementById('btn-theme-dark');
+      const btnLight = document.getElementById('btn-theme-light');
+
+      if (mode === 'light') {
+        previewWrapper.classList.add('theme-light-preview');
+        btnLight.classList.add('active');
+        btnDark.classList.remove('active');
+      } else {
+        previewWrapper.classList.remove('theme-light-preview');
+        btnDark.classList.add('active');
+        btnLight.classList.remove('active');
+      }
+
+      updatePreviewImage();
+    }
+
+    // Comandos CLI
     const cliCmds = {
       portable: 'irm https://github.com/jmorgadodev/Nokto/releases/latest/download/Nokto-Portable-x64.exe -OutFile "$HOME\\Downloads\\Nokto.exe"; Start-Process "$HOME\\Downloads\\Nokto.exe"',
       setup: '$setup = "$env:TEMP\\Nokto-Setup.exe"; irm https://github.com/jmorgadodev/Nokto/releases/latest/download/Nokto-Setup-x64.exe -OutFile $setup; Start-Process $setup -ArgumentList "/VERYSILENT /NORESTART" -Wait; Remove-Item $setup'
