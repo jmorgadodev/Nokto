@@ -1,488 +1,1510 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" class="scroll-smooth">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Nokto — Consola de Operaciones, Telemetría y Automatización Local</title>
-  <meta name="description" content="Consola local para Windows 11/10. Telemetría de hardware, audio WASAPI, automatización de rutinas y control móvil LAN sin dependencias externas.">
-  <link rel="icon" href="https://raw.githubusercontent.com/jmorgadodev/Nokto/master/src/Nokto.UI/Assets/nokto.ico">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>Nokto 🌒 — Consola Local de Operaciones, Telemetría y Automatización para Windows</title>
+  <meta name="description" content="Consola nativa Windows 11/10 (x64) para estaciones de trabajo. Monitoreo pasivo de hardware, enrutamiento de audio WASAPI de baja latencia, orquestador de rutinas y control móvil LAN. 100% offline.">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2338BDF8' stroke-width='2'%3E%3Cpath d='M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z' fill='%230284C7'/%3E%3C/svg%3E">
+  
+  <!-- Typography: Inter & JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;600&family=Geist:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
   <style>
     :root {
-      --bg: #090D16;
-      --card-bg: rgba(15, 23, 42, 0.65);
-      --card-border: rgba(255, 255, 255, 0.08);
-      --card-hover-border: rgba(56, 189, 248, 0.4);
-      --accent-cyan: #38BDF8;
-      --accent-blue: #0284C7;
-      --text-main: #F1F5F9;
-      --text-muted: #94A3B8;
-      --code-bg: #030712;
-      --win-btn: #334155;
+      --bg: #07090E;
+      --bg-surface: #0D111A;
+      --bg-surface-elevated: #131926;
+      --border-dim: rgba(255, 255, 255, 0.07);
+      --border-bright: rgba(56, 189, 248, 0.35);
+      --border-accent: rgba(56, 189, 248, 0.6);
+      --cyan: #38BDF8;
+      --cyan-bright: #00D2FF;
+      --cyan-soft: rgba(56, 189, 248, 0.12);
+      --blue: #0284C7;
+      --blue-deep: #0369A1;
+      --emerald: #10B981;
+      --amber: #F59E0B;
+      --rose: #F43F5E;
+      --text-1: #F8FAFC;
+      --text-2: #94A3B8;
+      --text-3: #64748B;
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --font-mono: 'JetBrains Mono', 'Fira Code', Cascadia, Consolas, monospace;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { color-scheme: dark; }
     body {
       background-color: var(--bg);
-      color: var(--text-main);
-      font-family: 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
+      color: var(--text-1);
+      font-family: var(--font-sans);
       line-height: 1.6;
       overflow-x: hidden;
       background-image: 
-        radial-gradient(circle at 50% 0%, rgba(56, 189, 248, 0.12) 0%, transparent 60%),
-        linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
-      background-size: 100% 100%, 48px 48px, 48px 48px;
+        radial-gradient(circle at 50% -10%, rgba(56, 189, 248, 0.14) 0%, transparent 50%),
+        radial-gradient(circle at 90% 40%, rgba(2, 132, 199, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 10% 70%, rgba(16, 185, 129, 0.04) 0%, transparent 40%),
+        linear-gradient(rgba(255, 255, 255, 0.018) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.018) 1px, transparent 1px);
+      background-size: 100% 100%, 100% 100%, 100% 100%, 32px 32px, 32px 32px;
     }
 
-    /* Navegación */
-    nav {
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 24px 20px;
+    /* Top Telemetry Diagnostic Ticker */
+    .telemetry-ticker {
+      background: #04060A;
+      border-bottom: 1px solid var(--border-dim);
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--text-3);
+      padding: 6px 20px;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      overflow-x: auto;
+      white-space: nowrap;
+      gap: 20px;
+    }
+    .ticker-group {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .ticker-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--emerald);
+      box-shadow: 0 0 8px var(--emerald);
+      display: inline-block;
+    }
+    .status-dot.pulse {
+      animation: pulseAnim 2s infinite ease-in-out;
+    }
+    @keyframes pulseAnim {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(0.85); }
+    }
+
+    /* Nav */
+    nav {
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 16px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(7, 9, 14, 0.88);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border-dim);
     }
     .brand {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 12px;
+      text-decoration: none;
+      color: var(--text-1);
+    }
+    .brand-icon-box {
+      width: 34px;
+      height: 34px;
+      border-radius: 8px;
+      background: linear-gradient(135deg, rgba(56, 189, 248, 0.2), rgba(2, 132, 199, 0.3));
+      border: 1px solid var(--border-bright);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 15px rgba(56, 189, 248, 0.25);
+    }
+    .brand-name {
       font-weight: 700;
       font-size: 1.25rem;
-      text-decoration: none;
-      color: var(--text-main);
+      letter-spacing: -0.03em;
     }
-    .brand-badge {
-      font-size: 0.75rem;
-      background: rgba(56, 189, 248, 0.15);
-      color: var(--accent-cyan);
+    .version-chip {
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--cyan);
+      background: var(--cyan-soft);
       border: 1px solid rgba(56, 189, 248, 0.3);
       padding: 2px 8px;
-      border-radius: 999px;
-      font-family: 'Geist Mono', monospace;
+      border-radius: 6px;
     }
-    .nav-links {
+    .nav-center {
       display: flex;
       gap: 24px;
-      align-items: center;
+      list-style: none;
     }
-    .nav-links a {
-      color: var(--text-muted);
+    .nav-center a {
+      color: var(--text-2);
       text-decoration: none;
-      font-size: 0.95rem;
-      transition: color 0.2s;
-    }
-    .nav-links a:hover { color: var(--text-main); }
-
-    /* Hero Section */
-    .hero {
-      max-width: 1100px;
-      margin: 40px auto 80px;
-      padding: 0 20px;
-      text-align: center;
-    }
-    .tagline {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 6px 14px;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.04);
-      border: 1px solid var(--card-border);
-      color: var(--accent-cyan);
-      font-size: 0.85rem;
+      font-size: 0.88rem;
       font-weight: 500;
-      margin-bottom: 24px;
+      transition: color 0.15s;
     }
-    h1 {
-      font-size: clamp(2.4rem, 5vw, 3.8rem);
-      font-weight: 700;
-      letter-spacing: -0.04em;
-      line-height: 1.15;
-      margin-bottom: 20px;
-      background: linear-gradient(180deg, #FFFFFF 0%, #CBD5E1 100%);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-    .hero-desc {
-      font-size: 1.15rem;
-      color: var(--text-muted);
-      max-width: 680px;
-      margin: 0 auto 36px;
-      font-weight: 300;
+    .nav-center a:hover { color: var(--cyan); }
+    .nav-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
     }
 
-    /* CTA Buttons */
-    .cta-group {
-      display: flex;
-      gap: 16px;
-      justify-content: center;
-      flex-wrap: wrap;
-      margin-bottom: 32px;
-    }
+    /* Buttons */
     .btn {
       display: inline-flex;
       align-items: center;
+      justify-content: center;
       gap: 8px;
-      padding: 12px 24px;
-      border-radius: 8px;
-      font-size: 0.95rem;
+      font-family: var(--font-sans);
       font-weight: 600;
+      font-size: 0.9rem;
+      padding: 10px 18px;
+      border-radius: 8px;
       text-decoration: none;
       cursor: pointer;
       transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      border: 1px solid transparent;
+      line-height: 1.2;
     }
     .btn-primary {
       background: linear-gradient(180deg, #38BDF8 0%, #0284C7 100%);
-      color: #030712;
-      box-shadow: 0 0 24px rgba(56, 189, 248, 0.35);
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #040711;
+      border-color: rgba(255, 255, 255, 0.25);
+      box-shadow: 0 4px 20px rgba(56, 189, 248, 0.35);
     }
     .btn-primary:hover {
-      box-shadow: 0 0 32px rgba(56, 189, 248, 0.55);
+      box-shadow: 0 6px 28px rgba(56, 189, 248, 0.6);
       transform: translateY(-1px);
+      color: #000;
     }
     .btn-secondary {
       background: rgba(255, 255, 255, 0.05);
-      color: var(--text-main);
-      border: 1px solid var(--card-border);
+      color: var(--text-1);
+      border-color: var(--border-dim);
     }
     .btn-secondary:hover {
       background: rgba(255, 255, 255, 0.09);
-      border-color: rgba(255, 255, 255, 0.2);
+      border-color: var(--border-bright);
+      color: var(--cyan);
+    }
+    .btn-sub {
+      display: block;
+      font-size: 0.7rem;
+      font-weight: 400;
+      font-family: var(--font-mono);
+      opacity: 0.85;
+      margin-top: 2px;
     }
 
-    /* CLI Install Box */
-    .cli-box {
-      background: var(--code-bg);
-      border: 1px solid var(--card-border);
-      border-radius: 8px;
-      padding: 10px 16px;
+    /* Container */
+    .container {
+      max-width: 1240px;
+      margin: 0 auto;
+      padding: 0 24px;
+    }
+
+    /* Hero */
+    .hero {
+      padding: 60px 0 40px;
+      text-align: center;
+    }
+    .hero-eyebrow {
       display: inline-flex;
       align-items: center;
-      gap: 12px;
-      font-family: 'Geist Mono', monospace;
-      font-size: 0.85rem;
-      color: #E2E8F0;
-      max-width: 90%;
-      box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5);
+      gap: 10px;
+      padding: 6px 14px;
+      border-radius: 999px;
+      background: rgba(13, 17, 26, 0.9);
+      border: 1px solid var(--border-bright);
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      color: var(--cyan);
+      margin-bottom: 24px;
+      box-shadow: 0 0 20px rgba(56, 189, 248, 0.15);
     }
-    .cli-copy {
-      background: rgba(255, 255, 255, 0.08);
-      border: none;
-      color: var(--accent-cyan);
-      padding: 6px 12px;
-      border-radius: 6px;
-      font-size: 0.75rem;
-      cursor: pointer;
-      font-family: inherit;
-      transition: background 0.2s;
+    .hero-title {
+      font-size: clamp(2.4rem, 5.5vw, 4.2rem);
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      line-height: 1.1;
+      margin-bottom: 20px;
+      max-width: 960px;
+      margin-left: auto;
+      margin-right: auto;
     }
-    .cli-copy:hover { background: rgba(56, 189, 248, 0.2); }
+    .hero-title span.grad {
+      background: linear-gradient(135deg, #FFFFFF 20%, #94A3B8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .hero-title span.accent {
+      background: linear-gradient(135deg, #38BDF8 0%, #60A5FA 60%, #93C5FD 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .hero-lead {
+      font-size: clamp(1.05rem, 2vw, 1.25rem);
+      color: var(--text-2);
+      max-width: 780px;
+      margin: 0 auto 36px;
+      font-weight: 300;
+      line-height: 1.65;
+    }
 
-    /* Windows 11 Mock Window */
-    .window-frame {
-      max-width: 1000px;
-      margin: 48px auto 0;
-      background: #0F172A;
-      border-radius: 12px;
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.8), 0 0 40px rgba(56, 189, 248, 0.15);
-      overflow: hidden;
+    /* Hero CTA Row */
+    .hero-ctas {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 30px;
     }
-    .window-titlebar {
-      height: 38px;
-      background: #0B1120;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    .cta-card-btn {
+      padding: 14px 24px;
+      text-align: left;
+    }
+
+    /* Terminal Quick Install Dock */
+    .terminal-dock {
+      max-width: 820px;
+      margin: 0 auto 50px;
+      background: #03060B;
+      border: 1px solid var(--border-dim);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.7);
+    }
+    .terminal-dock-bar {
+      background: #090E17;
+      border-bottom: 1px solid var(--border-dim);
+      padding: 8px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .terminal-tab-group {
+      display: flex;
+      gap: 6px;
+    }
+    .terminal-tab {
+      background: none;
+      border: none;
+      color: var(--text-3);
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      padding: 4px 10px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .terminal-tab.active {
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--cyan);
+      font-weight: 600;
+    }
+    .terminal-cli-body {
+      padding: 14px 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      background: #03060B;
+    }
+    .cli-code {
+      font-family: var(--font-mono);
+      font-size: 0.84rem;
+      color: #38BDF8;
+      overflow-x: auto;
+      white-space: nowrap;
+      text-align: left;
+    }
+    .cli-code .prompt {
+      color: var(--text-3);
+      user-select: none;
+    }
+    .copy-pill {
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px solid var(--border-bright);
+      color: var(--cyan);
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+    .copy-pill:hover {
+      background: var(--cyan);
+      color: #03060B;
+      box-shadow: 0 0 16px rgba(56, 189, 248, 0.5);
+    }
+
+    /* Spec Indicators Row */
+    .hero-specs-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      max-width: 960px;
+      margin: 0 auto;
+      text-align: left;
+    }
+    .spec-item {
+      background: rgba(13, 17, 26, 0.5);
+      border: 1px solid var(--border-dim);
+      border-radius: 10px;
+      padding: 12px 16px;
+    }
+    .spec-item-label {
+      font-size: 0.72rem;
+      color: var(--text-3);
+      text-transform: uppercase;
+      font-family: var(--font-mono);
+      letter-spacing: 0.05em;
+    }
+    .spec-item-value {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--text-1);
+      font-family: var(--font-mono);
+      margin-top: 2px;
+    }
+
+    /* Windows 11 Native Cockpit Frame */
+    .cockpit-stage {
+      margin: 70px 0 90px;
+    }
+    .win11-window {
+      background: #0B0F19;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      box-shadow: 
+        0 30px 80px -20px rgba(0, 0, 0, 0.95),
+        0 0 45px rgba(56, 189, 248, 0.12),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .win11-titlebar {
+      height: 42px;
+      background: #090E17;
+      border-bottom: 1px solid var(--border-dim);
       display: flex;
       align-items: center;
       justify-content: space-between;
       padding: 0 14px;
+      user-select: none;
     }
-    .window-title {
+    .win11-title {
       font-size: 0.8rem;
-      color: var(--text-muted);
+      color: var(--text-2);
       font-weight: 500;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
+      font-family: var(--font-sans);
     }
-    .win-controls {
+    .win11-title-icon {
+      width: 18px;
+      height: 18px;
       display: flex;
-      gap: 14px;
-      color: #64748B;
-      font-size: 0.75rem;
+      align-items: center;
+      justify-content: center;
     }
-    .window-body img {
-      width: 100%;
-      display: block;
-      transition: opacity 0.3s ease;
+    .win11-title-badge {
+      font-size: 0.68rem;
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--emerald);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-family: var(--font-mono);
+    }
+    .win11-controls {
+      display: flex;
+      align-items: center;
+      gap: 0;
+    }
+    .win11-btn {
+      width: 44px;
+      height: 38px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-3);
+      font-size: 0.85rem;
+      transition: all 0.15s;
+      cursor: default;
+    }
+    .win11-btn:hover { background: rgba(255, 255, 255, 0.08); color: var(--text-1); }
+    .win11-btn.btn-close:hover { background: #E81123; color: #FFF; }
+
+    /* Module Navigation Tabs (Windows 11 TabView style) */
+    .module-tabstrip {
+      background: #060910;
+      border-bottom: 1px solid var(--border-dim);
+      display: flex;
+      overflow-x: auto;
+      padding: 6px 12px 0;
+      gap: 6px;
+    }
+    .mod-tab {
+      background: transparent;
+      border: 1px solid transparent;
+      border-bottom: none;
+      color: var(--text-3);
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      font-weight: 500;
+      padding: 8px 16px;
+      border-radius: 8px 8px 0 0;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .mod-tab:hover {
+      color: var(--text-1);
+      background: rgba(255, 255, 255, 0.03);
+    }
+    .mod-tab.active {
+      color: var(--cyan);
+      background: #0B0F19;
+      border-color: var(--border-dim);
+      border-top: 2px solid var(--cyan);
     }
 
-    /* Bento Grid */
+    /* Window Viewport split: Main Screen + HUD diagnostics */
+    .win11-viewport {
+      display: grid;
+      grid-template-columns: 1fr 310px;
+      min-height: 520px;
+      background: #070B13;
+    }
+    .viewport-screen {
+      position: relative;
+      background: #04070D;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      border-right: 1px solid var(--border-dim);
+    }
+    .viewport-screen img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+      transition: opacity 0.25s ease, transform 0.25s ease;
+    }
+    .screen-expand-hint {
+      position: absolute;
+      bottom: 12px;
+      right: 12px;
+      background: rgba(7, 11, 19, 0.85);
+      border: 1px solid var(--border-dim);
+      color: var(--text-2);
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      padding: 4px 10px;
+      border-radius: 6px;
+      backdrop-filter: blur(8px);
+      pointer-events: none;
+    }
+
+    /* HUD Sidebar */
+    .viewport-hud {
+      background: #0A0E18;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      overflow-y: auto;
+    }
+    .hud-header {
+      border-bottom: 1px solid var(--border-dim);
+      padding-bottom: 12px;
+    }
+    .hud-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--text-1);
+    }
+    .hud-subtitle {
+      font-size: 0.75rem;
+      color: var(--text-3);
+      font-family: var(--font-mono);
+      margin-top: 3px;
+    }
+    .hud-metric-group {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .hud-metric {
+      background: #060910;
+      border: 1px solid var(--border-dim);
+      border-radius: 8px;
+      padding: 10px 12px;
+    }
+    .hud-metric-top {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      margin-bottom: 6px;
+    }
+    .hud-metric-name { color: var(--text-2); font-family: var(--font-mono); }
+    .hud-metric-val { color: var(--cyan); font-family: var(--font-mono); font-weight: 600; }
+    .hud-bar {
+      height: 5px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .hud-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #0284C7, #38BDF8);
+      border-radius: 999px;
+      transition: width 0.5s ease;
+    }
+    .hud-callout {
+      margin-top: auto;
+      background: rgba(56, 189, 248, 0.06);
+      border: 1px solid rgba(56, 189, 248, 0.2);
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 0.78rem;
+      color: var(--text-2);
+      line-height: 1.5;
+    }
+    .hud-callout strong { color: var(--cyan); }
+
+    /* Keycaps Keyboard Shortcut Component */
+    kbd {
+      background: #151D2C;
+      border: 1px solid #2C384E;
+      border-bottom: 2px solid #334155;
+      padding: 2px 7px;
+      border-radius: 5px;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: #F8FAFC;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+    }
+
+    /* Bento Grid: Industrial Workstation Architecture */
     .bento-section {
-      max-width: 1100px;
-      margin: 100px auto;
-      padding: 0 20px;
+      padding: 40px 0 90px;
     }
-    .section-header {
-      margin-bottom: 40px;
-      text-align: left;
+    .section-head {
+      margin-bottom: 36px;
     }
-    .section-header h2 {
-      font-size: 2rem;
-      letter-spacing: -0.03em;
+    .section-tag {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--cyan);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
       margin-bottom: 8px;
     }
-    .section-header p {
-      color: var(--text-muted);
-      font-size: 1rem;
+    .section-title {
+      font-size: clamp(1.8rem, 3.5vw, 2.6rem);
+      font-weight: 800;
+      letter-spacing: -0.035em;
+      margin-bottom: 10px;
     }
+    .section-desc {
+      color: var(--text-2);
+      font-size: 1.05rem;
+      max-width: 640px;
+    }
+
     .bento-grid {
       display: grid;
       grid-template-columns: repeat(12, 1fr);
       gap: 20px;
     }
-    .bento-card {
-      background: var(--card-bg);
-      backdrop-filter: blur(12px);
-      border: 1px solid var(--card-border);
+    .bento-cell {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-dim);
       border-radius: 14px;
       padding: 28px;
       position: relative;
       overflow: hidden;
-      transition: border-color 0.25s, transform 0.25s;
+      transition: all 0.25s ease;
+      display: flex;
+      flex-direction: column;
     }
-    .bento-card:hover {
-      border-color: var(--card-hover-border);
+    .bento-cell:hover {
+      border-color: var(--border-bright);
       transform: translateY(-2px);
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4), 0 0 25px rgba(56, 189, 248, 0.08);
     }
-    .col-8 { grid-column: span 8; }
+    .col-7 { grid-column: span 7; }
+    .col-5 { grid-column: span 5; }
     .col-4 { grid-column: span 4; }
     .col-6 { grid-column: span 6; }
     .col-12 { grid-column: span 12; }
 
-    /* Interactive Tab Switcher */
-    .tab-nav {
+    .bento-icon-badge {
+      width: 42px;
+      height: 42px;
+      border-radius: 10px;
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      color: var(--cyan);
       display: flex;
-      gap: 8px;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 18px;
+    }
+    .bento-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: var(--text-1);
+    }
+    .bento-text {
+      color: var(--text-2);
+      font-size: 0.92rem;
+      line-height: 1.6;
       margin-bottom: 20px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-      padding-bottom: 12px;
-    }
-    .tab-btn {
-      background: none;
-      border: none;
-      color: var(--text-muted);
-      font-family: inherit;
-      font-size: 0.9rem;
-      font-weight: 500;
-      padding: 6px 12px;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    .tab-btn.active {
-      color: #030712;
-      background: var(--accent-cyan);
-    }
-    .tab-preview {
-      border-radius: 8px;
-      overflow: hidden;
-      border: 1px solid rgba(255, 255, 255, 0.08);
-    }
-    .tab-preview img {
-      width: 100%;
-      display: block;
     }
 
-    /* Keycaps Keyboard Shortcut */
-    kbd {
-      background: #1E293B;
-      border: 1px solid #475569;
-      border-bottom: 2px solid #334155;
-      padding: 2px 8px;
-      border-radius: 5px;
-      font-family: 'Geist Mono', monospace;
-      font-size: 0.8rem;
-      color: #F8FAFC;
+    /* Radar Dev Simulator inside Bento */
+    .radar-list {
+      background: #060910;
+      border: 1px solid var(--border-dim);
+      border-radius: 10px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: auto;
+    }
+    .radar-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      padding: 6px 10px;
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: 6px;
+    }
+    .radar-name { color: var(--text-1); display: flex; align-items: center; gap: 8px; }
+    .radar-status { color: var(--emerald); font-size: 0.72rem; }
+
+    /* Audio Matrix Visualizer */
+    .audio-matrix {
+      background: #060910;
+      border: 1px solid var(--border-dim);
+      border-radius: 10px;
+      padding: 14px;
+      margin-top: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .audio-device-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+    }
+
+    /* Technical Spec Table */
+    .specs-section {
+      padding: 40px 0 90px;
+      border-top: 1px solid var(--border-dim);
+    }
+    .specs-table-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-dim);
+      border-radius: 14px;
+      overflow: hidden;
+      margin-top: 30px;
+    }
+    table.dist-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.9rem;
+    }
+    table.dist-table th, table.dist-table td {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border-dim);
+    }
+    table.dist-table th {
+      background: #090E17;
+      color: var(--text-2);
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    table.dist-table tr:last-child td { border-bottom: none; }
+    table.dist-table td.code-cell {
+      font-family: var(--font-mono);
+      font-size: 0.82rem;
+      color: var(--cyan);
     }
 
     /* Footer */
     footer {
-      border-top: 1px solid var(--card-border);
-      max-width: 1200px;
-      margin: 80px auto 0;
-      padding: 40px 20px;
+      border-top: 1px solid var(--border-dim);
+      background: #04060A;
+      padding: 60px 0 30px;
+    }
+    .footer-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 30px;
+      margin-bottom: 40px;
+    }
+    .footer-brand {
+      max-width: 400px;
+    }
+    .footer-brand p {
+      color: var(--text-3);
+      font-size: 0.88rem;
+      margin-top: 10px;
+      line-height: 1.6;
+    }
+    .footer-links-group {
+      display: flex;
+      gap: 40px;
+    }
+    .footer-col h5 {
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      color: var(--cyan);
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+    .footer-col ul {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .footer-col a {
+      color: var(--text-2);
+      text-decoration: none;
+      font-size: 0.86rem;
+      transition: color 0.15s;
+    }
+    .footer-col a:hover { color: var(--text-1); }
+    .footer-bottom {
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
+      padding-top: 24px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      color: var(--text-muted);
-      font-size: 0.9rem;
       flex-wrap: wrap;
       gap: 16px;
+      font-size: 0.82rem;
+      color: var(--text-3);
     }
-    footer a { color: var(--text-main); text-decoration: none; }
-    footer a:hover { color: var(--accent-cyan); }
+    .footer-bottom a { color: var(--cyan); text-decoration: none; }
 
-    @media (max-width: 860px) {
-      .col-8, .col-4, .col-6 { grid-column: span 12; }
+    /* Responsive */
+    @media (max-width: 960px) {
+      .win11-viewport { grid-template-columns: 1fr; }
+      .viewport-hud { border-top: 1px solid var(--border-dim); }
+      .col-7, .col-5, .col-4, .col-6 { grid-column: span 12; }
+      .hero-specs-row { grid-template-columns: repeat(2, 1fr); }
+      .nav-center { display: none; }
+    }
+    @media (max-width: 600px) {
+      .hero-specs-row { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 <body>
 
+  <!-- Top Real-Time System Diagnostic Ribbon -->
+  <div class="telemetry-ticker">
+    <div class="ticker-group">
+      <div class="ticker-item">
+        <span class="status-dot pulse"></span>
+        <span style="color: #F8FAFC;">WIN32 KERNEL ACTIVE</span>
+      </div>
+      <div class="ticker-item">
+        <span>OVERHEAD:</span> <strong style="color: var(--cyan);">&lt;0.2% CPU</strong>
+      </div>
+      <div class="ticker-item">
+        <span>WASAPI ENGINE:</span> <strong style="color: #F8FAFC;">LOW-LATENCY 48kHz EXCLUSIVE</strong>
+      </div>
+    </div>
+    <div class="ticker-group">
+      <div class="ticker-item">
+        <span>AIR-GAPPED SCOPE:</span> <strong style="color: var(--emerald);">0 BYTES OUTBOUND PING</strong>
+      </div>
+      <div class="ticker-item">
+        <span>LAN ENGINE:</span> <strong style="color: var(--text-2);">LOOPBACK &amp; PRIVATE SUBNET ONLY</strong>
+      </div>
+      <div class="ticker-item">
+        <span>BUILD:</span> <strong style="color: var(--cyan);">v1.0.1 (WIN-X64)</strong>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sticky Glass Navbar -->
   <nav>
     <a href="#" class="brand">
-      <span>🌒 Nokto</span>
-      <span class="brand-badge">v1.0.1</span>
+      <div class="brand-icon-box">
+        <!-- Crescent Vector -->
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" stroke-width="2.2">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" fill="url(#brandGrad)"/>
+          <defs>
+            <linearGradient id="brandGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#38BDF8"/>
+              <stop offset="100%" stop-color="#0284C7"/>
+            </linearGradient>
+          </defs>
+        </svg>
+      </div>
+      <span class="brand-name">Nokto</span>
+      <span class="version-chip">v1.0.1</span>
     </a>
-    <div class="nav-links">
-      <a href="https://github.com/jmorgadodev/Nokto" target="_blank">GitHub</a>
-      <a href="https://github.com/jmorgadodev/Nokto/blob/master/README.es.md" target="_blank">Docs (ES)</a>
-      <a href="https://github.com/jmorgadodev/Nokto/releases/latest" class="btn btn-secondary" style="padding: 6px 14px; font-size: 0.85rem;">Releases</a>
+
+    <ul class="nav-center">
+      <li><a href="#cockpit">Cabina</a></li>
+      <li><a href="#architecture">Arquitectura</a></li>
+      <li><a href="#terminal">PowerShell</a></li>
+      <li><a href="#matrix">Distribución</a></li>
+    </ul>
+
+    <div class="nav-actions">
+      <a href="https://github.com/jmorgadodev/Nokto" target="_blank" rel="noopener noreferrer" class="btn btn-secondary" style="padding: 6px 12px; font-size: 0.82rem;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+          <path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/>
+        </svg>
+        <span>GitHub</span>
+      </a>
+      <a href="https://github.com/jmorgadodev/Nokto/releases/latest/download/Nokto-Portable-x64.exe" class="btn btn-primary" style="padding: 6px 14px; font-size: 0.82rem;">
+        <span>⬇ Descargar Portable</span>
+      </a>
     </div>
   </nav>
 
-  <section class="hero">
-    <div class="tagline">⚡ Windows 11 Native · 100% Offline · 0% Telemetría</div>
-    <h1>Consola de Operaciones y Automatización Local</h1>
-    <p class="hero-desc">Telemetría de hardware pasiva, conmutación de audio WASAPI de baja latencia, rutinas concurrentes y control móvil LAN. Diseñada para estaciones de trabajo.</p>
+  <!-- Hero Section -->
+  <header class="hero">
+    <div class="container">
+      <div class="hero-eyebrow">
+        <span class="status-dot"></span>
+        <span>WINDOWS 11 / 10 X64 · ARQUITECTURA OFFLINE-FIRST · C# .NET 8</span>
+      </div>
 
-    <div class="cta-group">
-      <a href="https://github.com/jmorgadodev/Nokto/releases/latest/download/Nokto-Portable-x64.exe" class="btn btn-primary">
-        <span>⬇</span> Descargar Portable (x64)
-      </a>
-      <a href="https://github.com/jmorgadodev/Nokto/releases/latest/download/Nokto-Setup-x64.exe" class="btn btn-secondary">
-        <span>📦</span> Instalador Setup
-      </a>
-    </div>
+      <h1 class="hero-title">
+        <span class="grad">Consola de Operaciones y Telemetría</span><br>
+        <span class="accent">Nativa para Estaciones de Trabajo</span>
+      </h1>
 
-    <div>
-      <div class="cli-box">
-        <span style="color: #64748B;">PS &gt;</span>
-        <span id="cli-cmd">irm https://github.com/jmorgadodev/Nokto/releases/latest/download/Nokto-Portable-x64.exe -OutFile "$HOME\Downloads\Nokto.exe"; Start-Process "$HOME\Downloads\Nokto.exe"</span>
-        <button class="cli-copy" onclick="copyCli()">Copiar</button>
+      <p class="hero-lead">
+        Control de hardware continuo con consumo pasivo despreciable (&lt;0.2% CPU), conmutación de audio WASAPI a nivel de endpoint, orquestación de rutinas concurrentes y control remoto LAN por QR. <strong>100% offline, sin nube y sin telemetría externa.</strong>
+      </p>
+
+      <!-- Action Row -->
+      <div class="hero-ctas">
+        <a href="https://github.com/jmorgadodev/Nokto/releases/latest/download/Nokto-Portable-x64.exe" class="btn btn-primary cta-card-btn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          <div>
+            <div>Descargar Portable (x64)</div>
+            <span class="btn-sub">~65 MB · Single-File · Cero Registro</span>
+          </div>
+        </a>
+
+        <a href="https://github.com/jmorgadodev/Nokto/releases/latest/download/Nokto-Setup-x64.exe" class="btn btn-secondary cta-card-btn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <path d="M9 12h6"/>
+            <path d="M12 9v6"/>
+          </svg>
+          <div>
+            <div>Instalador Setup (x64)</div>
+            <span class="btn-sub">Asistente Windows Completo</span>
+          </div>
+        </a>
+      </div>
+
+      <!-- Quick PowerShell Dock -->
+      <div class="terminal-dock" id="terminal">
+        <div class="terminal-dock-bar">
+          <div class="terminal-tab-group">
+            <button type="button" class="terminal-tab active" id="tab-cli-portable" onclick="setCliMode('portable')">PowerShell Portable</button>
+            <button type="button" class="terminal-tab" id="tab-cli-setup" onclick="setCliMode('setup')">Instalador Silencioso</button>
+          </div>
+          <div style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-3);">
+            Win + X &gt; Terminal
+          </div>
+        </div>
+        <div class="terminal-cli-body">
+          <div class="cli-code" id="cli-display">
+            <span class="prompt">PS C:\&gt; </span><span id="cli-text">irm https://github.com/jmorgadodev/Nokto/releases/latest/download/Nokto-Portable-x64.exe -OutFile "$HOME\Downloads\Nokto.exe"; Start-Process "$HOME\Downloads\Nokto.exe"</span>
+          </div>
+          <button type="button" class="copy-pill" id="copy-btn" onclick="copyCliCommand()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+            </svg>
+            <span id="copy-text">Copiar</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Spec Indicators Row -->
+      <div class="hero-specs-row">
+        <div class="spec-item">
+          <div class="spec-item-label">Impacto de CPU</div>
+          <div class="spec-item-value">&lt; 0.2% Pasivo</div>
+        </div>
+        <div class="spec-item">
+          <div class="spec-item-label">Latencia Audio WASAPI</div>
+          <div class="spec-item-value">&lt; 3.2 ms Driver</div>
+        </div>
+        <div class="spec-item">
+          <div class="spec-item-label">Telemetría Externa</div>
+          <div class="spec-item-value" style="color: var(--emerald);">0 KB (Air-Gapped)</div>
+        </div>
+        <div class="spec-item">
+          <div class="spec-item-label">Arranque de Proceso</div>
+          <div class="spec-item-value">&lt; 0.4s Instantáneo</div>
+        </div>
       </div>
     </div>
+  </header>
 
-    <!-- Ventana estilo Windows 11 Fluent -->
-    <div class="window-frame">
-      <div class="window-titlebar">
-        <div class="window-title">
-          <span>🌒</span>
-          <span>Nokto — Consola de Operaciones y Control Local</span>
+  <!-- Windows 11 Native Cockpit Showcase -->
+  <section class="cockpit-stage" id="cockpit">
+    <div class="container">
+      <div class="win11-window">
+        <!-- Titlebar -->
+        <div class="win11-titlebar">
+          <div class="win11-title">
+            <div class="win11-title-icon">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" stroke-width="2.2">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" fill="#0284C7"/>
+              </svg>
+            </div>
+            <span>Nokto Operations Cockpit — [Hardware Telemetry • WASAPI Audio • LAN Remote Server]</span>
+            <span class="win11-title-badge">STABLE</span>
+          </div>
+          <div class="win11-controls">
+            <div class="win11-btn">─</div>
+            <div class="win11-btn">▢</div>
+            <div class="win11-btn btn-close">✕</div>
+          </div>
         </div>
-        <div class="win-controls">
-          <span>─</span>
-          <span>□</span>
-          <span>✕</span>
+
+        <!-- TabStrip -->
+        <div class="module-tabstrip">
+          <button type="button" class="mod-tab active" onclick="activateModule('01')">
+            <span>01</span> Telemetría de Cabina
+          </button>
+          <button type="button" class="mod-tab" onclick="activateModule('02')">
+            <span>02</span> Control Manual &amp; Timers
+          </button>
+          <button type="button" class="mod-tab" onclick="activateModule('03')">
+            <span>03</span> Pipeline de Rutinas
+          </button>
+          <button type="button" class="mod-tab" onclick="activateModule('04')">
+            <span>04</span> Conmutador Audio WASAPI
+          </button>
+          <button type="button" class="mod-tab" onclick="activateModule('05')">
+            <span>05</span> Control Móvil LAN &amp; QR
+          </button>
         </div>
-      </div>
-      <div class="window-body">
-        <img id="main-preview" src="https://raw.githubusercontent.com/jmorgadodev/Nokto/master/assets/screenshots/01_cockpit_telemetria.png" onerror="this.src='https://github.com/jmorgadodev/Nokto/raw/master/assets/screenshots/01_cockpit_telemetria.png'" alt="Nokto Dashboard">
+
+        <!-- Viewport Split -->
+        <div class="win11-viewport">
+          <!-- Main Screen Viewport -->
+          <div class="viewport-screen">
+            <img 
+              id="module-preview" 
+              src="assets/screenshots/01_cockpit_telemetria.png" 
+              onerror="this.src='https://raw.githubusercontent.com/jmorgadodev/Nokto/master/assets/screenshots/01_cockpit_telemetria.png'" 
+              alt="Módulo de Telemetría Nokto"
+            >
+            <div class="screen-expand-hint" id="module-hint">Vista en Vivo: 01_cockpit_telemetria.png</div>
+          </div>
+
+          <!-- Live Dynamic HUD Sidebar -->
+          <div class="viewport-hud">
+            <div class="hud-header">
+              <div class="hud-title" id="hud-name">Cabina de Telemetría Pasiva</div>
+              <div class="hud-subtitle" id="hud-sub">Sondeo multivariable cada 1000ms</div>
+            </div>
+
+            <div class="hud-metric-group" id="hud-metrics">
+              <div class="hud-metric">
+                <div class="hud-metric-top">
+                  <span class="hud-metric-name">CPU Kernel/User</span>
+                  <span class="hud-metric-val">12.4%</span>
+                </div>
+                <div class="hud-bar"><div class="hud-bar-fill" style="width: 12%;"></div></div>
+              </div>
+
+              <div class="hud-metric">
+                <div class="hud-metric-top">
+                  <span class="hud-metric-name">GPU 1 (NVIDIA RTX)</span>
+                  <span class="hud-metric-val">34.8%</span>
+                </div>
+                <div class="hud-bar"><div class="hud-bar-fill" style="width: 35%;"></div></div>
+              </div>
+
+              <div class="hud-metric">
+                <div class="hud-metric-top">
+                  <span class="hud-metric-name">GPU 2 (Intel Iris Xe)</span>
+                  <span class="hud-metric-val">8.2%</span>
+                </div>
+                <div class="hud-bar"><div class="hud-bar-fill" style="width: 8%;"></div></div>
+              </div>
+
+              <div class="hud-metric">
+                <div class="hud-metric-top">
+                  <span class="hud-metric-name">Audio Endpoint</span>
+                  <span class="hud-metric-val">WASAPI (48kHz)</span>
+                </div>
+                <div class="hud-bar"><div class="hud-bar-fill" style="width: 100%; background: #10B981;"></div></div>
+              </div>
+            </div>
+
+            <div class="hud-callout" id="hud-detail">
+              <strong>Telemetría No Invasiva:</strong> Lee contadores de rendimiento a nivel de kernel mediante Win32 P/Invoke sin generar ciclos de espera ni sobrecargar el planificador de Windows.
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </section>
 
-  <!-- Bento Grid de Capacidades -->
-  <section class="bento-section">
-    <div class="section-header">
-      <h2>Arquitectura y Capacidades</h2>
-      <p>Todo el control de tu sistema bajo un único proceso determinista y ultra-ligero.</p>
-    </div>
-
-    <div class="bento-grid">
-      <!-- Tarjeta 1: Visor interactivo por pestañas -->
-      <div class="bento-card col-8">
-        <h3 style="font-size: 1.25rem; margin-bottom: 12px;">Explorador de Módulos</h3>
-        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 16px;">Cambia de vista para inspeccionar cada módulo de la cabina antes de instalar.</p>
-        
-        <div class="tab-nav">
-          <button class="tab-btn active" onclick="switchTab(this, 'https://raw.githubusercontent.com/jmorgadodev/Nokto/master/assets/screenshots/01_cockpit_telemetria.png')">Dashboard</button>
-          <button class="tab-btn" onclick="switchTab(this, 'https://raw.githubusercontent.com/jmorgadodev/Nokto/master/assets/screenshots/02_control_manual.png')">Control Manual</button>
-          <button class="tab-btn" onclick="switchTab(this, 'https://raw.githubusercontent.com/jmorgadodev/Nokto/master/assets/screenshots/03_rutinas_pipeline.png')">Rutinas</button>
-          <button class="tab-btn" onclick="switchTab(this, 'https://raw.githubusercontent.com/jmorgadodev/Nokto/master/assets/screenshots/07_control_remoto_evidencias.png')">Ajustes & QR</button>
-        </div>
-
-        <div class="tab-preview">
-          <img id="tab-img" src="https://raw.githubusercontent.com/jmorgadodev/Nokto/master/assets/screenshots/01_cockpit_telemetria.png" alt="Módulo Nokto">
-        </div>
+  <!-- Bento Grid 2.0: Deep Engineering Capabilities -->
+  <section class="bento-section" id="architecture">
+    <div class="container">
+      <div class="section-head">
+        <div class="section-tag">ARQUITECTURA DE SISTEMAS</div>
+        <h2 class="section-title">Diseñado para Desarrolladores y Power Users</h2>
+        <p class="section-desc">
+          Sin componentes inflados. Sin servicios de telemetría de fondo. Cada módulo cumple una tarea crítica con la máxima velocidad y discreción.
+        </p>
       </div>
 
-      <!-- Tarjeta 2: Privacidad 100% Offline -->
-      <div class="bento-card col-4" style="display: flex; flex-direction: column; justify-content: space-between;">
-        <div>
-          <div style="font-size: 1.8rem; margin-bottom: 14px;">🔒</div>
-          <h3 style="font-size: 1.2rem; margin-bottom: 8px;">100% Offline por Diseño</h3>
-          <p style="color: var(--text-muted); font-size: 0.9rem;">
-            Cero llamadas a analítica o servicios cloud. Tu hardware, métricas y capturas se procesan estrictamente en tu memoria local y tu red Wi-Fi privada.
+      <div class="bento-grid">
+        <!-- Bento 1: AI Dev Radar & Passive Monitoring (Col 7) -->
+        <article class="bento-cell col-7">
+          <div class="bento-icon-badge">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="4" y="4" width="16" height="16" rx="2"/>
+              <rect x="9" y="9" width="6" height="6"/>
+              <line x1="9" y1="1" x2="9" y2="4"/>
+              <line x1="15" y1="1" x2="15" y2="4"/>
+              <line x1="9" y1="20" x2="9" y2="23"/>
+              <line x1="15" y1="20" x2="15" y2="23"/>
+              <line x1="20" y1="9" x2="23" y2="9"/>
+              <line x1="20" y1="15" x2="23" y2="15"/>
+              <line x1="1" y1="9" x2="4" y2="9"/>
+              <line x1="1" y1="15" x2="4" y2="15"/>
+            </svg>
+          </div>
+          <h3 class="bento-title">AI Dev Radar &amp; Telemetría Pasiva en Disco</h3>
+          <p class="bento-text">
+            Detecta automáticamente los entornos de desarrollo locales en tu equipo (Codex Desktop, Antigravity IDE, Claude Code, OpenCode) y lee las cuotas de tokens directamente desde sus estructuras locales en disco, <strong>sin almacenar contraseñas ni enviar telemetría a la nube</strong>.
+          </p>
+
+          <div class="radar-list">
+            <div class="radar-row">
+              <span class="radar-name"><span class="status-dot"></span> Codex Desktop (~/.codex)</span>
+              <span class="radar-status">DETECTADO · LOCAL ONLY</span>
+            </div>
+            <div class="radar-row">
+              <span class="radar-name"><span class="status-dot"></span> Antigravity IDE (~/.gemini)</span>
+              <span class="radar-status">DETECTADO · 14.2k TOKENS</span>
+            </div>
+            <div class="radar-row">
+              <span class="radar-name"><span class="status-dot"></span> Claude Code &amp; OpenCode</span>
+              <span class="radar-status">STANDBY PASIVO</span>
+            </div>
+          </div>
+        </article>
+
+        <!-- Bento 2: Audio WASAPI & Hotkeys (Col 5) -->
+        <article class="bento-cell col-5">
+          <div class="bento-icon-badge" style="background: rgba(14, 165, 233, 0.12); color: #0EA5E9;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>
+            </svg>
+          </div>
+          <h3 class="bento-title">Enrutador WASAPI &amp; Atajos de Silencio</h3>
+          <p class="bento-text">
+            Conmuta instantáneamente entre auriculares y altavoces mediante llamadas nativas de Windows CoreAudio sin capas de emulación virtual ni delay.
+          </p>
+
+          <div class="audio-matrix">
+            <div class="audio-device-row">
+              <span style="color: var(--text-2);">Mute Micrófono:</span>
+              <span><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>M</kbd></span>
+            </div>
+            <div class="audio-device-row">
+              <span style="color: var(--text-2);">Mute Audio Salida:</span>
+              <span><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd></span>
+            </div>
+            <div class="audio-device-row">
+              <span style="color: var(--text-2);">Latencia de Buffer:</span>
+              <span style="color: var(--emerald); font-weight: 600;">~3.2 ms (WASAPI)</span>
+            </div>
+          </div>
+        </article>
+
+        <!-- Bento 3: Air-Gapped Privacy Guarantee (Col 4) -->
+        <article class="bento-cell col-4">
+          <div class="bento-icon-badge" style="background: rgba(16, 185, 129, 0.12); color: var(--emerald);">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            </svg>
+          </div>
+          <h3 class="bento-title">100% Offline &amp; Soberanía de Datos</h3>
+          <p class="bento-text">
+            Cero conexiones hacia servidores remotos. Toda la captura de métricas, almacenamiento de configuraciones y perfiles se procesan exclusivamente en tu memoria local y tu disco duro.
+          </p>
+          <div style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--emerald); margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border-dim);">
+            ✓ 0 KB Salientes · Sin SDKs de Analítica
+          </div>
+        </article>
+
+        <!-- Bento 4: Mobile LAN Remote via QR (Col 4) -->
+        <article class="bento-cell col-4">
+          <div class="bento-icon-badge" style="background: rgba(168, 85, 247, 0.12); color: #C084FC;">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="5" y="2" width="14" height="20" rx="2" ry="2"/>
+              <line x1="12" y1="18" x2="12.01" y2="18"/>
+            </svg>
+          </div>
+          <h3 class="bento-title">Control Remoto LAN con QR</h3>
+          <p class="bento-text">
+            Servidor HTTP local integrado. Escanea el código QR nativo desde tu smartphone en la misma red Wi-Fi: supervisa el avance de renders pesados mediante capturas en vivo y suspende el equipo a distancia sin instalar apps móviles.
+          </p>
+          <div style="font-family: var(--font-mono); font-size: 0.75rem; color: #C084FC; margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border-dim);">
+            ✓ Cero Internet Requerido · Ámbito LAN
+          </div>
+        </article>
+
+        <!-- Bento 5: Concurrency & Grace Overlay (Col 4) -->
+        <article class="bento-cell col-4">
+          <div class="bento-icon-badge" style="background: rgba(245, 158, 11, 0.12); color: var(--amber);">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <polyline points="12 6 12 12 16 14"/>
+            </svg>
+          </div>
+          <h3 class="bento-title">Rutinas &amp; Grace Overlay</h3>
+          <p class="bento-text">
+            Automatiza secuencias por inactividad, fin de renders o cronogramas. Antes de cualquier apagado o suspensión, la ventana emergente de gracia te permite posponer (+10m) o abortar.
+          </p>
+          <div style="font-family: var(--font-mono); font-size: 0.75rem; color: var(--amber); margin-top: auto; padding-top: 12px; border-top: 1px solid var(--border-dim);">
+            Tecla de Pánico: <kbd>Pause / Break</kbd> Aborta Todo
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- Technical Specs Matrix -->
+  <section class="specs-section" id="matrix">
+    <div class="container">
+      <div class="section-head">
+        <div class="section-tag">MATRIZ DE DISTRIBUCIÓN</div>
+        <h2 class="section-title">Especificaciones de Compilación y Entrega</h2>
+        <p class="section-desc">Elige entre la portabilidad absoluta o la integración estándar con el sistema operativo Windows.</p>
+      </div>
+
+      <div class="specs-table-card">
+        <table class="dist-table">
+          <thead>
+            <tr>
+              <th>Parámetro Técnico</th>
+              <th>Edición Portable (Recomendada)</th>
+              <th>Instalador Oficial (Setup)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Arquitectura</strong></td>
+              <td class="code-cell">Windows 11 / 10 (x64)</td>
+              <td class="code-cell">Windows 11 / 10 (x64)</td>
+            </tr>
+            <tr>
+              <td><strong>Empaquetado</strong></td>
+              <td>Ejecutable único autocontenido (~65 MB)</td>
+              <td>Instalador Inno Setup estándar (~65 MB)</td>
+            </tr>
+            <tr>
+              <td><strong>Runtime .NET</strong></td>
+              <td class="code-cell">.NET 8.0 Embebido (Cero dependencias)</td>
+              <td class="code-cell">.NET 8.0 Embebido (Cero dependencias)</td>
+            </tr>
+            <tr>
+              <td><strong>Modificaciones en Registro</strong></td>
+              <td style="color: var(--emerald); font-weight: 600;">0 (No escribe en el Registro)</td>
+              <td>Accesos directos en Menú Inicio</td>
+            </tr>
+            <tr>
+              <td><strong>Ideal para</strong></td>
+              <td>Memorias USB, pruebas aisladas, workstations</td>
+              <td>Instalación fija como app principal</td>
+            </tr>
+            <tr>
+              <td><strong>Descarga Directa</strong></td>
+              <td>
+                <a href="https://github.com/jmorgadodev/Nokto/releases/latest/download/Nokto-Portable-x64.exe" class="btn btn-primary" style="padding: 6px 14px; font-size: 0.8rem;">
+                  ⬇ Nokto-Portable-x64.exe
+                </a>
+              </td>
+              <td>
+                <a href="https://github.com/jmorgadodev/Nokto/releases/latest/download/Nokto-Setup-x64.exe" class="btn btn-secondary" style="padding: 6px 14px; font-size: 0.8rem;">
+                  📦 Nokto-Setup-x64.exe
+                </a>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- Engineering Footer -->
+  <footer>
+    <div class="container">
+      <div class="footer-top">
+        <div class="footer-brand">
+          <div class="brand" style="margin-bottom: 8px;">
+            <div class="brand-icon-box" style="width: 28px; height: 28px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#38BDF8" stroke-width="2.2">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" fill="#0284C7"/>
+              </svg>
+            </div>
+            <span class="brand-name" style="font-size: 1.1rem;">Nokto</span>
+            <span class="version-chip" style="font-size: 0.68rem;">v1.0.1</span>
+          </div>
+          <p>
+            Consola de operaciones de escritorio local, telemetría pasiva de hardware y orquestador de rutinas concurrentes para Windows. Construido con arquitectura offline-first y respeto estricto a la privacidad de datos.
           </p>
         </div>
-        <div style="padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.06); font-family: 'Geist Mono'; font-size: 0.8rem; color: var(--accent-cyan);">
-          LAN Scoping: 192.168.x.x
+
+        <div class="footer-links-group">
+          <div class="footer-col">
+            <h5>Navegación</h5>
+            <ul>
+              <li><a href="#cockpit">Cabina en Vivo</a></li>
+              <li><a href="#architecture">Arquitectura</a></li>
+              <li><a href="#terminal">CLI PowerShell</a></li>
+              <li><a href="#matrix">Matriz de Entrega</a></li>
+            </ul>
+          </div>
+          <div class="footer-col">
+            <h5>Recursos</h5>
+            <ul>
+              <li><a href="https://github.com/jmorgadodev/Nokto" target="_blank" rel="noopener noreferrer">Repositorio GitHub</a></li>
+              <li><a href="https://github.com/jmorgadodev/Nokto/releases" target="_blank" rel="noopener noreferrer">Releases &amp; Changelog</a></li>
+              <li><a href="https://github.com/jmorgadodev/Nokto/blob/master/README.es.md" target="_blank" rel="noopener noreferrer">Documentación (ES)</a></li>
+              <li><a href="https://github.com/jmorgadodev/Nokto/blob/master/LICENSE" target="_blank" rel="noopener noreferrer">Licencia MIT</a></li>
+            </ul>
+          </div>
+          <div class="footer-col">
+            <h5>Autor</h5>
+            <ul>
+              <li><a href="https://www.linkedin.com/in/jorge-morgado/" target="_blank" rel="noopener noreferrer" style="color: var(--cyan);">Jorge Morgado (LinkedIn)</a></li>
+              <li><a href="https://github.com/jmorgadodev" target="_blank" rel="noopener noreferrer">GitHub (@jmorgadodev)</a></li>
+            </ul>
+          </div>
         </div>
       </div>
 
-      <!-- Tarjeta 3: Audio WASAPI y Atajos -->
-      <div class="bento-card col-6">
-        <div style="font-size: 1.8rem; margin-bottom: 14px;">🔊</div>
-        <h3 style="font-size: 1.2rem; margin-bottom: 8px;">Audio WASAPI & Atajos de Pánico</h3>
-        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 16px;">
-          Conmutación de endpoints de audio a nivel de driver con atajos de teclado globales registrados en el sistema operativo:
-        </p>
-        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-          <div><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>M</kbd> <span style="font-size: 0.85rem; color: var(--text-muted);">Mute Micrófono</span></div>
-          <div><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>S</kbd> <span style="font-size: 0.85rem; color: var(--text-muted);">Mute Salida</span></div>
+      <div class="footer-bottom">
+        <div>
+          <span>&copy; 2026 Nokto. Diseñado y desarrollado por </span>
+          <a href="https://www.linkedin.com/in/jorge-morgado/" target="_blank" rel="noopener noreferrer">Jorge Morgado</a>.
+          <span> Código abierto bajo Licencia MIT.</span>
+        </div>
+        <div style="font-family: var(--font-mono); font-size: 0.75rem;">
+          Windows 11 / 10 (x64) · C# .NET 8 · 100% Offline
         </div>
       </div>
-
-      <!-- Tarjeta 4: Control Móvil con Snapshot -->
-      <div class="bento-card col-6">
-        <div style="font-size: 1.8rem; margin-bottom: 14px;">📱</div>
-        <h3 style="font-size: 1.2rem; margin-bottom: 8px;">Control Remoto Móvil LAN</h3>
-        <p style="color: var(--text-muted); font-size: 0.9rem;">
-          Escanea el código QR nativo con tu teléfono en la misma red Wi-Fi. Sin instalar apps externas: supervisa renders pesados con captura de pantalla en vivo y controla el volumen desde el móvil.
-        </p>
-      </div>
-    </div>
-  </section>
-
-  <footer>
-    <div>
-      <strong>Nokto 🌒</strong> — Desarrollado por <a href="https://www.linkedin.com/in/jorge-morgado/" target="_blank">Jorge Morgado</a>
-    </div>
-    <div>
-      Licencia MIT · <a href="https://github.com/jmorgadodev/Nokto" target="_blank">Código fuente en GitHub</a>
     </div>
   </footer>
 
+  <!-- Interactive Logic for Tab Switching, HUD updates and CLI copy -->
   <script>
-    function copyCli() {
-      const cmd = document.getElementById('cli-cmd').innerText;
-      navigator.clipboard.writeText(cmd).then(() => {
-        const btn = document.querySelector('.cli-copy');
-        btn.innerText = 'Copiado! ✓';
-        btn.style.background = 'rgba(56, 189, 248, 0.4)';
+    const cliSnippets = {
+      portable: 'irm https://github.com/jmorgadodev/Nokto/releases/latest/download/Nokto-Portable-x64.exe -OutFile "$HOME\\Downloads\\Nokto.exe"; Start-Process "$HOME\\Downloads\\Nokto.exe"',
+      setup: '$setup = "$env:TEMP\\Nokto-Setup.exe"; irm https://github.com/jmorgadodev/Nokto/releases/latest/download/Nokto-Setup-x64.exe -OutFile $setup; Start-Process $setup -ArgumentList "/VERYSILENT /NORESTART" -Wait; Remove-Item $setup'
+    };
+
+    let activeCli = 'portable';
+
+    function setCliMode(mode) {
+      activeCli = mode;
+      document.getElementById('tab-cli-portable').classList.toggle('active', mode === 'portable');
+      document.getElementById('tab-cli-setup').classList.toggle('active', mode === 'setup');
+      document.getElementById('cli-text').textContent = cliSnippets[mode];
+    }
+
+    function copyCliCommand() {
+      const text = cliSnippets[activeCli];
+      navigator.clipboard.writeText(text).then(() => {
+        const copyText = document.getElementById('copy-text');
+        const copyBtn = document.getElementById('copy-btn');
+        copyText.textContent = '¡Copiado! ✓';
+        copyBtn.style.background = '#10B981';
+        copyBtn.style.color = '#040711';
         setTimeout(() => {
-          btn.innerText = 'Copiar';
-          btn.style.background = 'rgba(255, 255, 255, 0.08)';
-        }, 2000);
+          copyText.textContent = 'Copiar';
+          copyBtn.style.background = '';
+          copyBtn.style.color = '';
+        }, 2200);
       });
     }
 
-    function switchTab(btn, imgSrc) {
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      const img = document.getElementById('tab-img');
-      img.style.opacity = '0';
+    // Module definitions for the Windows 11 Interactive Cockpit
+    const modules = {
+      '01': {
+        img: 'assets/screenshots/01_cockpit_telemetria.png',
+        fallback: 'https://raw.githubusercontent.com/jmorgadodev/Nokto/master/assets/screenshots/01_cockpit_telemetria.png',
+        name: 'Cabina de Telemetría Pasiva',
+        sub: 'Sondeo multivariable cada 1000ms',
+        detail: '<strong>Telemetría No Invasiva:</strong> Lee contadores de rendimiento a nivel de kernel mediante Win32 P/Invoke sin generar ciclos de espera ni sobrecargar el planificador de Windows.',
+        metrics: [
+          { name: 'CPU Kernel/User', val: '12.4%', pct: 12 },
+          { name: 'GPU 1 (NVIDIA RTX)', val: '34.8%', pct: 35 },
+          { name: 'GPU 2 (Intel Iris Xe)', val: '8.2%', pct: 8 },
+          { name: 'Audio Endpoint', val: 'WASAPI (48kHz)', pct: 100, color: '#10B981' }
+        ]
+      },
+      '02': {
+        img: 'assets/screenshots/02_control_manual.png',
+        fallback: 'https://raw.githubusercontent.com/jmorgadodev/Nokto/master/assets/screenshots/02_control_manual.png',
+        name: 'Control Manual & Disparadores',
+        sub: 'Temporizadores regresivos multivariable',
+        detail: '<strong>Ejecución Concurrente:</strong> Cada temporizador opera en su propia cápsula independiente con cancelación individual sin congelar la interfaz.',
+        metrics: [
+          { name: 'Disparador Cuenta Regresiva', val: '45m 00s', pct: 75 },
+          { name: 'Detección Inactividad Mouse', val: 'Activo (15m)', pct: 40 },
+          { name: 'Ventana Grace Overlay', val: 'Alerta 30s', pct: 100, color: '#F59E0B' },
+          { name: 'Acción Destino', val: 'Hibernación Segura', pct: 100 }
+        ]
+      },
+      '03': {
+        img: 'assets/screenshots/03_rutinas_pipeline.png',
+        fallback: 'https://raw.githubusercontent.com/jmorgadodev/Nokto/master/assets/screenshots/03_rutinas_pipeline.png',
+        name: 'Pipeline Secuencial de Rutinas',
+        sub: 'Encadenamiento determinista de bloques',
+        detail: '<strong>Automatización sin Cierres Forzados:</strong> Encadena lanzamientos de binarios, ajustes de audio, apagado de pantallas y pausas con atajos visuales.',
+        metrics: [
+          { name: 'Bloque 1: Esperar Proceso', val: 'blender.exe', pct: 100 },
+          { name: 'Bloque 2: Nivel de Audio', val: '-20 dB', pct: 60 },
+          { name: 'Bloque 3: Evidencia Forense', val: 'Captura Guardada', pct: 100, color: '#10B981' },
+          { name: 'Bloque 4: Apagar Pantalla', val: 'Modo Standby', pct: 100 }
+        ]
+      },
+      '04': {
+        img: 'assets/screenshots/06_ajustes_audio_herramientas_ia.png',
+        fallback: 'https://raw.githubusercontent.com/jmorgadodev/Nokto/master/assets/screenshots/06_ajustes_audio_herramientas_ia.png',
+        name: 'Audio WASAPI & Atajos Globales',
+        sub: 'Enrutamiento a nivel de hardware',
+        detail: '<strong>CoreAudio Inmediato:</strong> Sin cables virtuales. Cambia el dispositivo predeterminado de Windows en 0.2ms y controla el volumen de forma global.',
+        metrics: [
+          { name: 'Endpoint Activo', val: 'Auriculares DAC', pct: 100, color: '#0EA5E9' },
+          { name: 'Atajo Micrófono', val: 'Ctrl+Shift+M', pct: 100 },
+          { name: 'Atajo Audio Maestro', val: 'Ctrl+Shift+S', pct: 100 },
+          { name: 'Latencia Reportada', val: '3.2 ms', pct: 15 }
+        ]
+      },
+      '05': {
+        img: 'assets/screenshots/07_control_remoto_evidencias.png',
+        fallback: 'https://raw.githubusercontent.com/jmorgadodev/Nokto/master/assets/screenshots/07_control_remoto_evidencias.png',
+        name: 'Control Móvil LAN & Evidencias',
+        sub: 'Servidor local HTTP (192.168.x.x:4884)',
+        detail: '<strong>Visor de Renders Remoto:</strong> Escanea el código QR nativo con tu móvil. Recibe snapshots del escritorio en vivo por streaming Wi-Fi local sin apps.',
+        metrics: [
+          { name: 'Socket HTTP Local', val: 'Puerto 4884', pct: 100, color: '#C084FC' },
+          { name: 'Streaming Capturas', val: '1 FPS Snapshot', pct: 50 },
+          { name: 'Emparejamiento QR', val: 'Sin Contraseña', pct: 100 },
+          { name: 'Galería de Auditoría', val: 'Guardado Local', pct: 100 }
+        ]
+      }
+    };
+
+    function activateModule(modKey) {
+      const mod = modules[modKey];
+      if (!mod) return;
+
+      // Update tabs
+      document.querySelectorAll('.mod-tab').forEach((tab, idx) => {
+        const keys = ['01', '02', '03', '04', '05'];
+        tab.classList.toggle('active', keys[idx] === modKey);
+      });
+
+      // Update image with smooth fade
+      const preview = document.getElementById('module-preview');
+      preview.style.opacity = '0';
+      preview.style.transform = 'scale(0.99)';
+
       setTimeout(() => {
-        img.src = imgSrc;
-        img.style.opacity = '1';
-      }, 150);
+        preview.src = mod.img;
+        preview.onerror = () => { preview.src = mod.fallback; };
+        preview.style.opacity = '1';
+        preview.style.transform = 'scale(1)';
+        document.getElementById('module-hint').textContent = 'Vista en Vivo: ' + mod.img;
+      }, 140);
+
+      // Update HUD info
+      document.getElementById('hud-name').textContent = mod.name;
+      document.getElementById('hud-sub').textContent = mod.sub;
+      document.getElementById('hud-detail').innerHTML = mod.detail;
+
+      // Update HUD metrics
+      const container = document.getElementById('hud-metrics');
+      container.innerHTML = mod.metrics.map(m => `
+        <div class="hud-metric">
+          <div class="hud-metric-top">
+            <span class="hud-metric-name">${m.name}</span>
+            <span class="hud-metric-val">${m.val}</span>
+          </div>
+          <div class="hud-bar"><div class="hud-bar-fill" style="width: ${m.pct}%; ${m.color ? `background: ${m.color};` : ''}"></div></div>
+        </div>
+      `).join('');
     }
   </script>
 </body>
