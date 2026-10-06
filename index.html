@@ -13,7 +13,7 @@
   <link rel="icon" type="image/svg+xml" href="assets/logo.svg">
   <link rel="alternate icon" type="image/png" href="assets/logo.png">
   
-  <!-- Tipografía de Alto Rendimiento -->
+  <!-- Tipografía: Plus Jakarta Sans y JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -22,12 +22,12 @@
     :root {
       --bg: #0B0F19;
       --bg-card: #121826;
-      --bg-card-hover: #182236;
+      --bg-card-hover: #172134;
       --border: rgba(255, 255, 255, 0.08);
       --border-focus: rgba(0, 210, 255, 0.45);
       --cyan: #00D2FF;
       --cyan-soft: rgba(0, 210, 255, 0.12);
-      --cyan-glow: rgba(0, 210, 255, 0.28);
+      --cyan-glow: rgba(0, 210, 255, 0.25);
       --blue: #0A66C2;
       --green: #10B981;
       --amber: #F59E0B;
@@ -37,21 +37,27 @@
       --font-main: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
       --font-code: 'JetBrains Mono', Consolas, monospace;
       
-      /* Variables del marco de la ventana */
-      --win-bg: #0C111D;
-      --win-header-bg: #080D17;
-      --win-border: rgba(255, 255, 255, 0.12);
-      --win-tab-active-bg: #0C111D;
+      /* Variables del visor Windows 11 Fluent */
+      --win-bg: #0B101D;
+      --win-sidebar-bg: #080D18;
+      --win-header-bg: #070B14;
+      --win-border: rgba(255, 255, 255, 0.11);
+      --win-sidebar-item-active: rgba(0, 210, 255, 0.14);
+      --win-sidebar-item-border: #00D2FF;
       --win-text: #F1F5F9;
+      --win-caption-bg: #090E1A;
     }
 
     /* Estado de tema claro para el marco de demostración */
     .theme-light-preview {
       --win-bg: #F8FAFC;
+      --win-sidebar-bg: #EEF2F6;
       --win-header-bg: #E2E8F0;
-      --win-border: rgba(0, 0, 0, 0.15);
-      --win-tab-active-bg: #F8FAFC;
+      --win-border: rgba(0, 0, 0, 0.12);
+      --win-sidebar-item-active: rgba(10, 102, 194, 0.12);
+      --win-sidebar-item-border: #0A66C2;
       --win-text: #0F172A;
+      --win-caption-bg: #F1F5F9;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -76,7 +82,7 @@
       padding: 0 24px;
     }
 
-    /* Navegación */
+    /* Navegación Principal */
     nav {
       position: sticky;
       top: 0;
@@ -100,41 +106,43 @@
       color: var(--text);
     }
     .brand-logo-svg {
-      width: 36px;
-      height: 36px;
-      display: block;
-      filter: drop-shadow(0 0 10px var(--cyan-glow));
+      width: 34px;
+      height: 34px;
+      flex-shrink: 0;
+      filter: drop-shadow(0 0 10px rgba(0, 210, 255, 0.45));
     }
     .brand-title {
-      font-size: 1.3rem;
+      font-size: 1.25rem;
       font-weight: 800;
       letter-spacing: -0.02em;
     }
     .brand-badge {
       font-size: 0.72rem;
       font-weight: 700;
-      font-family: var(--font-code);
+      padding: 3px 8px;
+      border-radius: 20px;
       background: var(--cyan-soft);
+      border: 1px solid rgba(0, 210, 255, 0.35);
       color: var(--cyan);
-      border: 1px solid rgba(0, 210, 255, 0.3);
-      padding: 2px 8px;
-      border-radius: 999px;
+      font-family: var(--font-code);
     }
 
     .nav-links {
       display: flex;
-      gap: 26px;
-      list-style: none;
       align-items: center;
+      gap: 28px;
+      list-style: none;
     }
     .nav-links a {
       color: var(--text-muted);
       text-decoration: none;
       font-size: 0.92rem;
       font-weight: 500;
-      transition: color 0.15s;
+      transition: color 0.15s ease;
     }
-    .nav-links a:hover { color: #FFF; }
+    .nav-links a:hover {
+      color: var(--text);
+    }
 
     /* Botones */
     .btn {
@@ -142,54 +150,51 @@
       align-items: center;
       justify-content: center;
       gap: 10px;
-      font-family: var(--font-main);
-      font-size: 0.95rem;
+      padding: 10px 22px;
+      border-radius: 8px;
+      font-size: 0.92rem;
       font-weight: 600;
-      padding: 12px 24px;
-      border-radius: 10px;
       text-decoration: none;
-      cursor: pointer;
       transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-      border: 1px solid transparent;
-      line-height: 1.2;
+      cursor: pointer;
+      border: none;
+      white-space: nowrap;
     }
     .btn-primary {
       background: linear-gradient(135deg, #00D2FF 0%, #0A66C2 100%);
       color: #060911;
       font-weight: 700;
-      box-shadow: 0 4px 20px rgba(0, 210, 255, 0.35);
-      border-color: rgba(255, 255, 255, 0.2);
+      box-shadow: 0 4px 20px rgba(0, 210, 255, 0.3);
     }
     .btn-primary:hover {
-      box-shadow: 0 6px 28px rgba(0, 210, 255, 0.55);
-      transform: translateY(-2px);
-      color: #000;
+      box-shadow: 0 6px 26px rgba(0, 210, 255, 0.5);
+      transform: translateY(-1px);
+      filter: brightness(1.08);
     }
     .btn-secondary {
       background: rgba(255, 255, 255, 0.05);
       color: var(--text);
-      border-color: var(--border);
+      border: 1px solid var(--border);
     }
     .btn-secondary:hover {
       background: rgba(255, 255, 255, 0.09);
-      border-color: var(--border-focus);
-      color: var(--cyan);
-      transform: translateY(-2px);
+      border-color: rgba(255, 255, 255, 0.2);
+      transform: translateY(-1px);
     }
 
-    /* Hero */
+    /* Hero Section */
     .hero {
-      padding: 65px 0 40px;
+      padding: 68px 0 30px;
       text-align: center;
     }
     .badge-pill {
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      padding: 6px 16px;
-      border-radius: 999px;
-      background: rgba(22, 24, 29, 0.85);
-      border: 1px solid rgba(0, 210, 255, 0.3);
+      padding: 6px 14px;
+      border-radius: 30px;
+      background: rgba(0, 210, 255, 0.08);
+      border: 1px solid rgba(0, 210, 255, 0.25);
       font-size: 0.82rem;
       font-weight: 600;
       color: var(--cyan);
@@ -251,7 +256,7 @@
       display: inline-flex;
       align-items: center;
       gap: 6px;
-      padding: 4px 10px;
+      padding: 5px 12px;
       background: rgba(255, 255, 255, 0.04);
       border: 1px solid var(--border);
       border-radius: 6px;
@@ -270,27 +275,35 @@
       flex-wrap: wrap;
       font-size: 0.85rem;
       color: var(--text-muted);
-      margin-bottom: 40px;
+      margin-bottom: 44px;
     }
     .trust-item {
       display: flex;
       align-items: center;
       gap: 6px;
     }
+    .trust-icon {
+      color: var(--cyan);
+      display: flex;
+      align-items: center;
+    }
 
-    /* Marco Windows 11 con Selector Día/Noche */
+    /* ==========================================================================
+       MARCO WINDOWS 11 FLUENT (OPCIONES A LA IZQUIERDA - SIN BARRAS DE SCROLL)
+       ========================================================================== */
     .app-preview-wrapper {
-      max-width: 1040px;
-      margin: 0 auto 70px;
+      max-width: 1120px;
+      margin: 0 auto 80px;
       border-radius: 14px;
       background: var(--win-bg);
       border: 1px solid var(--win-border);
       box-shadow: 0 25px 70px -15px rgba(0, 0, 0, 0.9), 0 0 35px rgba(0, 210, 255, 0.08);
       overflow: hidden;
       transition: all 0.3s ease;
+      text-align: left;
     }
     .win-titlebar {
-      height: 46px;
+      height: 48px;
       background: var(--win-header-bg);
       border-bottom: 1px solid var(--win-border);
       display: flex;
@@ -305,117 +318,188 @@
       gap: 10px;
       font-size: 0.82rem;
       color: var(--win-text);
-      font-weight: 500;
+      font-weight: 600;
     }
     .win-title-right {
       display: flex;
       align-items: center;
       gap: 16px;
     }
+    
+    /* Conmutador Modo Día / Modo Noche */
     .theme-mode-switcher {
       display: flex;
       align-items: center;
-      background: rgba(0, 0, 0, 0.25);
+      background: rgba(0, 0, 0, 0.35);
       border: 1px solid var(--border);
       border-radius: 20px;
-      padding: 2px 4px;
+      padding: 3px;
     }
     .theme-mode-btn {
       background: none;
       border: none;
       color: var(--text-muted);
-      font-size: 0.75rem;
+      font-size: 0.76rem;
       font-weight: 600;
-      padding: 3px 10px;
-      border-radius: 14px;
+      padding: 4px 12px;
+      border-radius: 16px;
       cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 5px;
-      transition: all 0.2s;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+    .theme-mode-btn svg {
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
     }
     .theme-mode-btn.active {
       background: var(--cyan);
       color: #060911;
       font-weight: 700;
+      box-shadow: 0 1px 4px rgba(0, 210, 255, 0.4);
     }
+    .theme-mode-btn:not(.active):hover {
+      color: var(--text);
+    }
+
     .win-controls {
       display: flex;
       gap: 14px;
       color: var(--text-dim);
-      font-size: 0.8rem;
+      font-size: 0.85rem;
     }
 
-    /* Pestañas de Vista Previa */
-    .preview-tabs {
-      display: flex;
-      background: var(--win-header-bg);
-      border-bottom: 1px solid var(--win-border);
-      overflow-x: auto;
-      padding: 6px 12px 0;
-      gap: 4px;
+    /* Grid Dividido: Opciones a la Izquierda (290px) + Pantalla a la Derecha */
+    .win-workspace-grid {
+      display: grid;
+      grid-template-columns: 290px 1fr;
+      min-height: 560px;
+      background: var(--win-bg);
     }
-    .p-tab {
+
+    /* Sidebar Izquierda (Visible completa, cero barras de desplazamiento) */
+    .win-sidebar {
+      background: var(--win-sidebar-bg);
+      border-right: 1px solid var(--win-border);
+      padding: 16px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      user-select: none;
+    }
+    .sidebar-heading {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--text-dim);
+      padding: 4px 12px 8px;
+    }
+    .sidebar-btn {
       background: transparent;
       border: 1px solid transparent;
-      border-bottom: none;
-      color: var(--text-dim);
-      font-size: 0.85rem;
-      font-weight: 600;
-      padding: 8px 16px;
-      border-radius: 8px 8px 0 0;
+      border-left: 3px solid transparent;
+      color: var(--win-text);
+      padding: 12px 14px;
+      border-radius: 8px;
       cursor: pointer;
       display: flex;
-      align-items: center;
-      gap: 8px;
-      transition: all 0.2s;
-      white-space: nowrap;
+      flex-direction: column;
+      align-items: flex-start;
+      text-align: left;
+      gap: 3px;
+      transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+      width: 100%;
     }
-    .p-tab:hover {
-      color: var(--win-text);
+    .sidebar-btn:hover {
       background: rgba(255, 255, 255, 0.04);
+      border-color: rgba(255, 255, 255, 0.08);
     }
-    .p-tab.active {
+    .sidebar-btn.active {
+      background: var(--win-sidebar-item-active);
+      border-left-color: var(--win-sidebar-item-border);
+      border-color: rgba(0, 210, 255, 0.25);
+    }
+    .sidebar-btn-title {
+      font-size: 0.9rem;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      color: var(--win-text);
+      width: 100%;
+    }
+    .sidebar-btn-icon {
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
       color: var(--cyan);
-      background: var(--win-tab-active-bg);
-      border-color: var(--win-border);
-      border-top: 2px solid var(--cyan);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .sidebar-btn.active .sidebar-btn-title {
+      color: var(--cyan);
+    }
+    .sidebar-btn-sub {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      line-height: 1.35;
+      padding-left: 27px;
     }
 
+    /* Área de Pantalla Principal */
+    .win-display-area {
+      display: flex;
+      flex-direction: column;
+      background: #04070D;
+      position: relative;
+    }
     .preview-screen {
       position: relative;
-      background: #060911;
-      padding: 0;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #050812;
+      overflow: hidden;
+      min-height: 480px;
     }
     .preview-screen img {
       width: 100%;
-      height: auto;
+      height: 100%;
+      object-fit: contain;
       display: block;
       transition: opacity 0.2s ease;
     }
     .preview-caption-bar {
-      background: var(--win-header-bg);
+      background: var(--win-caption-bg);
       border-top: 1px solid var(--win-border);
       padding: 14px 20px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       flex-wrap: wrap;
-      gap: 10px;
+      gap: 12px;
     }
     .caption-title {
-      font-size: 0.92rem;
+      font-size: 0.95rem;
       font-weight: 700;
       color: var(--win-text);
+      margin-bottom: 2px;
     }
     .caption-desc {
-      font-size: 0.82rem;
+      font-size: 0.84rem;
       color: var(--text-muted);
     }
 
-    /* Sección de Casos de Uso / Ejemplos Reales */
+    /* ==========================================================================
+       SECCIÓN DE CASOS DE USO / EJEMPLOS REALES
+       ========================================================================== */
     .use-cases-section {
-      padding: 60px 0 80px;
+      padding: 40px 0 80px;
     }
     .section-head {
       text-align: center;
@@ -461,16 +545,17 @@
       transition: all 0.25s ease;
       display: flex;
       flex-direction: column;
+      position: relative;
     }
     .case-card:hover {
       border-color: var(--border-focus);
       background: var(--bg-card-hover);
       transform: translateY(-3px);
-      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+      box-shadow: 0 14px 35px rgba(0, 0, 0, 0.45);
     }
     .case-icon-box {
-      width: 46px;
-      height: 46px;
+      width: 44px;
+      height: 44px;
       border-radius: 12px;
       background: var(--cyan-soft);
       border: 1px solid rgba(0, 210, 255, 0.25);
@@ -485,50 +570,128 @@
       font-weight: 700;
       margin-bottom: 12px;
       color: #FFF;
+      line-height: 1.35;
     }
     .case-desc {
       color: var(--text-muted);
       font-size: 0.92rem;
       line-height: 1.6;
-      margin-bottom: 18px;
+      margin-bottom: 22px;
       flex: 1;
     }
-    .case-highlight {
-      background: rgba(0, 0, 0, 0.3);
+
+    /* Módulo Rediseñado de Atajos (Corrige el corte y la deformación de la segunda imagen) */
+    .shortcut-spec-box {
+      background: #080D17;
+      border: 1px solid rgba(0, 210, 255, 0.25);
+      border-radius: 10px;
+      padding: 16px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-top: auto;
+      box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.5);
+    }
+    .shortcut-header-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .shortcut-label {
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #94A3B8;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .shortcut-badge-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.74rem;
+      font-weight: 700;
+      color: var(--cyan);
+      background: rgba(0, 210, 255, 0.12);
+      padding: 2px 8px;
+      border-radius: 12px;
+      border: 1px solid rgba(0, 210, 255, 0.3);
+    }
+    .keycaps-row {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      flex-wrap: nowrap;
+    }
+    .key-plus {
+      color: var(--text-dim);
+      font-weight: 700;
+      font-size: 0.85rem;
+    }
+    kbd {
+      background: #141C2B;
+      border: 1px solid #2B3A52;
+      border-bottom: 2px solid #3F5374;
+      padding: 5px 10px;
+      border-radius: 6px;
+      font-family: var(--font-code);
+      font-size: 0.82rem;
+      color: #FFF;
+      font-weight: 700;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.4);
+      display: inline-block;
+      line-height: 1;
+    }
+    .shortcut-config-tip {
+      font-size: 0.79rem;
+      color: var(--text-muted);
+      line-height: 1.45;
+      padding-top: 10px;
+      border-top: 1px solid rgba(255, 255, 255, 0.07);
+      display: flex;
+      align-items: flex-start;
+      gap: 7px;
+    }
+    .shortcut-config-tip svg {
+      width: 14px;
+      height: 14px;
+      flex-shrink: 0;
+      margin-top: 2px;
+      color: var(--cyan);
+    }
+
+    .card-footer-pill {
+      background: rgba(0, 0, 0, 0.35);
       border: 1px solid var(--border);
       border-radius: 8px;
-      padding: 10px 14px;
+      padding: 12px 14px;
       font-size: 0.82rem;
       color: var(--text);
       display: flex;
       align-items: center;
       gap: 8px;
+      margin-top: auto;
+    }
+    .pill-icon {
+      color: var(--cyan);
+      display: flex;
+      align-items: center;
+      flex-shrink: 0;
     }
 
-    /* Keycaps Físicos */
-    kbd {
-      background: #1E2536;
-      border: 1px solid #334155;
-      border-bottom: 2px solid #475569;
-      padding: 3px 8px;
-      border-radius: 6px;
-      font-family: var(--font-code);
-      font-size: 0.78rem;
-      color: #FFF;
-      font-weight: 600;
-    }
-
-    /* Sección Especial: Control Móvil en Acción */
+    /* ==========================================================================
+       SHOWCASE ESPECIAL: CONTROL REMOTO MÓVIL Y USO
+       ========================================================================== */
     .mobile-showcase-section {
-      padding: 40px 0 80px;
-      background: linear-gradient(180deg, rgba(18, 24, 38, 0) 0%, rgba(18, 24, 38, 0.6) 50%, rgba(18, 24, 38, 0) 100%);
+      padding: 50px 0 90px;
+      background: linear-gradient(180deg, rgba(18, 24, 38, 0) 0%, rgba(18, 24, 38, 0.45) 50%, rgba(18, 24, 38, 0) 100%);
     }
     .mobile-showcase-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 40px;
+      gap: 48px;
       align-items: center;
-      max-width: 1040px;
+      max-width: 1060px;
       margin: 0 auto;
     }
     .mobile-frame-container {
@@ -536,18 +699,25 @@
       border: 1px solid var(--border);
       border-radius: 16px;
       overflow: hidden;
-      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7);
+      box-shadow: 0 25px 60px rgba(0, 0, 0, 0.8), 0 0 25px rgba(0, 210, 255, 0.08);
     }
     .mobile-frame-header {
       background: #090E17;
-      padding: 10px 16px;
+      padding: 12px 18px;
       border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
       justify-content: space-between;
-      font-size: 0.8rem;
+      font-size: 0.82rem;
       color: var(--text-muted);
       font-family: var(--font-code);
+    }
+    .mobile-frame-header-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+      color: #FFF;
     }
     .mobile-frame-body img {
       width: 100%;
@@ -557,7 +727,7 @@
     .mobile-steps-list {
       display: flex;
       flex-direction: column;
-      gap: 20px;
+      gap: 24px;
     }
     .mobile-step-item {
       display: flex;
@@ -565,42 +735,44 @@
       align-items: flex-start;
     }
     .step-number {
-      width: 32px;
-      height: 32px;
+      width: 34px;
+      height: 34px;
       border-radius: 50%;
       background: var(--cyan-soft);
-      border: 1px solid rgba(0, 210, 255, 0.3);
+      border: 1px solid rgba(0, 210, 255, 0.35);
       color: var(--cyan);
       display: flex;
       align-items: center;
       justify-content: center;
       font-weight: 800;
-      font-size: 0.85rem;
+      font-size: 0.88rem;
       flex-shrink: 0;
       margin-top: 2px;
     }
     .step-content h4 {
-      font-size: 1.05rem;
+      font-size: 1.08rem;
       font-weight: 700;
       margin-bottom: 4px;
       color: #FFF;
     }
     .step-content p {
-      font-size: 0.9rem;
+      font-size: 0.92rem;
       color: var(--text-muted);
-      line-height: 1.5;
+      line-height: 1.55;
     }
 
-    /* Instalación Rápida PowerShell Sin Barras Feas */
+    /* ==========================================================================
+       INSTALACIÓN RÁPIDA POWERSHELL (SIN BARRAS FEAS)
+       ========================================================================== */
     .cli-section {
-      padding: 30px 0 70px;
+      padding: 20px 0 70px;
     }
     .cli-card {
       background: #080C16;
       border: 1px solid var(--border);
       border-radius: 14px;
-      padding: 24px;
-      max-width: 820px;
+      padding: 26px;
+      max-width: 840px;
       margin: 0 auto;
     }
     .cli-card-header {
@@ -656,7 +828,6 @@
       color: var(--cyan);
       overflow-x: auto;
       white-space: nowrap;
-      /* Oculta la barra de desplazamiento fea */
       scrollbar-width: none;
       -ms-overflow-style: none;
     }
@@ -684,55 +855,60 @@
       color: #060911;
     }
 
-    /* Centro de Descargas */
+    /* ==========================================================================
+       CENTRO DE DESCARGAS (CÓDIGO ABIERTO, SIN TABLAS SAAS)
+       ========================================================================== */
     .download-section {
-      padding: 40px 0 80px;
+      padding: 30px 0 80px;
     }
     .download-hub-card {
       background: var(--bg-card);
       border: 1px solid var(--border);
       border-radius: 16px;
-      padding: 36px;
-      max-width: 860px;
+      padding: 40px;
+      max-width: 880px;
       margin: 0 auto;
       text-align: center;
     }
     .hub-title {
-      font-size: 1.6rem;
+      font-size: 1.7rem;
       font-weight: 800;
       margin-bottom: 10px;
     }
     .hub-subtitle {
       color: var(--text-muted);
-      font-size: 0.95rem;
-      margin-bottom: 30px;
+      font-size: 0.98rem;
+      margin-bottom: 32px;
     }
     .hub-options-grid {
       display: grid;
       grid-template-columns: 1fr 1fr;
-      gap: 20px;
+      gap: 24px;
       text-align: left;
     }
     .hub-option-item {
-      background: rgba(0, 0, 0, 0.25);
+      background: rgba(0, 0, 0, 0.28);
       border: 1px solid var(--border);
       border-radius: 12px;
-      padding: 20px;
+      padding: 24px;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
     }
     .hub-option-name {
-      font-size: 1.1rem;
+      font-size: 1.15rem;
       font-weight: 700;
-      margin-bottom: 6px;
+      margin-bottom: 8px;
       color: #FFF;
+      display: flex;
+      align-items: center;
+      gap: 8px;
     }
     .hub-option-desc {
-      font-size: 0.85rem;
+      font-size: 0.88rem;
       color: var(--text-muted);
-      margin-bottom: 18px;
-      line-height: 1.5;
+      margin-bottom: 22px;
+      line-height: 1.55;
     }
 
     /* Footer */
@@ -773,9 +949,10 @@
       font-size: 0.82rem;
       color: var(--text-dim);
     }
-    .footer-bottom a { color: var(--cyan); text-decoration: none; }
 
-    @media (max-width: 900px) {
+    @media (max-width: 920px) {
+      .win-workspace-grid { grid-template-columns: 1fr; }
+      .win-sidebar { border-right: none; border-bottom: 1px solid var(--win-border); }
       .use-cases-grid { grid-template-columns: 1fr; }
       .use-cases-grid-2 { grid-template-columns: 1fr; }
       .mobile-showcase-grid { grid-template-columns: 1fr; }
@@ -860,28 +1037,28 @@
 
       <div class="trust-badges">
         <div class="trust-item">
-          <span style="color: var(--cyan); font-weight: bold;">✓</span>
+          <span class="trust-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
           <span>100% Privado (Cero telemetría)</span>
         </div>
         <div class="trust-item">
-          <span style="color: var(--cyan); font-weight: bold;">✓</span>
+          <span class="trust-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
           <span>Consumo de CPU casi invisible (&lt;0.2%)</span>
         </div>
         <div class="trust-item">
-          <span style="color: var(--cyan); font-weight: bold;">✓</span>
+          <span class="trust-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
           <span>Sin registros ni cuentas obligatorias</span>
         </div>
         <div class="trust-item">
-          <span style="color: var(--cyan); font-weight: bold;">✓</span>
+          <span class="trust-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg></span>
           <span>Licencia MIT Libre</span>
         </div>
       </div>
 
-      <!-- Marco Windows 11 con Selector Modo Día / Modo Noche y Capturas Reales -->
+      <!-- Marco Windows 11 Fluent con Navegación Vertical a la Izquierda -->
       <div class="app-preview-wrapper" id="capturas">
+        <!-- Titlebar de la ventana -->
         <div class="win-titlebar">
           <div class="win-title-left">
-            <!-- Icono Oficial en Barra de Título -->
             <svg width="18" height="18" viewBox="0 0 64 64" fill="none">
               <circle cx="32" cy="32" r="29" fill="#16181D" stroke="#00D2FF" stroke-width="3"/>
               <path d="M 45.435 45.435 A 19 19 0 1 1 45.435 18.565" stroke="#00D2FF" stroke-width="5" stroke-linecap="round"/>
@@ -891,13 +1068,15 @@
           </div>
 
           <div class="win-title-right">
-            <!-- Selector de Tema Día / Noche -->
+            <!-- Selector de Modo Noche / Modo Día -->
             <div class="theme-mode-switcher" role="group" aria-label="Cambiar tema visual de la captura">
               <button type="button" class="theme-mode-btn active" id="btn-theme-dark" onclick="switchThemeMode('dark')">
-                <span>🌙</span> Modo Noche
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+                <span>Modo Noche</span>
               </button>
               <button type="button" class="theme-mode-btn" id="btn-theme-light" onclick="switchThemeMode('light')">
-                <span>☀️</span> Modo Día
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>
+                <span>Modo Día</span>
               </button>
             </div>
 
@@ -909,33 +1088,76 @@
           </div>
         </div>
 
-        <div class="preview-tabs">
-          <button type="button" class="p-tab active" onclick="showTab('01')">
-            <span>📊</span> Telemetría de Cabina
-          </button>
-          <button type="button" class="p-tab" onclick="showTab('02')">
-            <span>⏱️</span> Control Manual &amp; Temporizadores
-          </button>
-          <button type="button" class="p-tab" onclick="showTab('03')">
-            <span>⚡</span> Rutinas y Automatización
-          </button>
-          <button type="button" class="p-tab" onclick="showTab('04')">
-            <span>🔊</span> Audio &amp; Atajos
-          </button>
-          <button type="button" class="p-tab" onclick="showTab('05')">
-            <span>📱</span> Control Remoto por Wi-Fi
-          </button>
-        </div>
+        <!-- Layout Dividido: Opciones a la Izquierda (Sidebar) + Visor a la Derecha -->
+        <div class="win-workspace-grid">
+          <!-- Sidebar Izquierda: Todas las opciones visibles de un vistazo sin scrollbar -->
+          <aside class="win-sidebar" role="tablist" aria-label="Módulos de Nokto">
+            <div class="sidebar-heading">Módulos del Sistema</div>
 
-        <div class="preview-screen">
-          <img id="main-screenshot" src="assets/screenshots/dark/01_cockpit_telemetria.png" alt="Captura de Nokto">
-          <div class="preview-caption-bar">
-            <div>
-              <div class="caption-title" id="tab-caption-title">Monitoreo en vivo de tu equipo</div>
-              <div class="caption-desc" id="tab-caption-desc">CPU, memoria RAM, ambas tarjetas gráficas (NVIDIA e Intel) y velocidad de red sin sobrecargar el procesador.</div>
+            <button type="button" class="sidebar-btn active" id="side-btn-01" onclick="showTab('01')" role="tab" aria-selected="true">
+              <div class="sidebar-btn-title">
+                <span class="sidebar-btn-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                </span>
+                <span>Telemetría de Cabina</span>
+              </div>
+              <div class="sidebar-btn-sub">CPU, RAM, GPU Doble y Red</div>
+            </button>
+
+            <button type="button" class="sidebar-btn" id="side-btn-02" onclick="showTab('02')" role="tab" aria-selected="false">
+              <div class="sidebar-btn-title">
+                <span class="sidebar-btn-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                </span>
+                <span>Control Manual</span>
+              </div>
+              <div class="sidebar-btn-sub">Cuentas regresivas y timers</div>
+            </button>
+
+            <button type="button" class="sidebar-btn" id="side-btn-03" onclick="showTab('03')" role="tab" aria-selected="false">
+              <div class="sidebar-btn-title">
+                <span class="sidebar-btn-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                </span>
+                <span>Rutinas &amp; Pipeline</span>
+              </div>
+              <div class="sidebar-btn-sub">Automatización por procesos</div>
+            </button>
+
+            <button type="button" class="sidebar-btn" id="side-btn-04" onclick="showTab('04')" role="tab" aria-selected="false">
+              <div class="sidebar-btn-title">
+                <span class="sidebar-btn-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+                </span>
+                <span>Audio &amp; Atajos</span>
+              </div>
+              <div class="sidebar-btn-sub">WASAPI y mute configurable</div>
+            </button>
+
+            <button type="button" class="sidebar-btn" id="side-btn-05" onclick="showTab('05')" role="tab" aria-selected="false">
+              <div class="sidebar-btn-title">
+                <span class="sidebar-btn-icon">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+                </span>
+                <span>Control Remoto LAN</span>
+              </div>
+              <div class="sidebar-btn-sub">Emparejamiento QR y Wi-Fi</div>
+            </button>
+          </aside>
+
+          <!-- Pantalla Principal del Visor -->
+          <div class="win-display-area">
+            <div class="preview-screen">
+              <img id="main-screenshot" src="assets/screenshots/dark/01_cockpit_telemetria.png" alt="Captura de Telemetría de Cabina en Nokto">
             </div>
-            <div style="font-family: var(--font-code); font-size: 0.78rem; color: var(--cyan);">
-              Nokto v1.0.1 Estable
+            <div class="preview-caption-bar">
+              <div>
+                <div class="caption-title" id="tab-caption-title">Monitoreo en vivo de tu equipo</div>
+                <div class="caption-desc" id="tab-caption-desc">CPU, memoria RAM, ambas tarjetas gráficas (NVIDIA e Intel) y velocidad de red sin sobrecargar el procesador.</div>
+              </div>
+              <div style="font-family: var(--font-code); font-size: 0.78rem; color: var(--cyan); font-weight: 600;">
+                Nokto v1.0.1 Estable
+              </div>
             </div>
           </div>
         </div>
@@ -966,27 +1188,50 @@
           <p class="case-desc">
             ¿Dejaste exportando un video en Premiere, un render en Blender o compilando código antes de dormir? Nokto detecta cuando el programa termina y apaga tu PC de forma segura para ahorrar luz y cuidar tus componentes.
           </p>
-          <div class="case-highlight">
-            <span>💡</span>
-            <span>Apagado automático inteligente al finalizar tareas pesadas</span>
+          <div class="card-footer-pill">
+            <span class="pill-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg>
+            </span>
+            <span>Apagado automático inteligente al finalizar tareas</span>
           </div>
         </div>
 
-        <!-- Caso 2: Atajos 100% Configurables -->
+        <!-- Caso 2: Atajos 100% Configurables (Rediseñado con Keycaps Claros y sin cortes feos) -->
         <div class="case-card">
           <div class="case-icon-box">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
-              <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>
+              <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+              <line x1="12" y1="19" x2="12" y2="22"/>
             </svg>
           </div>
           <h3 class="case-title">Silencio de micrófono con atajos a tu medida</h3>
           <p class="case-desc">
-            ¿Alguien entró a tu habitación durante una llamada de Discord, Meet o jugando en vivo? Silencia tu micrófono al instante a nivel de sistema. <strong>Los atajos son 100% configurables:</strong> puedes usar la combinación por defecto o asignar la tecla que prefieras desde los Ajustes.
+            ¿Alguien entró a tu habitación durante una llamada de Discord, Meet o jugando en vivo? Silencia tu micrófono al instante a nivel de sistema, sin importar en qué ventana o juego a pantalla completa te encuentres.
           </p>
-          <div class="case-highlight">
-            <span>Atajo configurable:</span>
-            <span><kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>M</kbd> <em>(o tu tecla favorita)</em></span>
+          
+          <!-- Bloque de Atajo Diseñado Limpiamente -->
+          <div class="shortcut-spec-box">
+            <div class="shortcut-header-row">
+              <span class="shortcut-label">Combinación Predeterminada</span>
+              <span class="shortcut-badge-tag">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                100% Configurable
+              </span>
+            </div>
+            
+            <div class="keycaps-row">
+              <kbd>Ctrl</kbd>
+              <span class="key-plus">+</span>
+              <kbd>Shift</kbd>
+              <span class="key-plus">+</span>
+              <kbd>M</kbd>
+            </div>
+
+            <div class="shortcut-config-tip">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              <span>Personalízalo en Ajustes con cualquier tecla que prefieras: F13, Bloq Despl o un botón de tu ratón.</span>
+            </div>
           </div>
         </div>
 
@@ -1002,8 +1247,10 @@
           <p class="case-desc">
             ¿Estás cocinando o en el sillón? Escanea el código QR que genera Nokto con la cámara de tu teléfono para ver capturas en vivo de tu pantalla por tu red Wi-Fi local y apagar el equipo a distancia si tu tarea ya terminó.
           </p>
-          <div class="case-highlight">
-            <span>📱</span>
+          <div class="card-footer-pill">
+            <span class="pill-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg>
+            </span>
             <span>Transmisión en tu Wi-Fi de casa, sin pasar por la nube</span>
           </div>
         </div>
@@ -1022,9 +1269,11 @@
           <p class="case-desc">
             ¿Temes que un temporizador apague tu computadora mientras todavía estás trabajando? Nokto te muestra un aviso en pantalla 30 segundos antes con una alarma suave, permitiéndote posponer (+10 min) o cancelar con un solo clic. Y ante cualquier emergencia, la tecla de pánico cancela todo.
           </p>
-          <div class="case-highlight">
-            <span>Botón de Pánico:</span>
-            <span>Presiona <kbd>Pausa / Break</kbd> para cancelar todo al instante</span>
+          <div class="card-footer-pill">
+            <span class="pill-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+            </span>
+            <span>Botón de Pánico: Presiona <kbd style="padding: 2px 6px; font-size: 0.72rem; margin-left: 4px;">Pausa / Break</kbd> para cancelar todo al instante</span>
           </div>
         </div>
 
@@ -1039,8 +1288,10 @@
           <p class="case-desc">
             Nokto no tiene rastreadores de datos, no vende publicidad ni envía reportes a servidores externos. Consume menos del 0.2% de CPU para que no notes caídas de FPS mientras juegas ni demoras mientras programas o trabajas.
           </p>
-          <div class="case-highlight">
-            <span>🔒</span>
+          <div class="card-footer-pill">
+            <span class="pill-icon">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            </span>
             <span>100% Offline: Funciona exactamente igual sin conexión a internet</span>
           </div>
         </div>
@@ -1061,8 +1312,11 @@
         <!-- Captura de la Versión Móvil Real -->
         <div class="mobile-frame-container">
           <div class="mobile-frame-header">
-            <span>Nokto · Control móvil local</span>
-            <span>192.168.x.x:4884</span>
+            <div class="mobile-frame-header-left">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#00D2FF" stroke-width="2.5"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+              <span>Nokto · Interfaz Móvil</span>
+            </div>
+            <span>http://192.168.x.x:4884</span>
           </div>
           <div class="mobile-frame-body">
             <img src="assets/screenshots/dark/04_control_remoto_movil.png" alt="Captura real del control remoto móvil de Nokto">
@@ -1099,7 +1353,7 @@
     </div>
   </section>
 
-  <!-- Instalación Rápida con PowerShell (Limpio y Sin Barras) -->
+  <!-- Instalación Rápida con PowerShell (Limpio y Sin Barras Feas) -->
   <section class="cli-section">
     <div class="container">
       <div class="cli-card">
@@ -1140,21 +1394,29 @@
         <div class="hub-options-grid">
           <div class="hub-option-item">
             <div>
-              <div class="hub-option-name">⚡ Versión Portable (Recomendada)</div>
+              <div class="hub-option-name">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#00D2FF" stroke-width="2.2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                <span>Versión Portable (Recomendada)</span>
+              </div>
               <p class="hub-option-desc">Un solo archivo .exe de ~65 MB. No requiere instalación, no pide permisos de administrador y no escribe en el registro de Windows. Ideal para pendrives o pruebas rápidas.</p>
             </div>
             <a href="https://github.com/jmorgadodev/Nokto/releases/latest/download/Nokto-Portable-x64.exe" class="btn btn-primary" style="width: 100%;">
-              <span>⬇ Descargar Portable (x64)</span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              <span>Descargar Portable (x64)</span>
             </a>
           </div>
 
           <div class="hub-option-item">
             <div>
-              <div class="hub-option-name">📦 Asistente Instalador (Setup)</div>
+              <div class="hub-option-name">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0A66C2" stroke-width="2.2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+                <span>Asistente Instalador (Setup)</span>
+              </div>
               <p class="hub-option-desc">Instalador clásico estándar para Windows. Crea accesos directos en el Menú Inicio y Escritorio, con opción de inicio automático y desinstalador limpio.</p>
             </div>
             <a href="https://github.com/jmorgadodev/Nokto/releases/latest/download/Nokto-Setup-x64.exe" class="btn btn-secondary" style="width: 100%;">
-              <span>📦 Descargar Instalador (.exe)</span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              <span>Descargar Instalador (.exe)</span>
             </a>
           </div>
         </div>
@@ -1190,7 +1452,7 @@
     </div>
   </footer>
 
-  <!-- Lógica Interactiva: Selector de Pestañas y Modo Día / Modo Noche -->
+  <!-- Lógica Interactiva: Selector de Pestañas a la Izquierda y Modo Día / Modo Noche -->
   <script>
     let currentThemeMode = 'dark'; // 'dark' | 'light'
     let currentTabKey = '01';
@@ -1246,9 +1508,14 @@
 
     function showTab(tabKey) {
       currentTabKey = tabKey;
-      document.querySelectorAll('.p-tab').forEach((tab, i) => {
-        const keys = ['01', '02', '03', '04', '05'];
-        tab.classList.toggle('active', keys[i] === tabKey);
+      const keys = ['01', '02', '03', '04', '05'];
+      keys.forEach(k => {
+        const btn = document.getElementById('side-btn-' + k);
+        if (btn) {
+          const isActive = (k === tabKey);
+          btn.classList.toggle('active', isActive);
+          btn.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        }
       });
       updatePreviewImage();
     }
