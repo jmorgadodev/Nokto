@@ -40,7 +40,7 @@ public sealed class StorageResolver
 
         bool isWritable = !isProgramFiles && IsDirectoryWritable(_baseDirectory);
 
-        _isPortableMode = hasPortableLock || hasConfigAdjacent || isWritable;
+        _isPortableMode = Nokto.Core.BuildIdentity.IsDevelopment || hasPortableLock || hasConfigAdjacent || isWritable;
 
         _dataDirectory = _isPortableMode
             ? Path.Combine(_baseDirectory, "data")

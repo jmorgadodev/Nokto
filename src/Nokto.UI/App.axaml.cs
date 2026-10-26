@@ -64,6 +64,8 @@ public partial class App : Application
             };
 
             _mainWindow = new MainWindow();
+            if (Nokto.Core.BuildIdentity.IsDevelopment)
+                _mainWindow.Title = "Nokto 2.0 DEV — Consola local de pruebas";
             try
             {
                 _mainWindow.Icon = DynamicTrayIconRenderer.RenderAppWindowIcon();
@@ -179,7 +181,7 @@ public partial class App : Application
     {
         var menu = new NativeMenu();
 
-        var itemOpen = new NativeMenuItem("Abrir Nokto");
+        var itemOpen = new NativeMenuItem(Nokto.Core.BuildIdentity.IsDevelopment ? "Abrir Nokto DEV" : "Abrir Nokto");
         itemOpen.Click += (s, e) => ShowMainWindow();
 
         var itemDisplays = new NativeMenuItem("🌙 Apagar Monitores Ahora");
@@ -197,7 +199,7 @@ public partial class App : Application
         var itemFinish = new NativeMenuItem("⏹ Finalizar todas las rutinas");
         itemFinish.Click += (s, e) => _mainViewModel?.FinishTask();
 
-        var itemExit = new NativeMenuItem("Salir de Nokto");
+        var itemExit = new NativeMenuItem(Nokto.Core.BuildIdentity.IsDevelopment ? "Salir de Nokto DEV" : "Salir de Nokto");
         itemExit.Click += (s, e) =>
         {
             _mainWindow?.ForceCloseApplication();
@@ -214,7 +216,7 @@ public partial class App : Application
 
         _trayIcon = new TrayIcon
         {
-            ToolTipText = "Nokto — Sistema de Energía (Listo)",
+            ToolTipText = Nokto.Core.BuildIdentity.IsDevelopment ? "Nokto 2.0 DEV (local)" : "Nokto — Sistema de Energía (Listo)",
             Menu = menu,
             IsVisible = true,
             Icon = DynamicTrayIconRenderer.RenderTrayIcon(TrayIconVisualState.Idle)
@@ -236,12 +238,14 @@ public partial class App : Application
                         try
                         {
                             _trayIcon.Icon = DynamicTrayIconRenderer.RenderTrayIcon(state, progress, secondsRemaining, pulsePhase);
-                            _trayIcon.ToolTipText = state switch
-                            {
-                                TrayIconVisualState.InProgress => $"Nokto: {progress:F0}% ({secondsRemaining}s)",
-                                TrayIconVisualState.Completed => "Nokto: Tarea completada con éxito",
-                                _ => "Nokto — Sistema de Energía (Listo)"
-                            };
+                            _trayIcon.ToolTipText = Nokto.Core.BuildIdentity.IsDevelopment
+                                ? "Nokto 2.0 DEV — Entorno local"
+                                : state switch
+                                {
+                                    TrayIconVisualState.InProgress => $"Nokto: {progress:F0}% ({secondsRemaining}s)",
+                                    TrayIconVisualState.Completed => "Nokto: Tarea completada con éxito",
+                                    _ => "Nokto — Sistema de Energía (Listo)"
+                                };
                         }
                         catch (System.ComponentModel.Win32Exception ex)
                         {

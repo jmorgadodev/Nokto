@@ -109,6 +109,8 @@ public class UpdateService : IUpdateService
 
     public async Task<UpdateReleaseInfo?> CheckForUpdatesAsync(string? owner = null, string? repo = null, CancellationToken cancellationToken = default)
     {
+        // Nunca consultar releases publicos desde el portable de pruebas.
+        if (Nokto.Core.BuildIdentity.IsDevelopment) return null;
         string targetOwner = string.IsNullOrWhiteSpace(owner) || owner.Equals("nokto", StringComparison.OrdinalIgnoreCase) ? "jmorgadodev" : owner;
         string targetRepo = string.IsNullOrWhiteSpace(repo) ? "Nokto" : repo;
         string url = $"https://api.github.com/repos/{targetOwner}/{targetRepo}/releases/latest";
@@ -199,6 +201,8 @@ public class UpdateService : IUpdateService
 
     public async Task<string> DownloadUpdateAsync(UpdateReleaseInfo release, IProgress<double>? progress = null, CancellationToken cancellationToken = default)
     {
+        if (Nokto.Core.BuildIdentity.IsDevelopment)
+            throw new InvalidOperationException("Las actualizaciones publicas estan deshabilitadas en Nokto DEV.");
         bool portable = IsPortable;
         string? downloadUrl = portable ? release.PortableDownloadUrl : release.InstallerDownloadUrl;
         if (string.IsNullOrWhiteSpace(downloadUrl))
@@ -253,6 +257,8 @@ public class UpdateService : IUpdateService
 
     public void ApplyUpdate(UpdateReleaseInfo release, string downloadedFilePath)
     {
+        if (Nokto.Core.BuildIdentity.IsDevelopment)
+            throw new InvalidOperationException("Nokto DEV no puede aplicar actualizaciones publicas.");
         if (IsPortable)
         {
             string currentExe = GetExecutablePath();

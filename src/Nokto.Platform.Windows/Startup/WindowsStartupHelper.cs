@@ -9,7 +9,7 @@ namespace Nokto.Platform.Windows.Startup;
 public static class WindowsStartupHelper
 {
     private const string RunKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
-    private const string AppName = "Nokto";
+    private static readonly string AppName = Nokto.Core.BuildIdentity.IsDevelopment ? "Nokto.Dev" : "Nokto";
 
     public static bool IsStartupEnabled()
     {

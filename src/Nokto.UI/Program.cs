@@ -7,7 +7,9 @@ namespace Nokto.UI;
 
 internal static partial class Program
 {
-    private const string PipeName = "Nokto_Desktop_IPC_Pipe";
+    private static readonly string PipeName = Nokto.Core.BuildIdentity.IsDevelopment
+        ? "Nokto_Dev_Desktop_IPC_Pipe"
+        : "Nokto_Desktop_IPC_Pipe";
 
     [DllImport("user32.dll")]
     private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
