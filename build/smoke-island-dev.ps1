@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param()
+param([string[]]$Scenarios = @('Island','Dashboard','Both','Tray'))
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $original = Join-Path $root 'artifacts\Nokto-Dev-Portable-x64\Nokto.Dev.exe'
@@ -38,7 +38,7 @@ New-Item -ItemType Directory -Path (Join-Path $testDir 'data') -Force | Out-Null
 Copy-Item -LiteralPath $original -Destination (Join-Path $testDir 'Nokto.Dev.exe')
 New-Item -ItemType File -Path (Join-Path $testDir 'portable.lock') | Out-Null
 $exe = Join-Path $testDir 'Nokto.Dev.exe'
-foreach ($scenario in @('Island','Dashboard','Both','Tray')) {
+foreach ($scenario in $Scenarios) {
   $islandEnabled = $scenario -eq 'Island' -or $scenario -eq 'Both'
   $cfg = @{ settings = @{ language = 'es'; theme='Dark'; minimizeToTrayOnClose=$true; startMinimizedToTray=$false; startInWorkMode=$false; checkUpdatesOnStartup=$false; panicHotkey='Ctrl+Alt+Shift+F18'; micMuteHotkey='Ctrl+Alt+Shift+F7'; audioMuteHotkey='Ctrl+Alt+Shift+F8' }; island = @{ enabled=$islandEnabled; style='Eyes'; startupMode=$scenario; startupModeConfigured=$true; showClock=$true }; lanServer=@{enabled=$false} }
   [IO.File]::WriteAllText((Join-Path $testDir 'data\config.json'), ($cfg | ConvertTo-Json -Depth 6), [Text.UTF8Encoding]::new($false))
@@ -80,6 +80,32 @@ foreach ($scenario in @('Island','Dashboard','Both','Tray')) {
       }
       Write-Output ('[PASS] Deteccion automatica: ' + $label)
 
+      $eyeSelector = $main.FindFirst(
+        [System.Windows.Automation.TreeScope]::Descendants,
+        [System.Windows.Automation.PropertyCondition]::new(
+          [System.Windows.Automation.AutomationElement]::AutomationIdProperty,'IslandEyeStyleSelector'))
+      if ($null -eq $eyeSelector) { throw 'No se encontro el selector de los 42 ojos.' }
+      foreach ($selection in ,@('Minimal','Punto verde','GreenDot'))  {
+        $eyeSelector.GetCurrentPattern([System.Windows.Automation.ExpandCollapsePattern]::Pattern).Expand()
+        Start-Sleep -Milliseconds 160
+        $option = @([System.Windows.Automation.AutomationElement]::RootElement.FindAll(
+          [System.Windows.Automation.TreeScope]::Descendants,
+          [System.Windows.Automation.PropertyCondition]::new(
+            [System.Windows.Automation.AutomationElement]::ControlTypeProperty,
+            [System.Windows.Automation.ControlType]::ListItem)) |
+          Where-Object { $_.Current.Name -like ('*' + $selection[1] + '*') } |
+          Select-Object -First 1)
+        if ($option.Count -eq 0) {
+          throw ('Ojo no localizado en UI: ' + $selection[1])
+        }
+        $option[0].GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Select()
+        Start-Sleep -Milliseconds 300
+        $selected = Get-Content -Raw (Join-Path $testDir 'data\config.json') | ConvertFrom-Json
+        if ($selected.island.style -ne $selection[2]) {
+          throw ('No se guardo el estilo ' + $selection[2] + ': ' + $selected.island.style)
+        }
+        Write-Output ('[PASS] Estilo ' + $selection[2] + ': seleccion y persistencia.')
+      }
       $checkCondition = [System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::NameProperty,'Mostrar la isla flotante')
       $check = $main.FindFirst([System.Windows.Automation.TreeScope]::Descendants,$checkCondition)
       if ($null -eq $check) { throw 'Pestaña existe pero no contiene el control de activación.' }

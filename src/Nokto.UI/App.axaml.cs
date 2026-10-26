@@ -140,6 +140,7 @@ public partial class App : Application
             var dict = (ResourceDictionary)AvaloniaXamlLoader.Load(new Uri(uri));
             Resources.MergedDictionaries.Clear();
             Resources.MergedDictionaries.Add(dict);
+            _mainViewModel?.IslandVm.UpdateLanguage(language);
         }
         catch (Exception ex)
         {

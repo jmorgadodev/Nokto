@@ -1,5 +1,6 @@
 <UserControl xmlns="https://github.com/avaloniaui"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:Nokto.UI.Controls"
              x:Class="Nokto.UI.Views.IslandSettingsView">
   <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
     <StackPanel Margin="24,18" Spacing="18" MaxWidth="850" HorizontalAlignment="Left">
@@ -17,14 +18,35 @@
           <TextBlock Text="{DynamicResource IslandAppearanceHeading}" Foreground="{DynamicResource ThemeAccent}" FontWeight="Bold" FontSize="12"/>
           <Grid ColumnDefinitions="250,*" RowDefinitions="Auto,Auto">
             <TextBlock Grid.Row="0" Text="{DynamicResource IslandStyleLabel}" Foreground="{DynamicResource ThemeTextPrimary}" VerticalAlignment="Center"/>
-            <ComboBox Grid.Column="1" Grid.Row="0" SelectedIndex="{Binding IslandVm.StyleIndex, Mode=TwoWay}" MinWidth="230" HorizontalAlignment="Left">
-              <ComboBoxItem Content="{DynamicResource IslandStyleEyes}"/>
-              <ComboBoxItem Content="{DynamicResource IslandStyleGreen}"/>
-              <ComboBoxItem Content="{DynamicResource IslandStyleBlack}"/>
-              <ComboBoxItem Content="{DynamicResource IslandStyleGlow}"/>
+            <ComboBox Grid.Column="1" Grid.Row="0" SelectedIndex="{Binding IslandVm.StyleIndex, Mode=TwoWay}"
+                      ItemsSource="{Binding IslandVm.EyeStyleOptions}"
+                      AutomationProperties.AutomationId="IslandEyeStyleSelector"
+                      MinWidth="330" HorizontalAlignment="Left">
+              <ComboBox.ItemTemplate>
+                <DataTemplate>
+                  <TextBlock Text="{Binding DisplayName}"/>
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
             </ComboBox>
             <CheckBox Grid.Row="1" Grid.ColumnSpan="2" Content="{DynamicResource IslandShowClock}" IsChecked="{Binding IslandVm.ShowClock, Mode=TwoWay}" Margin="0,14,0,0" Foreground="{DynamicResource ThemeTextPrimary}"/>
           </Grid>
+          <Border CornerRadius="10" Background="#080B10" Padding="10" HorizontalAlignment="Left" MinWidth="175">
+            <StackPanel Orientation="Horizontal" Spacing="16">
+              <TextBlock Text="{DynamicResource IslandEyePreview}" VerticalAlignment="Center" Foreground="#9EADB9" FontSize="11"/>
+              <controls:NoktoEyesControl Width="56" Height="26" StyleId="{Binding IslandVm.SelectedStyle}"/>
+            </StackPanel>
+          </Border>
+          <TextBlock Text="{DynamicResource IslandEyeMotionHeading}" Foreground="{DynamicResource ThemeAccent}" FontWeight="SemiBold" FontSize="12"/>
+          <CheckBox Content="{DynamicResource IslandFollowCursor}" IsChecked="{Binding IslandVm.FollowCursor, Mode=TwoWay}" Foreground="{DynamicResource ThemeTextPrimary}"/>
+          <CheckBox Content="{DynamicResource IslandNaturalBlink}" IsChecked="{Binding IslandVm.NaturalBlink, Mode=TwoWay}" Foreground="{DynamicResource ThemeTextPrimary}"/>
+          <CheckBox Content="{DynamicResource IslandSleepOnIdle}" IsChecked="{Binding IslandVm.SleepOnIdle, Mode=TwoWay}" Foreground="{DynamicResource ThemeTextPrimary}"/>
+          <Grid ColumnDefinitions="250,220">
+            <TextBlock Text="{DynamicResource IslandEyeSensitivity}" Foreground="{DynamicResource ThemeTextPrimary}" VerticalAlignment="Center"/>
+            <Slider Grid.Column="1" Minimum="0" Maximum="1" TickFrequency="0.1"
+                    Value="{Binding IslandVm.EyeSensitivity, Mode=TwoWay}"
+                    AutomationProperties.AutomationId="IslandEyeSensitivitySlider"/>
+          </Grid>
+          <TextBlock Text="{DynamicResource IslandEyeMotionNote}" Foreground="{DynamicResource ThemeTextSecondary}" TextWrapping="Wrap" FontSize="11"/>
           <CheckBox Content="{DynamicResource IslandExpandOnHover}" IsChecked="{Binding IslandVm.ExpandOnHover, Mode=TwoWay}" Foreground="{DynamicResource ThemeTextPrimary}"/>
           <CheckBox Content="{DynamicResource IslandReducedMotion}" IsChecked="{Binding IslandVm.ReducedMotion, Mode=TwoWay}" Foreground="{DynamicResource ThemeTextPrimary}"/>
           <TextBlock Text="{DynamicResource IslandAppearanceHint}" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="11" TextWrapping="Wrap"/>

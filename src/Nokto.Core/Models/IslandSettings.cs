@@ -13,4 +13,8 @@ public sealed class IslandSettings
     public bool ReducedMotion { get; set; } = false;
     // Auto usa la frecuencia actual del monitor; valores manuales: 60,120,144,165,240.
     public string AnimationRateMode { get; set; } = "Auto";
+    public bool FollowCursor { get; set; } = true;
+    public bool NaturalBlink { get; set; } = true;
+    public bool SleepOnIdle { get; set; } = true;
+    public double EyeSensitivity { get; set; } = 0.65;
 }

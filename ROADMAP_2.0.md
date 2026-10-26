@@ -24,10 +24,15 @@ Referencias oficiales: Apple HIG Live Activities (https://developer.apple.com/de
 - Soportar pantallas múltiples, escalado DPI, cambios de monitor, ocultación en pantalla completa, accesibilidad y prioridad de eventos.
 - Pruebas: 100 alternancias hover/leave/clic, múltiples resoluciones, pantalla completa, latencia y medición CPU/GPU/RAM en reposo.
 
-## Fase 3 — Ojos y personalidad
-Packs completos Minimal, Nokto Classic, Cyber, Anime Inspired (diseños originales), Creature, Cute y Dark/Horror.
-Movimiento de pupilas según cursor / eventos, parpadeo natural espaciado, expresiones y sueño.
-Todas las animaciones cortas terminan en un estado estático y respetan movimiento reducido.
+## Fase 3 — Ojos y personalidad (implementacion base; revision visual pendiente)
+- Catálogo de 42 variantes vectoriales originales en 7 packs: Minimal, Nokto Classic, Cyber, Anime Inspired (sin copiar iconografía de franquicias), Creature, Cute y Dark.
+- Selector con traducciones ES/EN y vista previa dentro de la pestaña independiente Isla Dinámica.
+- Motor local de dibujo sin recursos externos: solo se renderiza el estilo seleccionado.
+- Movimiento de pupilas vinculado a la posición del cursor, con suavizado corto, sensibilidad configurable, seguimiento opcional. Lectura con GetCursorPos, sin hooks ni almacenamiento de coordenadas.
+- Parpadeo aleatorio breve, opcional, con ritmo no constante; sueño al pasar 60 s sin mover el cursor, si está habilitado.
+- Movimiento reducido y estilos Minimal no generan bucles de interpolación ni sondeos de cursor. Los ojos normales sondean a baja frecuencia (180 ms activos/650 ms dormidos), y renderizan a alta frecuencia solo durante eventos.
+- Pendientes para aprobación visual: asegurar que las 42 variantes realmente resulten suficientemente distintas en 26 px; pruebas de DPI/multimonitor, recuperación de suspensión, FPS reales, perfiles GPU, animaciones contextualizadas con música/alarmas (dependerán de fases 5/6).
+- Pruebas de catálogo y de persistencia, cuatro modos de arranque y no regresión básica antes del siguiente avance.
 
 ## Fase 4 — Sistema Windows y controles rápidos
 Audio/micrófono, trabajo/actividad, volumen, batería, conectividad, brillo si disponible y atajos.

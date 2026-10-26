@@ -1,5 +1,6 @@
 <Window xmlns="https://github.com/avaloniaui"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:Nokto.UI.Controls"
         x:Class="Nokto.UI.Views.IslandWindow"
         Title="Nokto Island"
         Width="162" Height="42" MinWidth="0"
@@ -13,21 +14,9 @@
     <StackPanel Spacing="8">
       <Grid ColumnDefinitions="*,Auto">
         <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
-          <StackPanel x:Name="EyesVisual" Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
-            <Grid Width="23" Height="24">
-              <Ellipse Width="22" Height="22" Fill="#E8F3FA"/>
-              <Ellipse Width="8" Height="10" Fill="#0D1825" HorizontalAlignment="Center"/>
-            </Grid>
-            <Grid Width="23" Height="24">
-              <Ellipse Width="22" Height="22" Fill="#E8F3FA"/>
-              <Ellipse Width="8" Height="10" Fill="#0D1825" HorizontalAlignment="Center"/>
-            </Grid>
-          </StackPanel>
-          <Border x:Name="IndicatorFrame" Width="26" Height="26" IsVisible="False"
-                  Background="#24303B" CornerRadius="13" HorizontalAlignment="Left">
-            <Ellipse x:Name="IndicatorVisual" Width="14" Height="14" Fill="#00E676"
-                     HorizontalAlignment="Center" VerticalAlignment="Center"/>
-          </Border>
+          <controls:NoktoEyesControl x:Name="EyesVisual" Width="56" Height="26"
+                                     VerticalAlignment="Center"
+                                     AutomationProperties.Name="Ojos de Nokto"/>
         </StackPanel>
         <TextBlock x:Name="ClockText" Grid.Column="1" Text="--:--" Foreground="#E6ECF3"
                    FontFamily="Consolas" FontSize="13" VerticalAlignment="Center"/>

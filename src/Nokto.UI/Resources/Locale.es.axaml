@@ -81,7 +81,14 @@
     <sys:String x:Key="IslandPerformanceNote">Los FPS son un objetivo de interpolación, no una garantía de fotogramas renderizados. En reposo no hay animación continua.</sys:String>
     <sys:String x:Key="IslandExpandOnHover">Expandir al acercar el cursor</sys:String>
     <sys:String x:Key="IslandReducedMotion">Reducir movimiento (sin transiciones)</sys:String>
-    <sys:String x:Key="IslandAppearanceHint">Estos estilos son la primera base funcional. Más ojos, reacciones y animaciones llegarán en la fase visual.</sys:String>
+    <sys:String x:Key="IslandEyePreview">VISTA PREVIA</sys:String>
+    <sys:String x:Key="IslandEyeMotionHeading">MIRADA Y COMPORTAMIENTO</sys:String>
+    <sys:String x:Key="IslandFollowCursor">Seguir el cursor por el escritorio</sys:String>
+    <sys:String x:Key="IslandNaturalBlink">Parpadeo natural aleatorio</sys:String>
+    <sys:String x:Key="IslandSleepOnIdle">Dormir después de 60 segundos sin movimiento</sys:String>
+    <sys:String x:Key="IslandEyeSensitivity">Sensibilidad de la mirada</sys:String>
+    <sys:String x:Key="IslandEyeMotionNote">Los ojos reaccionan con animaciones breves; en modo discreto o movimiento reducido no se rastrea el cursor. No se guardan sus coordenadas.</sys:String>
+    <sys:String x:Key="IslandAppearanceHint">42 estilos vectoriales originales en siete familias. Solo se dibuja el estilo seleccionado.</sys:String>
     <sys:String x:Key="IslandStartupHeading">INICIO DE NOKTO</sys:String>
     <sys:String x:Key="IslandStartupDescription">Selecciona qué interfaz aparecerá al abrir Nokto. La opción Iniciar con Windows continúa siendo voluntaria en Ajustes.</sys:String>
     <sys:String x:Key="IslandStartupLegacy">Conservar inicio anterior</sys:String>

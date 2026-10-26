@@ -5,6 +5,8 @@ using Nokto.Platform.Windows.Display;
 
 namespace Nokto.UI.ViewModels;
 
+public sealed record EyeStyleOption(string Id, string DisplayName);
+
 /// <summary>Opciones propias de Isla Dinamica. Sin procesos ni servicios duplicados.</summary>
 public partial class IslandViewModel : ObservableObject
 {
@@ -19,7 +21,8 @@ public partial class IslandViewModel : ObservableObject
         _persistence = persistence;
         _loading = true;
         _enabled = config.Island.Enabled;
-        _styleIndex = config.Island.Style switch { "GreenDot" => 1, "BlackDot" => 2, "GlowDot" => 3, _ => 0 };
+        _styleIndex = EyeStyleCatalog.IndexOf(config.Island.Style);
+        _eyeStyleOptions = BuildOptions(config.Settings.Language);
         _startupModeIndex = !config.Island.StartupModeConfigured ? 0 : config.Island.StartupMode switch
         {
             "Dashboard" => 1, "Island" => 2, "Both" => 3, "Tray" => 4, _ => 1
@@ -27,6 +30,10 @@ public partial class IslandViewModel : ObservableObject
         _showClock = config.Island.ShowClock;
         _expandOnHover = config.Island.ExpandOnHover;
         _reducedMotion = config.Island.ReducedMotion;
+        _followCursor = config.Island.FollowCursor;
+        _naturalBlink = config.Island.NaturalBlink;
+        _sleepOnIdle = config.Island.SleepOnIdle;
+        _eyeSensitivity = Math.Clamp(config.Island.EyeSensitivity, 0, 1);
         _animationRateIndex = config.Island.AnimationRateMode switch
         {
             "60" => 1, "120" => 2, "144" => 3, "165" => 4, "240" => 5, _ => 0
@@ -41,6 +48,24 @@ public partial class IslandViewModel : ObservableObject
     [ObservableProperty] private bool _showClock;
     [ObservableProperty] private bool _expandOnHover;
     [ObservableProperty] private bool _reducedMotion;
+    [ObservableProperty] private bool _followCursor;
+    [ObservableProperty] private bool _naturalBlink;
+    [ObservableProperty] private bool _sleepOnIdle;
+    [ObservableProperty] private double _eyeSensitivity;
+    private IReadOnlyList<EyeStyleOption> _eyeStyleOptions = [];
+    public IReadOnlyList<EyeStyleOption> EyeStyleOptions => _eyeStyleOptions;
+    private static IReadOnlyList<EyeStyleOption> BuildOptions(string language) =>
+        EyeStyleCatalog.All.Select(s => new EyeStyleOption(s.Id,
+            $"{s.Pack} · {(language == "en" ? s.En : s.Es)}")).ToArray();
+    public void UpdateLanguage(string language)
+    {
+        int selected = StyleIndex;
+        _loading = true;
+        _eyeStyleOptions = BuildOptions(language);
+        OnPropertyChanged(nameof(EyeStyleOptions));
+        StyleIndex = selected;
+        _loading = false;
+    }
     [ObservableProperty] private int _animationRateIndex;
     private int _detectedDisplayHz = DisplayRefreshRateDetector.FallbackHz;
 
@@ -60,10 +85,9 @@ public partial class IslandViewModel : ObservableObject
         OnPropertyChanged(nameof(TargetAnimationFps));
     }
 
-    public string SelectedStyle => StyleIndex switch
-    {
-        1 => "GreenDot", 2 => "BlackDot", 3 => "GlowDot", _ => "Eyes"
-    };
+    public string SelectedStyle => StyleIndex < 0
+        ? EyeStyleCatalog.Find(_config.Island.Style).Id
+        : EyeStyleCatalog.All[Math.Clamp(StyleIndex, 0, EyeStyleCatalog.All.Count - 1)].Id;
 
     public string SelectedStartupMode => StartupModeIndex switch
     {
@@ -71,7 +95,11 @@ public partial class IslandViewModel : ObservableObject
     };
 
     partial void OnEnabledChanged(bool value) => Save();
-    partial void OnStyleIndexChanged(int value) => Save();
+    partial void OnStyleIndexChanged(int value)
+    {
+        OnPropertyChanged(nameof(SelectedStyle));
+        if (value >= 0) Save();
+    }
     partial void OnStartupModeIndexChanged(int value)
     {
         if (!_loading) _config.Island.StartupModeConfigured = value != 0;
@@ -80,6 +108,10 @@ public partial class IslandViewModel : ObservableObject
     partial void OnShowClockChanged(bool value) => Save();
     partial void OnExpandOnHoverChanged(bool value) => Save();
     partial void OnReducedMotionChanged(bool value) => Save();
+    partial void OnFollowCursorChanged(bool value) => Save();
+    partial void OnNaturalBlinkChanged(bool value) => Save();
+    partial void OnSleepOnIdleChanged(bool value) => Save();
+    partial void OnEyeSensitivityChanged(double value) => Save();
     partial void OnAnimationRateIndexChanged(int value)
     {
         OnPropertyChanged(nameof(TargetAnimationFps));
@@ -96,6 +128,10 @@ public partial class IslandViewModel : ObservableObject
         _config.Island.ShowClock = ShowClock;
         _config.Island.ExpandOnHover = ExpandOnHover;
         _config.Island.ReducedMotion = ReducedMotion;
+        _config.Island.FollowCursor = FollowCursor;
+        _config.Island.NaturalBlink = NaturalBlink;
+        _config.Island.SleepOnIdle = SleepOnIdle;
+        _config.Island.EyeSensitivity = Math.Clamp(EyeSensitivity, 0, 1);
         _config.Island.AnimationRateMode = AnimationRateIndex switch
         {
             1 => "60", 2 => "120", 3 => "144", 4 => "165", 5 => "240", _ => "Auto"

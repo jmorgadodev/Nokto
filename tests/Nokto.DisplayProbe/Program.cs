@@ -1,4 +1,5 @@
 using Nokto.Platform.Windows.Display;
+using Nokto.Core.Models;
 
 static void Expect(bool condition, string message)
 {
@@ -17,3 +18,19 @@ Expect(atOriginHz >= 30 && atOriginHz <= 500, "Frecuencia por monitor fuera de r
 Console.WriteLine($"[PASS] Monitor principal: {primaryHz} Hz");
 Console.WriteLine($"[PASS] Monitor en (0,0): {atOriginHz} Hz");
 Console.WriteLine("[PASS] Normalizacion nominal 239/240, 59/60 y fallback.");
+
+var styles = EyeStyleCatalog.All;
+Expect(styles.Count == 42, $"Se esperaban 42 estilos, hay {styles.Count}");
+Expect(styles.Select(s => s.Id).Distinct(StringComparer.OrdinalIgnoreCase).Count() == 42,
+    "El catalogo contiene ID duplicados");
+Expect(styles.Select(s => s.Pack).Distinct().Count() == 7, "Se esperaban siete familias");
+foreach (var style in styles)
+{
+    Expect(EyeStyleCatalog.Find(style.Id).Id == style.Id, "No se recupero " + style.Id);
+    Expect(!string.IsNullOrWhiteSpace(style.Es) && !string.IsNullOrWhiteSpace(style.En),
+        "Traduccion vacia en " + style.Id);
+}
+Expect(EyeStyleCatalog.IsMinimal("GreenDot"), "El punto verde debe ser minimalista");
+Expect(!EyeStyleCatalog.IsMinimal("Feline"), "Felino no debe ser minimalista");
+Expect(EyeStyleCatalog.IndexOf("Eyes") == 6, "Compatibilidad del estilo Eyes");
+Console.WriteLine("[PASS] 42 estilos originales, siete packs, identificadores unicos, traducciones ES/EN.");

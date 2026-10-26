@@ -81,7 +81,14 @@
     <sys:String x:Key="IslandPerformanceNote">FPS is an interpolation target, not guaranteed rendered frames. No continuous animation runs while idle.</sys:String>
     <sys:String x:Key="IslandExpandOnHover">Expand when hovering</sys:String>
     <sys:String x:Key="IslandReducedMotion">Reduce motion (no transitions)</sys:String>
-    <sys:String x:Key="IslandAppearanceHint">These are the first working styles. More eyes, reactions and animations will arrive in the visual phase.</sys:String>
+    <sys:String x:Key="IslandEyePreview">PREVIEW</sys:String>
+    <sys:String x:Key="IslandEyeMotionHeading">GAZE AND BEHAVIOR</sys:String>
+    <sys:String x:Key="IslandFollowCursor">Follow cursor across the desktop</sys:String>
+    <sys:String x:Key="IslandNaturalBlink">Natural randomized blinking</sys:String>
+    <sys:String x:Key="IslandSleepOnIdle">Fall asleep after 60 seconds without movement</sys:String>
+    <sys:String x:Key="IslandEyeSensitivity">Gaze sensitivity</sys:String>
+    <sys:String x:Key="IslandEyeMotionNote">Eyes react with short animations; discrete and reduced-motion modes do not track your cursor. Coordinates are not saved.</sys:String>
+    <sys:String x:Key="IslandAppearanceHint">42 original vector styles in seven families. Only the selected style is rendered.</sys:String>
     <sys:String x:Key="IslandStartupHeading">NOKTO STARTUP</sys:String>
     <sys:String x:Key="IslandStartupDescription">Choose the interface shown when launching Nokto. Starting with Windows remains optional in Settings.</sys:String>
     <sys:String x:Key="IslandStartupLegacy">Keep previous startup behavior</sys:String>

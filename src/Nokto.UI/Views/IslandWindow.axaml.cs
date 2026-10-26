@@ -7,7 +7,9 @@ using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Threading;
 using Nokto.UI.ViewModels;
+using Nokto.Core.Models;
 using Nokto.Platform.Windows.Display;
+using Nokto.Platform.Windows.Input;
 
 namespace Nokto.UI.Views;
 
@@ -25,6 +27,14 @@ public partial class IslandWindow : Window
     private IslandViewModel? _settings;
     private DispatcherTimer? _clockTimer;
     private DispatcherTimer? _animationTimer;
+    private DispatcherTimer? _cursorTimer;
+    private DispatcherTimer? _eyeFrameTimer;
+    private DispatcherTimer? _blinkTimer;
+    private long _gazeStart, _blinkStart;
+    private double _gazeX, _gazeY, _gazeFromX, _gazeFromY, _gazeTargetX, _gazeTargetY;
+    private int _lastCursorX = int.MinValue, _lastCursorY = int.MinValue;
+    private DateTime _lastCursorMovement = DateTime.UtcNow;
+    private bool _gazeAnimating, _blinking, _sleeping;
     private bool _expanded;
     private bool _pinned;
     private long _animationStart;
@@ -40,25 +50,35 @@ public partial class IslandWindow : Window
         _clockTimer.Tick += (_, _) => UpdateClock();
         _animationTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1.0 / settings.TargetAnimationFps) };
         _animationTimer.Tick += (_, _) => AdvanceAnimation();
+        _cursorTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(180) };
+        _cursorTimer.Tick += (_, _) => SampleCursor();
+        _eyeFrameTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1.0 / Math.Min(settings.TargetAnimationFps, 120)) };
+        _eyeFrameTimer.Tick += (_, _) => AdvanceEyeFrame();
+        _blinkTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
+        _blinkTimer.Tick += (_, _) => StartBlink();
         _settings.PropertyChanged += OnSettingsChanged;
         Opened += (_, _) =>
         {
             ApplySettings();
             UpdateAnimationRate();
             SyncClockTimer();
+            ConfigureEyeMotion();
         };
         Closed += (_, _) =>
         {
             _animationTimer.Stop();
             _clockTimer.Stop();
+            _cursorTimer?.Stop();
+            _eyeFrameTimer?.Stop();
+            _blinkTimer?.Stop();
             _settings.PropertyChanged -= OnSettingsChanged;
         };
         ApplySettings();
     }
 
     private double CompactWidth => _settings?.ShowClock == true
-        ? (_settings.StyleIndex == 0 ? 162 : 128)
-        : (_settings?.StyleIndex == 0 ? 90 : 58);
+        ? (EyeStyleCatalog.IsMinimal(_settings.SelectedStyle) ? 128 : 162)
+        : (EyeStyleCatalog.IsMinimal(_settings?.SelectedStyle) ? 58 : 90);
 
     private void OnSettingsChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -78,14 +98,8 @@ public partial class IslandWindow : Window
     public void ApplySettings()
     {
         if (_settings is null) return;
-        EyesVisual.IsVisible = _settings.StyleIndex == 0;
-        IndicatorFrame.IsVisible = _settings.StyleIndex != 0;
-        IndicatorVisual.Fill = _settings.StyleIndex switch
-        {
-            1 => Brush.Parse("#00E676"),
-            2 => Brush.Parse("#050505"),
-            _ => Brush.Parse("#62E8FF")
-        };
+        EyesVisual.StyleId = _settings.SelectedStyle;
+        EyesVisual.Width = EyeStyleCatalog.IsMinimal(_settings.SelectedStyle) ? 26 : 56;
         ClockText.IsVisible = _settings.ShowClock;
         UpdateClock();
         SyncClockTimer();
@@ -124,6 +138,8 @@ public partial class IslandWindow : Window
         int detected = DisplayRefreshRateDetector.GetRefreshRateAt(x, y);
         _settings.UpdateDetectedDisplayHz(detected);
         _animationTimer.Interval = TimeSpan.FromSeconds(1.0 / Math.Clamp(_settings.TargetAnimationFps, 30, 240));
+        if (_eyeFrameTimer is not null)
+            _eyeFrameTimer.Interval = TimeSpan.FromSeconds(1.0 / Math.Clamp(_settings.TargetAnimationFps, 30, 240));
     }
 
     private void UpdateClock()
