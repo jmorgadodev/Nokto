@@ -141,6 +141,16 @@ foreach ($scenario in $Scenarios) {
       $galleryConfig = Get-Content -Raw (Join-Path $testDir 'data\config.json') | ConvertFrom-Json
       if ($galleryConfig.island.style -ne 'Eyes') { throw 'Clic en galeria no modifico el estilo.' }
       Write-Output '[PASS] Galeria: tarjeta Eyes seleccionada y persistida con un clic.'
+      $noEye = $main.FindFirst(
+        [System.Windows.Automation.TreeScope]::Descendants,
+        [System.Windows.Automation.PropertyCondition]::new(
+          [System.Windows.Automation.AutomationElement]::AutomationIdProperty,'IslandNoIndicator'))
+      if ($null -eq $noEye) { throw 'No hay boton Sin indicador.' }
+      $noEye.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+      Start-Sleep -Milliseconds 300
+      $emptyConfig = Get-Content -Raw (Join-Path $testDir 'data\config.json') | ConvertFrom-Json
+      if ($emptyConfig.island.style -ne 'None') { throw 'No se guardó Sin indicador.' }
+      Write-Output '[PASS] Sin indicador: cápsula vacía seleccionada y guardada.'
 
       $sizeSlider = $main.FindFirst(
         [System.Windows.Automation.TreeScope]::Descendants,

@@ -9,6 +9,10 @@ public sealed class IslandSettings
     public bool ShowFileShelf { get; set; } = false;
     // Solo referencias locales seleccionadas por el usuario. Nunca copiar ni subir contenido.
     public List<string> ShelfFiles { get; set; } = [];
+    public bool ShowQuickActions { get; set; } = true;
+    public bool EnableWheelPages { get; set; } = true;
+    public List<string> QuickFolders { get; set; } = [];
+    public bool ShowClipboardActions { get; set; } = false;
     // Dashboard (legacy default), Island, Both, Tray.
     public string StartupMode { get; set; } = "Dashboard";
     // Los usuarios anteriores conservan su ajuste de inicio hasta elegir un modo nuevo.

@@ -206,9 +206,16 @@
                     </Border>
 
                     <!-- PANEL DERECHO: DISPARADOR Y ACCIONES REORDENABLES -->
-                    <Border Grid.Column="2" Background="{DynamicResource ThemeCardBackground}" BorderBrush="{DynamicResource ThemeCardBorder}" BorderThickness="1" CornerRadius="8" Padding="16">
-                        <views:RoutineEditorView/>
-                    </Border>
+                    <TabControl Grid.Column="2" Background="Transparent">
+                      <TabItem Header="{DynamicResource TabRoutines}">
+                        <Border Background="{DynamicResource ThemeCardBackground}" BorderBrush="{DynamicResource ThemeCardBorder}" BorderThickness="1" CornerRadius="8" Padding="16">
+                          <views:RoutineEditorView/>
+                        </Border>
+                      </TabItem>
+                      <TabItem Header="{DynamicResource IslandProductivityHeading}">
+                        <views:ProductivityManagerView/>
+                      </TabItem>
+                    </TabControl>
                 </Grid>
             </TabItem>
 

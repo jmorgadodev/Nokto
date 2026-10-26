@@ -1,0 +1,140 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Nokto.UI.Views.ProductivityManagerView">
+  <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Spacing="14" Margin="14" HorizontalAlignment="Stretch">
+      <TextBlock Text="CENTRO DE PRODUCTIVIDAD" FontSize="17" FontWeight="Bold"
+                 Foreground="{DynamicResource ThemeAccent}"/>
+      <TextBlock Text="Configura y administra los temporizadores, Pomodoro, alarmas y tareas desde Nokto. La isla solo muestra sus accesos y los avisos."
+                 TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource ThemeTextSecondary}"/>
+      <Border Background="{DynamicResource ThemeCardBackground}" BorderBrush="{DynamicResource ThemeCardBorder}"
+              BorderThickness="1" CornerRadius="10" Padding="14">
+        <StackPanel Spacing="10">
+          <CheckBox Content="Habilitar productividad" IsChecked="{Binding IslandVm.Productivity.Enabled, Mode=TwoWay}"
+                    AutomationProperties.AutomationId="ManagerProductivityEnabled"
+                    Foreground="{DynamicResource ThemeTextPrimary}"/>
+          <CheckBox Content="Mostrar cuenta atrás en la isla compacta" IsChecked="{Binding IslandVm.Productivity.CompactProgress, Mode=TwoWay}"
+                    Foreground="{DynamicResource ThemeTextPrimary}"/>
+          <CheckBox Content="Aviso sonoro al finalizar" IsChecked="{Binding IslandVm.Productivity.AlertSound, Mode=TwoWay}"
+                    Foreground="{DynamicResource ThemeTextPrimary}"/>
+        </StackPanel>
+      </Border>
+      <Grid ColumnDefinitions="*,*">
+        <Border Grid.Column="0" Margin="0,0,7,0" CornerRadius="10" Padding="14"
+                Background="{DynamicResource ThemeCardBackground}" BorderBrush="{DynamicResource ThemeCardBorder}" BorderThickness="1">
+          <StackPanel Spacing="10">
+            <TextBlock Text="TEMPORIZADOR" FontWeight="SemiBold" Foreground="{DynamicResource ThemeAccent}"/>
+            <TextBlock Text="{Binding IslandVm.Productivity.TimerText}" FontFamily="Consolas" FontSize="23"
+                       Foreground="{DynamicResource ThemeTextPrimary}"/>
+            <StackPanel Orientation="Horizontal" Spacing="5">
+              <Button Content="5 min" Click="OnTimer5" Padding="10,5" AutomationProperties.AutomationId="ManagerTimer5"/>
+              <Button Content="15 min" Click="OnTimer15" Padding="10,5"/>
+              <Button Content="25 min" Click="OnTimer25" Padding="10,5"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="5">
+              <Button Content="{Binding IslandVm.Productivity.TimerAction}" Click="OnTimerToggle" Padding="10,5"/>
+              <Button Content="Reiniciar" Click="OnTimerReset" Padding="10,5"/>
+            </StackPanel>
+          </StackPanel>
+        </Border>
+        <Border Grid.Column="1" Margin="7,0,0,0" CornerRadius="10" Padding="14"
+                Background="{DynamicResource ThemeCardBackground}" BorderBrush="{DynamicResource ThemeCardBorder}" BorderThickness="1">
+          <StackPanel Spacing="10">
+            <TextBlock Text="CRONÓMETRO" FontWeight="SemiBold" Foreground="{DynamicResource ThemeAccent}"/>
+            <TextBlock Text="{Binding IslandVm.Productivity.StopwatchText}" FontFamily="Consolas" FontSize="23"
+                       Foreground="{DynamicResource ThemeTextPrimary}"/>
+            <StackPanel Orientation="Horizontal" Spacing="5">
+              <Button Content="{Binding IslandVm.Productivity.StopwatchAction}" Click="OnStopwatchToggle" Padding="10,5"/>
+              <Button Content="Reiniciar" Click="OnStopwatchReset" Padding="10,5"/>
+            </StackPanel>
+          </StackPanel>
+        </Border>
+      </Grid>
+      <Border CornerRadius="10" Padding="14" Background="{DynamicResource ThemeCardBackground}"
+              BorderBrush="{DynamicResource ThemeCardBorder}" BorderThickness="1">
+        <StackPanel Spacing="10">
+          <TextBlock Text="POMODORO" FontWeight="SemiBold" Foreground="{DynamicResource ThemeAccent}"/>
+          <Grid ColumnDefinitions="*,*">
+            <StackPanel Spacing="4">
+              <TextBlock Text="Enfoque (minutos)" Foreground="{DynamicResource ThemeTextSecondary}"/>
+              <NumericUpDown Minimum="1" Maximum="180" Increment="5" HorizontalAlignment="Left" Width="155"
+                             Value="{Binding IslandVm.Productivity.WorkMinutes, Mode=TwoWay}"/>
+            </StackPanel>
+            <StackPanel Grid.Column="1" Spacing="4">
+              <TextBlock Text="Descanso (minutos)" Foreground="{DynamicResource ThemeTextSecondary}"/>
+              <NumericUpDown Minimum="1" Maximum="60" Increment="1" HorizontalAlignment="Left" Width="155"
+                             Value="{Binding IslandVm.Productivity.BreakMinutes, Mode=TwoWay}"/>
+            </StackPanel>
+          </Grid>
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock Text="{Binding IslandVm.Productivity.PomodoroPhase}" VerticalAlignment="Center"
+                       Foreground="{DynamicResource ThemeTextPrimary}"/>
+            <TextBlock Text="{Binding IslandVm.Productivity.PomodoroText}" FontFamily="Consolas" FontSize="16"
+                       VerticalAlignment="Center" Foreground="{DynamicResource ThemeAccent}"/>
+            <Button Content="{Binding IslandVm.Productivity.PomodoroAction}" Click="OnPomodoroToggle" Padding="10,5"/>
+            <Button Content="Reiniciar" Click="OnPomodoroReset" Padding="10,5"/>
+          </StackPanel>
+        </StackPanel>
+      </Border>
+      <Grid ColumnDefinitions="*,*">
+        <Border Grid.Column="0" Margin="0,0,7,0" CornerRadius="10" Padding="14"
+                Background="{DynamicResource ThemeCardBackground}" BorderBrush="{DynamicResource ThemeCardBorder}" BorderThickness="1">
+          <StackPanel Spacing="8">
+            <TextBlock Text="ALARMAS" Foreground="{DynamicResource ThemeAccent}" FontWeight="SemiBold"/>
+            <StackPanel Orientation="Horizontal" Spacing="5">
+              <TextBox x:Name="AlarmTimeInput" Width="73" Watermark="HH:mm"
+                       AutomationProperties.AutomationId="ManagerAlarmTime"/>
+              <CheckBox x:Name="AlarmDailyCheck" Content="Diaria" VerticalAlignment="Center"
+                        Foreground="{DynamicResource ThemeTextPrimary}"/>
+              <Button Content="Añadir" Click="OnAddAlarm" Padding="8,4"
+                      AutomationProperties.AutomationId="ManagerAddAlarm"/>
+            </StackPanel>
+            <ListBox x:Name="AlarmsList" ItemsSource="{Binding IslandVm.Productivity.AlarmItems}"
+                     MinHeight="90" MaxHeight="130" AutomationProperties.AutomationId="ManagerAlarmsList">
+              <ListBox.ItemTemplate>
+                <DataTemplate>
+                  <StackPanel Orientation="Horizontal" Spacing="8">
+                    <TextBlock Text="{Binding LocalTime}" Foreground="{DynamicResource ThemeTextPrimary}"/>
+                    <TextBlock Text="{Binding Label}" Foreground="{DynamicResource ThemeTextSecondary}"/>
+                  </StackPanel>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+            <Button Content="Eliminar alarma seleccionada" Click="OnRemoveAlarm" Padding="8,5"/>
+          </StackPanel>
+        </Border>
+        <Border Grid.Column="1" Margin="7,0,0,0" CornerRadius="10" Padding="14"
+                Background="{DynamicResource ThemeCardBackground}" BorderBrush="{DynamicResource ThemeCardBorder}" BorderThickness="1">
+          <StackPanel Spacing="8">
+            <TextBlock Text="TAREAS Y RECORDATORIOS" Foreground="{DynamicResource ThemeAccent}" FontWeight="SemiBold"/>
+            <TextBox x:Name="TaskInput" Watermark="Nueva tarea..." AutomationProperties.AutomationId="ManagerTaskInput"/>
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <ComboBox x:Name="TaskReminderChoice" SelectedIndex="0" Width="110">
+                <ComboBoxItem Content="Sin aviso"/>
+                <ComboBoxItem Content="15 min"/>
+                <ComboBoxItem Content="1 hora"/>
+              </ComboBox>
+              <Button Content="Añadir tarea" Click="OnAddTask" Padding="8,5"
+                      AutomationProperties.AutomationId="ManagerAddTask"/>
+            </StackPanel>
+            <ListBox x:Name="TasksList" ItemsSource="{Binding IslandVm.Productivity.TaskItems}"
+                     MinHeight="90" MaxHeight="130" AutomationProperties.AutomationId="ManagerTasksList">
+              <ListBox.ItemTemplate>
+                <DataTemplate>
+                  <TextBlock Text="{Binding Text}" TextTrimming="CharacterEllipsis"
+                             Foreground="{DynamicResource ThemeTextPrimary}"/>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <Button Content="✓ Completar" Click="OnCompleteTask" Padding="8,5"/>
+              <Button Content="Eliminar" Click="OnRemoveTask" Padding="8,5"/>
+            </StackPanel>
+          </StackPanel>
+        </Border>
+      </Grid>
+      <TextBlock x:Name="ProductivityStatusText" FontSize="11" TextWrapping="Wrap"
+                 Foreground="{DynamicResource ThemeAccentWarning}"/>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

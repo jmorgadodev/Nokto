@@ -64,6 +64,7 @@ public partial class IslandViewModel : ObservableObject
         _styleIndex = EyeStyleCatalog.IndexOf(config.Island.Style);
         _sizePercent = Math.Clamp(config.Island.SizePercent, 80, 140);
         _showFileShelf = config.Island.ShowFileShelf;
+        InitializeShortcuts();
         foreach (string path in (config.Island.ShelfFiles ?? []).Take(6))
             if (!string.IsNullOrWhiteSpace(path)) ShelfFiles.Add(new ShelfFileOption(path, Path.GetFileName(path)));
         _eyeStyleOptions = BuildOptions(config.Settings.Language);
@@ -228,6 +229,7 @@ public partial class IslandViewModel : ObservableObject
         _config.Island.SizePercent = Math.Clamp(SizePercent, 80, 140);
         _config.Island.ShowFileShelf = ShowFileShelf;
         _config.Island.ShelfFiles = ShelfFiles.Select(f => f.Path).ToList();
+        SaveShortcuts();
         _config.Island.StartupMode = SelectedStartupMode;
         _config.Island.ShowClock = ClockModeIndex != 2;
         _config.Island.ClockVisibility = ClockModeIndex switch { 1 => "Always", 2 => "Never", _ => "Expand" };

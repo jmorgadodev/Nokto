@@ -42,6 +42,7 @@ public sealed partial class NoktoEyesControl : Control
     {
         base.Render(c);
         var s = EyeStyleCatalog.Find(StyleId);
+        if (s.Id == "None") return;
         double w = Bounds.Width, h = Bounds.Height;
         if (w <= 0 || h <= 0) return;
         var light = Solid(s.Color);

@@ -20,8 +20,8 @@ Console.WriteLine($"[PASS] Monitor en (0,0): {atOriginHz} Hz");
 Console.WriteLine("[PASS] Normalizacion nominal 239/240, 59/60 y fallback.");
 
 var styles = EyeStyleCatalog.All;
-Expect(styles.Count == 42, $"Se esperaban 42 estilos, hay {styles.Count}");
-Expect(styles.Select(s => s.Id).Distinct(StringComparer.OrdinalIgnoreCase).Count() == 42,
+Expect(styles.Count == 43, $"Se esperaban 42 estilos, hay {styles.Count}");
+Expect(styles.Select(s => s.Id).Distinct(StringComparer.OrdinalIgnoreCase).Count() == 43,
     "El catalogo contiene ID duplicados");
 Expect(styles.Select(s => s.Pack).Distinct().Count() == 7, "Se esperaban siete familias");
 foreach (var style in styles)
@@ -31,6 +31,7 @@ foreach (var style in styles)
         "Traduccion vacia en " + style.Id);
 }
 Expect(EyeStyleCatalog.IsMinimal("GreenDot"), "El punto verde debe ser minimalista");
+Expect(EyeStyleCatalog.Find("None").Id == "None" && !EyeStyleCatalog.HasIndicator("None"), "El modo vacío debe estar disponible");
 Expect(!EyeStyleCatalog.IsMinimal("Feline"), "Felino no debe ser minimalista");
 Expect(EyeStyleCatalog.IndexOf("Eyes") == 6, "Compatibilidad del estilo Eyes");
-Console.WriteLine("[PASS] 42 estilos originales, siete packs, identificadores unicos, traducciones ES/EN.");
+Console.WriteLine("[PASS] 42 estilos visuales + modo sin indicador, siete packs, identificadores unicos, traducciones ES/EN.");

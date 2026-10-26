@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using System.Collections.ObjectModel;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.ComponentModel;
 using Nokto.Core.Models;
@@ -18,6 +19,15 @@ public sealed class IslandProductivityViewModel : ObservableObject, IDisposable
     private readonly PersistenceService _persistence;
     private readonly DispatcherTimer _pulse;
     private bool _disposed;
+    public ObservableCollection<IslandTaskItem> TaskItems { get; } = [];
+    public ObservableCollection<IslandAlarmItem> AlarmItems { get; } = [];
+    private void SyncCollections()
+    {
+        TaskItems.Clear();
+        foreach(var t in _engine.State.Tasks) TaskItems.Add(t);
+        AlarmItems.Clear();
+        foreach(var a in _engine.State.Alarms) AlarmItems.Add(a);
+    }
 
     public event Action<IslandProductivityAlert>? AlertRaised;
     public event Action? Updated;
@@ -30,6 +40,7 @@ public sealed class IslandProductivityViewModel : ObservableObject, IDisposable
         _engine = new IslandProductivityEngine(_config.Island.Productivity);
         _pulse = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _pulse.Tick += (_, _) => Refresh();
+        SyncCollections();
         Refresh();
     }
 
@@ -115,6 +126,24 @@ public sealed class IslandProductivityViewModel : ObservableObject, IDisposable
         if (ok) Persist();
         return ok;
     }
+    public bool RemoveTask(string id)
+    {
+        bool ok = _engine.RemoveTask(id);
+        if(ok) Persist();
+        return ok;
+    }
+    public bool CompleteTask(string id)
+    {
+        bool ok = _engine.CompleteTask(id);
+        if(ok) Persist();
+        return ok;
+    }
+    public bool RemoveAlarm(string id)
+    {
+        bool ok = _engine.RemoveAlarm(id);
+        if(ok) Persist();
+        return ok;
+    }
     public void DismissAlert() { _engine.DismissAlert(); Notify(); }
 
     private void Apply(Action action) { action(); Persist(); }
@@ -122,6 +151,7 @@ public sealed class IslandProductivityViewModel : ObservableObject, IDisposable
     {
         if (_disposed) return;
         _persistence.SaveConfig(_config);
+        SyncCollections();
         Notify();
         SchedulePulse();
     }
@@ -132,6 +162,7 @@ public sealed class IslandProductivityViewModel : ObservableObject, IDisposable
         if (changed)
         {
             _persistence.SaveConfig(_config);
+            SyncCollections();
             if (_engine.PendingAlert is { } alert)
             {
                 if (_engine.State.Enabled)

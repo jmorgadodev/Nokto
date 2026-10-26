@@ -8,6 +8,12 @@ public partial class IslandSettingsView : UserControl
 {
     public IslandSettingsView() => InitializeComponent();
 
+    private void OnOpenRoutines(object? sender, RoutedEventArgs e)
+    {
+        if (DataContext is MainViewModel main)
+            main.SelectedTabIndex = 2;
+    }
+
     private void OnSelectEyeStyle(object? sender, RoutedEventArgs e)
     {
         if (sender is Button { CommandParameter: string styleId } &&

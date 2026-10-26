@@ -56,6 +56,7 @@ public static class EyeStyleCatalog
         new("Glitch","Dark","Glitch","Glitch","pixel","square","#F276A3","#762D5F"),
         new("Void","Dark","Vacío","Void","round","ring","#F27C79","#A72E40"),
         new("Hollow","Dark","Hueco","Hollow","ring","ring","#B5D1EC","#455A81"),
+        new("None","Minimal","Sin indicador","No indicator","none","round","#080D15","#080D15"),
     };
 
     public static EyeStyleDefinition Find(string? id)
@@ -70,4 +71,5 @@ public static class EyeStyleCatalog
     }
 
     public static bool IsMinimal(string? id) => Find(id).Pack == "Minimal";
+    public static bool HasIndicator(string? id) => !string.Equals(Find(id).Id, "None", StringComparison.OrdinalIgnoreCase);
 }

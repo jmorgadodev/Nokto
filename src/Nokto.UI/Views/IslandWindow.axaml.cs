@@ -20,7 +20,7 @@ namespace Nokto.UI.Views;
 public partial class IslandWindow : Window
 {
     private double ScaleFactor => _settings?.IslandScale ?? 1.0;
-    private double CompactHeight => 48 * ScaleFactor;
+    private double CompactHeight => (EyeStyleCatalog.HasIndicator(_settings?.SelectedStyle) ? 48 : 32) * ScaleFactor;
     private double ExpandedWidth => 332 * ScaleFactor;
     // La altura expandida crece únicamente si hay una sesión multimedia real.
     private const double TransitionSeconds = 0.26;
@@ -93,8 +93,10 @@ public partial class IslandWindow : Window
         ? (_settings?.ClockInCompact == true ? 284 : 232) : HasCompactProductivity
         ? (_settings?.ClockInCompact == true ? 245 : 196)
         : _settings?.ClockInCompact == true
-            ? (EyeStyleCatalog.IsMinimal(_settings.SelectedStyle) ? 145 : 176)
-            : (EyeStyleCatalog.IsMinimal(_settings?.SelectedStyle) ? 64 : 110));
+            ? (EyeStyleCatalog.HasIndicator(_settings.SelectedStyle) ?
+                  (EyeStyleCatalog.IsMinimal(_settings.SelectedStyle) ? 145 : 176) : 105)
+            : (EyeStyleCatalog.HasIndicator(_settings?.SelectedStyle) ?
+                  (EyeStyleCatalog.IsMinimal(_settings?.SelectedStyle) ? 64 : 110) : 64));
 
     private void OnSettingsChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -119,6 +121,8 @@ public partial class IslandWindow : Window
     {
         if (_settings is null) return;
         EyesVisual.StyleId = _settings.SelectedStyle;
+        EyesVisual.IsVisible = EyeStyleCatalog.HasIndicator(_settings.SelectedStyle);
+        IslandHeader.MinHeight = EyeStyleCatalog.HasIndicator(_settings.SelectedStyle) ? 34 : 18;
         IslandSurface.RenderTransform = new ScaleTransform(ScaleFactor, ScaleFactor);
         IslandSurface.RenderTransformOrigin = new RelativePoint(0, 0, RelativeUnit.Relative);
         EyesVisual.Width = EyeStyleCatalog.IsMinimal(_settings.SelectedStyle) ? 30 : 74;
@@ -128,6 +132,7 @@ public partial class IslandWindow : Window
         BatteryStatusText.IsVisible = _settings.ShowBatteryStatus;
         NetworkStatusText.IsVisible = _settings.ShowNetworkStatus;
         SystemStatus.IsVisible = _settings.ShowBatteryStatus || _settings.ShowNetworkStatus;
+        RefreshPages();
         RefreshProductivity();
         RefreshShelf();
         UpdateClock();
@@ -237,6 +242,8 @@ public partial class IslandWindow : Window
             ExpandedTools.IsVisible = true;
         }
         CompactTrackText.IsVisible = HasCompactMedia && !expanded;
+        if (!expanded) ClearClipboardPreview();
+        RefreshPages();
         RefreshProductivity();
         SyncMediaProgressTimer();
         AnimateTo(expanded ? ExpandedWidth : CompactWidth,

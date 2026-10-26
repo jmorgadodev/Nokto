@@ -2,49 +2,100 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:Nokto.UI.Controls"
              x:Class="Nokto.UI.Views.IslandSettingsView">
-  <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-    <StackPanel Margin="24,18" Spacing="18" MaxWidth="850" HorizontalAlignment="Left">
-      <TextBlock Text="{DynamicResource IslandTitle}" Foreground="{DynamicResource ThemeTextPrimary}" FontSize="22" FontWeight="Bold"/>
-      <TextBlock Text="{DynamicResource IslandIntro}" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="12" TextWrapping="Wrap"/>
-      <Border Background="{DynamicResource ThemeCardBackground}" BorderBrush="{DynamicResource ThemeCardBorder}" BorderThickness="1" CornerRadius="10" Padding="20">
+  <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+    <Grid Margin="22,18" ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto,Auto,Auto,Auto,Auto,Auto"
+          HorizontalAlignment="Stretch">
+      <TextBlock Grid.Row="0" Grid.ColumnSpan="2" Text="{DynamicResource IslandTitle}"
+                 Foreground="{DynamicResource ThemeTextPrimary}" FontSize="23" FontWeight="Bold" Margin="0,0,0,4"/>
+      <TextBlock Grid.Row="1" Grid.ColumnSpan="2" Text="{DynamicResource IslandIntro}"
+                 Foreground="{DynamicResource ThemeTextSecondary}" FontSize="12" Margin="0,0,0,16" TextWrapping="Wrap"/>
+
+      <Border Grid.Row="2" Grid.Column="0" Margin="0,0,8,14" Padding="16" CornerRadius="12"
+              Background="{DynamicResource ThemeCardBackground}" BorderBrush="{DynamicResource ThemeCardBorder}" BorderThickness="1">
         <StackPanel Spacing="10">
-          <TextBlock Text="{DynamicResource IslandVisibilityHeading}" Foreground="{DynamicResource ThemeAccent}" FontWeight="Bold" FontSize="12"/>
-          <CheckBox Content="{DynamicResource IslandEnable}" IsChecked="{Binding IslandVm.Enabled, Mode=TwoWay}" Foreground="{DynamicResource ThemeTextPrimary}" FontSize="14"/>
+          <TextBlock Text="{DynamicResource IslandVisibilityHeading}" Foreground="{DynamicResource ThemeAccent}" FontWeight="Bold"/>
+          <CheckBox Content="{DynamicResource IslandEnable}" IsChecked="{Binding IslandVm.Enabled, Mode=TwoWay}" Foreground="{DynamicResource ThemeTextPrimary}"/>
           <TextBlock Text="{DynamicResource IslandEnableHint}" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="11" TextWrapping="Wrap"/>
         </StackPanel>
       </Border>
-      <Border Background="{DynamicResource ThemeCardBackground}" BorderBrush="{DynamicResource ThemeCardBorder}" BorderThickness="1" CornerRadius="10" Padding="20">
+      <Border Grid.Row="2" Grid.Column="1" Margin="8,0,0,14" Padding="16" CornerRadius="12"
+              Background="{DynamicResource ThemeCardBackground}" BorderBrush="{DynamicResource ThemeCardBorder}" BorderThickness="1">
+        <StackPanel Spacing="8">
+          <TextBlock Text="{DynamicResource IslandStartupHeading}" Foreground="{DynamicResource ThemeAccent}" FontWeight="Bold"/>
+          <ComboBox SelectedIndex="{Binding IslandVm.StartupModeIndex, Mode=TwoWay}" HorizontalAlignment="Stretch">
+            <ComboBoxItem Content="{DynamicResource IslandStartupLegacy}"/>
+            <ComboBoxItem Content="{DynamicResource IslandStartupDashboard}"/>
+            <ComboBoxItem Content="{DynamicResource IslandStartupIsland}"/>
+            <ComboBoxItem Content="{DynamicResource IslandStartupBoth}"/>
+            <ComboBoxItem Content="{DynamicResource IslandStartupTray}"/>
+          </ComboBox>
+          <TextBlock Text="{DynamicResource IslandStartupNote}" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="11" TextWrapping="Wrap"/>
+        </StackPanel>
+      </Border>
+
+      <Border Grid.Row="3" Grid.Column="0" Margin="0,0,8,14" Padding="16" CornerRadius="12"
+              Background="{DynamicResource ThemeCardBackground}" BorderBrush="{DynamicResource ThemeCardBorder}" BorderThickness="1">
         <StackPanel Spacing="12">
-          <TextBlock Text="{DynamicResource IslandAppearanceHeading}" Foreground="{DynamicResource ThemeAccent}" FontWeight="Bold" FontSize="12"/>
-          <Grid ColumnDefinitions="250,*" RowDefinitions="Auto,Auto">
-            <TextBlock Grid.Row="0" Text="{DynamicResource IslandStyleLabel}" Foreground="{DynamicResource ThemeTextPrimary}" VerticalAlignment="Center"/>
-            <ComboBox Grid.Column="1" Grid.Row="0" SelectedIndex="{Binding IslandVm.StyleIndex, Mode=TwoWay}"
-                      ItemsSource="{Binding IslandVm.EyeStyleOptions}"
-                      AutomationProperties.AutomationId="IslandEyeStyleSelector"
-                      MinWidth="330" HorizontalAlignment="Left">
-              <ComboBox.ItemTemplate>
-                <DataTemplate>
-                  <TextBlock Text="{Binding DisplayName}"/>
-                </DataTemplate>
-              </ComboBox.ItemTemplate>
-            </ComboBox>
-            <TextBlock Grid.Row="1" Grid.Column="0" Text="{DynamicResource IslandClockBehavior}" Margin="0,14,0,0" VerticalAlignment="Center" Foreground="{DynamicResource ThemeTextPrimary}"/>
-            <ComboBox Grid.Row="1" Grid.Column="1" Margin="0,14,0,0" SelectedIndex="{Binding IslandVm.ClockModeIndex, Mode=TwoWay}"
-                      AutomationProperties.AutomationId="IslandClockVisibilitySelector">
-              <ComboBoxItem Content="{DynamicResource IslandClockExpand}"/>
-              <ComboBoxItem Content="{DynamicResource IslandClockAlways}"/>
-              <ComboBoxItem Content="{DynamicResource IslandClockNever}"/>
-            </ComboBox>
-          </Grid>
-          <Border CornerRadius="10" Background="#080B10" Padding="10" HorizontalAlignment="Left" MinWidth="175">
-            <StackPanel Orientation="Horizontal" Spacing="16">
-              <TextBlock Text="{DynamicResource IslandEyePreview}" VerticalAlignment="Center" Foreground="#9EADB9" FontSize="11"/>
-              <controls:NoktoEyesControl Width="140" Height="64" StyleId="{Binding IslandVm.SelectedStyle}"/>
+          <TextBlock Text="{DynamicResource IslandAppearanceHeading}" Foreground="{DynamicResource ThemeAccent}" FontWeight="Bold"/>
+          <TextBlock Text="{DynamicResource IslandStyleLabel}" Foreground="{DynamicResource ThemeTextPrimary}"/>
+          <ComboBox SelectedIndex="{Binding IslandVm.StyleIndex, Mode=TwoWay}"
+                    ItemsSource="{Binding IslandVm.EyeStyleOptions}"
+                    AutomationProperties.AutomationId="IslandEyeStyleSelector" HorizontalAlignment="Stretch">
+            <ComboBox.ItemTemplate>
+              <DataTemplate><TextBlock Text="{Binding DisplayName}"/></DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+          <Border CornerRadius="10" Background="#080B10" Padding="10">
+            <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center">
+              <TextBlock Text="{DynamicResource IslandEyePreview}" VerticalAlignment="Center" Foreground="#B7CDDD" FontSize="11"/>
+              <controls:NoktoEyesControl Width="145" Height="68" StyleId="{Binding IslandVm.SelectedStyle}"/>
             </StackPanel>
           </Border>
-          <TextBlock Text="{DynamicResource IslandGalleryGuide}" FontSize="11" Foreground="{DynamicResource ThemeTextSecondary}" TextWrapping="Wrap"/>
-          <Grid ColumnDefinitions="175,250,*">
-            <TextBlock Text="{DynamicResource IslandGalleryFilter}" Foreground="{DynamicResource ThemeTextPrimary}" VerticalAlignment="Center"/>
+          <TextBlock Text="{DynamicResource IslandSizeLabel}" Foreground="{DynamicResource ThemeTextPrimary}"/>
+          <Grid ColumnDefinitions="*,54">
+            <Slider Grid.Column="0" Minimum="80" Maximum="140" TickFrequency="10" IsSnapToTickEnabled="True"
+                    Value="{Binding IslandVm.SizePercent, Mode=TwoWay}"
+                    AutomationProperties.AutomationId="IslandSizeSlider"/>
+            <TextBlock Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="Right"
+                       Text="{Binding IslandVm.SizePercent, StringFormat='{}{0}%'}"
+                       Foreground="{DynamicResource ThemeAccent}" FontFamily="Consolas"/>
+          </Grid>
+          <TextBlock Text="{DynamicResource IslandSizeHint}" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="11" TextWrapping="Wrap"/>
+          <TextBlock Text="{DynamicResource IslandClockBehavior}" Foreground="{DynamicResource ThemeTextPrimary}"/>
+          <ComboBox SelectedIndex="{Binding IslandVm.ClockModeIndex, Mode=TwoWay}"
+                    AutomationProperties.AutomationId="IslandClockVisibilitySelector">
+            <ComboBoxItem Content="{DynamicResource IslandClockExpand}"/>
+            <ComboBoxItem Content="{DynamicResource IslandClockAlways}"/>
+            <ComboBoxItem Content="{DynamicResource IslandClockNever}"/>
+          </ComboBox>
+        </StackPanel>
+      </Border>
+      <Border Grid.Row="3" Grid.Column="1" Margin="8,0,0,14" Padding="16" CornerRadius="12"
+              Background="{DynamicResource ThemeCardBackground}" BorderBrush="{DynamicResource ThemeCardBorder}" BorderThickness="1">
+        <StackPanel Spacing="10">
+          <TextBlock Text="{DynamicResource IslandEyeMotionHeading}" Foreground="{DynamicResource ThemeAccent}" FontWeight="Bold"/>
+          <CheckBox Content="{DynamicResource IslandFollowCursor}" IsChecked="{Binding IslandVm.FollowCursor, Mode=TwoWay}" Foreground="{DynamicResource ThemeTextPrimary}"/>
+          <CheckBox Content="{DynamicResource IslandNaturalBlink}" IsChecked="{Binding IslandVm.NaturalBlink, Mode=TwoWay}" Foreground="{DynamicResource ThemeTextPrimary}"/>
+          <CheckBox Content="{DynamicResource IslandSleepOnIdle}" IsChecked="{Binding IslandVm.SleepOnIdle, Mode=TwoWay}" Foreground="{DynamicResource ThemeTextPrimary}"/>
+          <TextBlock Text="{DynamicResource IslandEyeSensitivity}" Foreground="{DynamicResource ThemeTextPrimary}"/>
+          <Slider Minimum="0" Maximum="1" TickFrequency="0.1" Value="{Binding IslandVm.EyeSensitivity, Mode=TwoWay}"
+                  AutomationProperties.AutomationId="IslandEyeSensitivitySlider"/>
+          <CheckBox Content="{DynamicResource IslandExpandOnHover}" IsChecked="{Binding IslandVm.ExpandOnHover, Mode=TwoWay}" Foreground="{DynamicResource ThemeTextPrimary}"/>
+          <CheckBox Content="{DynamicResource IslandReducedMotion}" IsChecked="{Binding IslandVm.ReducedMotion, Mode=TwoWay}" Foreground="{DynamicResource ThemeTextPrimary}"/>
+          <CheckBox Content="{DynamicResource IslandWheelEnabled}" IsChecked="{Binding IslandVm.EnableWheelPages, Mode=TwoWay}"
+                    AutomationProperties.AutomationId="IslandWheelEnabled" Foreground="{DynamicResource ThemeTextPrimary}"/>
+          <TextBlock Text="{DynamicResource IslandWheelHint}" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="11" TextWrapping="Wrap"/>
+        </StackPanel>
+      </Border>
+
+      <Border Grid.Row="4" Grid.ColumnSpan="2" Padding="16" Margin="0,0,0,14" CornerRadius="12"
+              Background="{DynamicResource ThemeCardBackground}" BorderBrush="{DynamicResource ThemeCardBorder}" BorderThickness="1">
+        <StackPanel Spacing="10">
+          <Grid ColumnDefinitions="*,230">
+            <StackPanel Spacing="5">
+              <TextBlock Text="{DynamicResource IslandGalleryHeading}" Foreground="{DynamicResource ThemeAccent}" FontWeight="Bold"/>
+              <TextBlock Text="{DynamicResource IslandGalleryGuide}" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="11" TextWrapping="Wrap"/>
+            </StackPanel>
             <ComboBox Grid.Column="1" SelectedIndex="{Binding IslandVm.GalleryPackIndex, Mode=TwoWay}"
                       AutomationProperties.AutomationId="IslandGalleryPackFilter">
               <ComboBoxItem Content="{DynamicResource IslandGalleryAll}"/>
@@ -57,13 +108,12 @@
               <ComboBoxItem Content="Dark"/>
             </ComboBox>
           </Grid>
-          <Expander Header="{DynamicResource IslandGalleryHeading}" IsExpanded="True">
-            <ScrollViewer Height="350" VerticalScrollBarVisibility="Auto">
+          <Button Content="{DynamicResource IslandNoIndicator}" CommandParameter="None" Click="OnSelectEyeStyle"
+                  AutomationProperties.AutomationId="IslandNoIndicator" HorizontalAlignment="Left" Padding="12,7"/>
+          <ScrollViewer Height="302" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
             <ItemsControl ItemsSource="{Binding IslandVm.GalleryStyles}">
               <ItemsControl.ItemsPanel>
-                <ItemsPanelTemplate>
-                  <WrapPanel Orientation="Horizontal" ItemWidth="164" ItemHeight="120"/>
-                </ItemsPanelTemplate>
+                <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" ItemWidth="164" ItemHeight="120"/></ItemsPanelTemplate>
               </ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
@@ -75,131 +125,85 @@
                     <StackPanel HorizontalAlignment="Center" Spacing="5">
                       <controls:NoktoEyesControl StyleId="{Binding Id}" Width="118" Height="64"/>
                       <TextBlock Text="{Binding DisplayName}" FontSize="10"
-                                 Foreground="#E6F2FA" MaxWidth="140" TextTrimming="CharacterEllipsis"
-                                 TextAlignment="Center"/>
+                                 Foreground="#E6F2FA" MaxWidth="140" TextTrimming="CharacterEllipsis" TextAlignment="Center"/>
                     </StackPanel>
                   </Button>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
-            </ScrollViewer>
-          </Expander>
-          <Grid ColumnDefinitions="250,230,Auto">
-            <TextBlock Text="{DynamicResource IslandSizeLabel}" VerticalAlignment="Center" Foreground="{DynamicResource ThemeTextPrimary}"/>
-            <Slider Grid.Column="1" Minimum="80" Maximum="140" TickFrequency="10"
-                    IsSnapToTickEnabled="True" Value="{Binding IslandVm.SizePercent, Mode=TwoWay}"
-                    AutomationProperties.AutomationId="IslandSizeSlider"/>
-            <TextBlock Grid.Column="2" Text="{Binding IslandVm.SizePercent, StringFormat='{}{0}%'}"
-                       VerticalAlignment="Center" FontFamily="Consolas" Foreground="{DynamicResource ThemeAccent}"/>
-          </Grid>
-          <TextBlock Text="{DynamicResource IslandSizeHint}" TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource ThemeTextSecondary}"/>
-          <TextBlock Text="{DynamicResource IslandEyeMotionHeading}" Foreground="{DynamicResource ThemeAccent}" FontWeight="SemiBold" FontSize="12"/>
-          <CheckBox Content="{DynamicResource IslandFollowCursor}" IsChecked="{Binding IslandVm.FollowCursor, Mode=TwoWay}" Foreground="{DynamicResource ThemeTextPrimary}"/>
-          <CheckBox Content="{DynamicResource IslandNaturalBlink}" IsChecked="{Binding IslandVm.NaturalBlink, Mode=TwoWay}" Foreground="{DynamicResource ThemeTextPrimary}"/>
-          <CheckBox Content="{DynamicResource IslandSleepOnIdle}" IsChecked="{Binding IslandVm.SleepOnIdle, Mode=TwoWay}" Foreground="{DynamicResource ThemeTextPrimary}"/>
-          <Grid ColumnDefinitions="250,220">
-            <TextBlock Text="{DynamicResource IslandEyeSensitivity}" Foreground="{DynamicResource ThemeTextPrimary}" VerticalAlignment="Center"/>
-            <Slider Grid.Column="1" Minimum="0" Maximum="1" TickFrequency="0.1"
-                    Value="{Binding IslandVm.EyeSensitivity, Mode=TwoWay}"
-                    AutomationProperties.AutomationId="IslandEyeSensitivitySlider"/>
-          </Grid>
-          <TextBlock Text="{DynamicResource IslandEyeMotionNote}" Foreground="{DynamicResource ThemeTextSecondary}" TextWrapping="Wrap" FontSize="11"/>
-          <CheckBox Content="{DynamicResource IslandExpandOnHover}" IsChecked="{Binding IslandVm.ExpandOnHover, Mode=TwoWay}" Foreground="{DynamicResource ThemeTextPrimary}"/>
-          <CheckBox Content="{DynamicResource IslandReducedMotion}" IsChecked="{Binding IslandVm.ReducedMotion, Mode=TwoWay}" Foreground="{DynamicResource ThemeTextPrimary}"/>
-          <TextBlock Text="{DynamicResource IslandAppearanceHint}" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="11" TextWrapping="Wrap"/>
+          </ScrollViewer>
         </StackPanel>
       </Border>
-      <Border Background="{DynamicResource ThemeCardBackground}" BorderBrush="{DynamicResource ThemeCardBorder}" BorderThickness="1" CornerRadius="10" Padding="20">
-        <StackPanel Spacing="10">
-          <TextBlock Text="{DynamicResource IslandSystemControls}" Foreground="{DynamicResource ThemeAccent}" FontWeight="Bold" FontSize="12"/>
+
+      <Border Grid.Row="5" Grid.Column="0" Margin="0,0,8,14" Padding="16" CornerRadius="12"
+              Background="{DynamicResource ThemeCardBackground}" BorderBrush="{DynamicResource ThemeCardBorder}" BorderThickness="1">
+        <StackPanel Spacing="8">
+          <TextBlock Text="{DynamicResource IslandSystemControls}" Foreground="{DynamicResource ThemeAccent}" FontWeight="Bold"/>
           <CheckBox Content="{DynamicResource IslandShowAudioControls}" IsChecked="{Binding IslandVm.ShowAudioControls, Mode=TwoWay}" Foreground="{DynamicResource ThemeTextPrimary}"/>
           <CheckBox Content="{DynamicResource IslandShowBatteryStatus}" IsChecked="{Binding IslandVm.ShowBatteryStatus, Mode=TwoWay}" Foreground="{DynamicResource ThemeTextPrimary}"/>
           <CheckBox Content="{DynamicResource IslandShowNetworkStatus}" IsChecked="{Binding IslandVm.ShowNetworkStatus, Mode=TwoWay}" Foreground="{DynamicResource ThemeTextPrimary}"/>
+          <TextBlock Text="{DynamicResource IslandQuickHeading}" Foreground="{DynamicResource ThemeAccent}" FontWeight="Bold" Margin="0,8,0,0"/>
+          <CheckBox Content="{DynamicResource IslandQuickEnabled}" IsChecked="{Binding IslandVm.ShowQuickActions, Mode=TwoWay}"
+                    AutomationProperties.AutomationId="IslandQuickEnabled" Foreground="{DynamicResource ThemeTextPrimary}"/>
+          <TextBlock Text="{DynamicResource IslandQuickHint}" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="11" TextWrapping="Wrap"/>
         </StackPanel>
       </Border>
-      <Border Background="{DynamicResource ThemeCardBackground}" BorderBrush="{DynamicResource ThemeCardBorder}" BorderThickness="1" CornerRadius="10" Padding="20">
-        <StackPanel Spacing="10">
-          <TextBlock Text="{DynamicResource IslandMediaHeading}" Foreground="{DynamicResource ThemeAccent}" FontWeight="Bold" FontSize="12"/>
+      <Border Grid.Row="5" Grid.Column="1" Margin="8,0,0,14" Padding="16" CornerRadius="12"
+              Background="{DynamicResource ThemeCardBackground}" BorderBrush="{DynamicResource ThemeCardBorder}" BorderThickness="1">
+        <StackPanel Spacing="8">
+          <TextBlock Text="{DynamicResource IslandMediaHeading}" Foreground="{DynamicResource ThemeAccent}" FontWeight="Bold"/>
           <CheckBox Content="{DynamicResource IslandMediaControls}" IsChecked="{Binding IslandVm.ShowMediaControls, Mode=TwoWay}"
                     AutomationProperties.AutomationId="IslandMediaControls" Foreground="{DynamicResource ThemeTextPrimary}"/>
           <CheckBox Content="{DynamicResource IslandMediaCompact}" IsChecked="{Binding IslandVm.ShowMediaInCompact, Mode=TwoWay}"
                     AutomationProperties.AutomationId="IslandMediaCompact" Foreground="{DynamicResource ThemeTextPrimary}"/>
-          <TextBlock Text="{DynamicResource IslandMediaNote}" Foreground="{DynamicResource ThemeTextSecondary}"
-                     FontSize="11" TextWrapping="Wrap"/>
+          <TextBlock Text="{DynamicResource IslandMediaNote}" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="11" TextWrapping="Wrap"/>
         </StackPanel>
       </Border>
-      <Border Background="{DynamicResource ThemeCardBackground}" BorderBrush="{DynamicResource ThemeCardBorder}" BorderThickness="1" CornerRadius="10" Padding="20">
-        <StackPanel Spacing="12">
-          <TextBlock Text="{DynamicResource IslandProductivityHeading}" Foreground="{DynamicResource ThemeAccent}" FontWeight="Bold" FontSize="12"/>
-          <CheckBox Content="{DynamicResource IslandProductivityEnabled}"
-                    IsChecked="{Binding IslandVm.Productivity.Enabled, Mode=TwoWay}"
-                    AutomationProperties.AutomationId="IslandProductivityEnabled" Foreground="{DynamicResource ThemeTextPrimary}"/>
-          <CheckBox Content="{DynamicResource IslandProductivityCompact}"
-                    IsChecked="{Binding IslandVm.Productivity.CompactProgress, Mode=TwoWay}"
-                    AutomationProperties.AutomationId="IslandProductivityCompact" Foreground="{DynamicResource ThemeTextPrimary}"/>
-          <CheckBox Content="{DynamicResource IslandProductivitySound}"
-                    IsChecked="{Binding IslandVm.Productivity.AlertSound, Mode=TwoWay}" Foreground="{DynamicResource ThemeTextPrimary}"/>
-          <Grid ColumnDefinitions="250,105" RowDefinitions="Auto,Auto">
-            <TextBlock Text="{DynamicResource IslandFocusMinutes}" Foreground="{DynamicResource ThemeTextPrimary}" VerticalAlignment="Center"/>
-            <NumericUpDown Grid.Column="1" Minimum="1" Maximum="180" Increment="5"
-                           Value="{Binding IslandVm.Productivity.WorkMinutes, Mode=TwoWay}"
-                           AutomationProperties.AutomationId="IslandWorkMinutes"/>
-            <TextBlock Grid.Row="1" Text="{DynamicResource IslandBreakMinutes}" Foreground="{DynamicResource ThemeTextPrimary}" VerticalAlignment="Center"/>
-            <NumericUpDown Grid.Row="1" Grid.Column="1" Minimum="1" Maximum="60" Increment="1"
-                           Value="{Binding IslandVm.Productivity.BreakMinutes, Mode=TwoWay}"
-                           AutomationProperties.AutomationId="IslandBreakMinutes"/>
-          </Grid>
-          <TextBlock Text="{DynamicResource IslandProductivityNote}" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="11" TextWrapping="Wrap"/>
-        </StackPanel>
-      </Border>
-      <Border Background="{DynamicResource ThemeCardBackground}" BorderBrush="{DynamicResource ThemeCardBorder}" BorderThickness="1" CornerRadius="10" Padding="20">
+
+      <Border Grid.Row="6" Grid.Column="0" Margin="0,0,8,14" Padding="16" CornerRadius="12"
+              Background="{DynamicResource ThemeCardBackground}" BorderBrush="{DynamicResource ThemeCardBorder}" BorderThickness="1">
         <StackPanel Spacing="9">
-          <TextBlock Text="{DynamicResource IslandShelfHeading}" Foreground="{DynamicResource ThemeAccent}" FontSize="12" FontWeight="Bold"/>
+          <TextBlock Text="{DynamicResource IslandShelfHeading}" Foreground="{DynamicResource ThemeAccent}" FontWeight="Bold"/>
           <CheckBox Content="{DynamicResource IslandShelfToggle}" IsChecked="{Binding IslandVm.ShowFileShelf, Mode=TwoWay}"
                     AutomationProperties.AutomationId="IslandShelfEnabled" Foreground="{DynamicResource ThemeTextPrimary}"/>
-          <TextBlock Text="{DynamicResource IslandShelfInfo}" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource ThemeTextSecondary}"/>
+          <TextBlock Text="{DynamicResource IslandShelfInfo}" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="11" TextWrapping="Wrap"/>
+          <TextBlock Text="{DynamicResource IslandClipboardHeading}" Foreground="{DynamicResource ThemeAccent}" Margin="0,6,0,0" FontWeight="Bold"/>
+          <CheckBox Content="{DynamicResource IslandClipboardEnable}" IsChecked="{Binding IslandVm.ShowClipboardActions, Mode=TwoWay}"
+                    AutomationProperties.AutomationId="IslandClipboardEnabled" Foreground="{DynamicResource ThemeTextPrimary}"/>
         </StackPanel>
       </Border>
-      <Border Background="{DynamicResource ThemeCardBackground}" BorderBrush="{DynamicResource ThemeCardBorder}" BorderThickness="1" CornerRadius="10" Padding="20">
-        <StackPanel Spacing="12">
-          <TextBlock Text="{DynamicResource IslandPerformanceHeading}" Foreground="{DynamicResource ThemeAccent}" FontWeight="Bold" FontSize="12"/>
+      <Border Grid.Row="6" Grid.Column="1" Margin="8,0,0,14" Padding="16" CornerRadius="12"
+              Background="{DynamicResource ThemeCardBackground}" BorderBrush="{DynamicResource ThemeCardBorder}" BorderThickness="1">
+        <StackPanel Spacing="9">
+          <TextBlock Text="{DynamicResource IslandPerformanceHeading}" Foreground="{DynamicResource ThemeAccent}" FontWeight="Bold"/>
           <TextBlock Text="{DynamicResource IslandPerformanceDescription}" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="11" TextWrapping="Wrap"/>
-          <Grid ColumnDefinitions="250,*">
-            <TextBlock Text="{DynamicResource IslandAnimationRateLabel}" Foreground="{DynamicResource ThemeTextPrimary}" VerticalAlignment="Center"/>
-            <ComboBox Grid.Column="1" SelectedIndex="{Binding IslandVm.AnimationRateIndex, Mode=TwoWay}"
-                      AutomationProperties.AutomationId="IslandFrameRateSelector"
-                      AutomationProperties.Name="{DynamicResource IslandAnimationRateLabel}"
-                      MinWidth="230" HorizontalAlignment="Left">
-              <ComboBoxItem Content="{DynamicResource IslandFpsAuto}"/>
-              <ComboBoxItem Content="60 FPS"/>
-              <ComboBoxItem Content="120 FPS"/>
-              <ComboBoxItem Content="144 FPS"/>
-              <ComboBoxItem Content="165 FPS"/>
-              <ComboBoxItem Content="240 FPS"/>
-            </ComboBox>
-          </Grid>
-          <StackPanel Orientation="Horizontal" Spacing="10">
-            <TextBlock Text="{DynamicResource IslandDetectedRateLabel}" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="12"/>
-            <TextBlock Text="{Binding IslandVm.DisplayRefreshStatus}" Foreground="{DynamicResource ThemeAccent}" FontFamily="Consolas" FontSize="12" FontWeight="SemiBold"/>
-          </StackPanel>
+          <TextBlock Text="{DynamicResource IslandAnimationRateLabel}" Foreground="{DynamicResource ThemeTextPrimary}"/>
+          <ComboBox SelectedIndex="{Binding IslandVm.AnimationRateIndex, Mode=TwoWay}"
+                    AutomationProperties.AutomationId="IslandFrameRateSelector">
+            <ComboBoxItem Content="{DynamicResource IslandFpsAuto}"/>
+            <ComboBoxItem Content="60 FPS"/>
+            <ComboBoxItem Content="120 FPS"/>
+            <ComboBoxItem Content="144 FPS"/>
+            <ComboBoxItem Content="165 FPS"/>
+            <ComboBoxItem Content="240 FPS"/>
+          </ComboBox>
+          <TextBlock Text="{Binding IslandVm.DisplayRefreshStatus}" Foreground="{DynamicResource ThemeAccent}" FontFamily="Consolas"/>
           <TextBlock Text="{DynamicResource IslandPerformanceNote}" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="11" TextWrapping="Wrap"/>
         </StackPanel>
       </Border>
-      <Border Background="{DynamicResource ThemeCardBackground}" BorderBrush="{DynamicResource ThemeCardBorder}" BorderThickness="1" CornerRadius="10" Padding="20">
-        <StackPanel Spacing="12">
-          <TextBlock Text="{DynamicResource IslandStartupHeading}" Foreground="{DynamicResource ThemeAccent}" FontWeight="Bold" FontSize="12"/>
-          <TextBlock Text="{DynamicResource IslandStartupDescription}" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="11" TextWrapping="Wrap"/>
-          <ComboBox SelectedIndex="{Binding IslandVm.StartupModeIndex, Mode=TwoWay}" MinWidth="260" HorizontalAlignment="Left">
-            <ComboBoxItem Content="{DynamicResource IslandStartupLegacy}"/>
-            <ComboBoxItem Content="{DynamicResource IslandStartupDashboard}"/>
-            <ComboBoxItem Content="{DynamicResource IslandStartupIsland}"/>
-            <ComboBoxItem Content="{DynamicResource IslandStartupBoth}"/>
-            <ComboBoxItem Content="{DynamicResource IslandStartupTray}"/>
-          </ComboBox>
-          <TextBlock Text="{DynamicResource IslandStartupNote}" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="11" TextWrapping="Wrap"/>
-        </StackPanel>
+
+      <Border Grid.Row="7" Grid.ColumnSpan="2" Padding="16" Margin="0,0,0,14" CornerRadius="12"
+              Background="{DynamicResource ThemeCardBackground}" BorderBrush="{DynamicResource ThemeCardBorder}" BorderThickness="1">
+        <Grid ColumnDefinitions="*,Auto">
+          <StackPanel Spacing="5">
+            <TextBlock Text="{DynamicResource IslandProductivityHeading}" Foreground="{DynamicResource ThemeAccent}" FontWeight="Bold"/>
+            <TextBlock Text="{DynamicResource IslandRoutinesInfo}" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="12" TextWrapping="Wrap"/>
+          </StackPanel>
+          <Button Grid.Column="1" Content="{DynamicResource IslandOpenRoutines}" Click="OnOpenRoutines"
+                  AutomationProperties.AutomationId="IslandOpenRoutines" Padding="14,7" Margin="14,0,0,0"
+                  VerticalAlignment="Center"/>
+        </Grid>
       </Border>
-      <TextBlock Text="{DynamicResource IslandNextSteps}" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="11" TextWrapping="Wrap"/>
-    </StackPanel>
+    </Grid>
   </ScrollViewer>
 </UserControl>

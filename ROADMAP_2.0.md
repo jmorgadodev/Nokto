@@ -75,10 +75,24 @@ Referencias oficiales: Apple HIG Live Activities (https://developer.apple.com/de
 ## Fase 7 — Archivos, clima y notificaciones (inicio)
 - Bandeja de archivos locales opt-in en la expansión de la isla: botón para elegir archivo del equipo con selector nativo, máximo seis referencias, abrir solo al pulsar y quitar sin borrar el archivo.
 - Persistir exclusivamente rutas de archivos seleccionadas; sin copiar contenidos, sincronización remota, escaneo de carpetas ni vigilancia de archivos.
-- Pendiente: arrastrar y soltar si el usuario lo desea, portapapeles explícito opt-in con privacidad, clima consultado con ciudad/caché y frecuencia controlada, notificaciones nativas de Windows y modos de privacidad (pantalla compartida).
+- Portapapeles manual con opt-in implementado sin lectura en segundo plano ni almacenamiento de contenido; vista previa se borra al cambiar página o contraer.
+- Pendiente: arrastrar y soltar si el usuario lo desea, clima consultado con ciudad/caché y frecuencia controlada, notificaciones nativas de Windows y modos de privacidad (pantalla compartida).
 - QA inicial: galería por clic y persistencia verificados desde UIA; ajuste 130 % guardado; escalado 80 % (compacta 88×39), 100 % (110×48) y 140 % (154×67) capturados, hover a 140 % reparado con verificación física del cursor. El 140 % expande a 464×464 con reproductor activo.
 - QA shelf: archivo sintético en copia temporal; bandeja oculta al no habilitar, expandida con selección de archivo, abierta sin recorte. No se abrió ningún archivo real durante pruebas.
 - Pendiente antes de cerrar: picker con teclado real, archivos inexistentes, rutas protegidas, DPI/multimonitor, privacidad al compartir pantalla, clima y notificaciones nativas, medición de recursos y aceptación visual del usuario.
+
+## Iteración de navegación y gestor — revisión 26 octubre 2026
+- Modo Sin indicador agregado como 43.ª opción: píldora vacía sin ojos ni LED, interacción preservada y tamaño compacto más discreto. La galería conserva 42 diseños visibles.
+- Pestaña Isla Dinámica distribuida en dos columnas, con galería a ancho completo, controles distribuidos y sin formularios de productividad.
+- Sección Productividad del gestor principal en Rutinas: temporizador, cronómetro, Pomodoro, alarmas y tareas (datos existentes migran sin eliminación). La isla abre este gestor y muestra avisos, no configura cada herramienta.
+- La isla expandida dispone de tres páginas navegables con flechas y rueda configurable: Resumen (multimedia/estado), Sonido (mute y slider del volumen maestro existente) y Accesos (rutinas, Explorador, hasta ocho carpetas elegidas manualmente, archivos locales y clipboard voluntario).
+- Fase 7: lectura opcional del texto del portapapeles exclusivamente al pulsar, vista previa efímera sin histórico ni lectura de fondo. Permanece desactivada por defecto.
+- QA de esta iteración: selección por galería, Sin indicador y tamaño 130 % persistidos; rueda real y flechas pasan por tres secciones sin cerrar; volumen visible sin tocar el audio real; capturas de Ajustes a dos columnas y del gestor de Rutinas.
+- El gestor de Productividad se probó en copia aislada: inicia temporizador y crea tarea, ambos persistidos en el config temporal. Alarmas/Pomodoro/cronómetro conservan su motor de pruebas anterior.
+- QA final: páginas y rueda probadas a 80 % (cápsula 51×39), 100 % (64×39) y 140 % (89×44) usando Sin indicador. Capturas visuales de Sonido y Accesos sin recortes; slider presente sin cambios forzados al volumen del equipo.
+- Los cuatro modos de arranque se comprobaron de nuevo (Island, Dashboard, Both, Tray). Suite de productividad y catálogo de 43 opciones pasaron; gestor inicia temporizador y guarda tarea desde su pestaña.
+- Pendientes: contraste y adaptación de tipografía a nuevos tamaños extremos, localización EN de textos pendientes, DPI/multimonitor, accesibilidad y reducción de memoria en reposo.
+- Pendientes: clima por ciudad con caché, notificaciones nativas, accesibilidad y medir consumo en reposo/animación.
 
 ## Fase 8 — Ajustes y localización
 Pestaña autónoma Isla Dinámica junto a Ajustes, ES/EN, persistencia, accesibilidad y preferencias de módulos.
