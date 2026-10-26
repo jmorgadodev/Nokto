@@ -21,7 +21,7 @@ public partial class IslandWindow : Window
 {
     private const double CompactHeight = 48;
     private const double ExpandedWidth = 332;
-    private const double ExpandedHeight = 214;
+    // La altura expandida crece únicamente si hay una sesión multimedia real.
     private const double TransitionSeconds = 0.26;
 
     private IslandViewModel? _settings;
@@ -68,6 +68,7 @@ public partial class IslandWindow : Window
             UpdateAnimationRate();
             SyncClockTimer();
             ConfigureEyeMotion();
+            SyncMediaSession();
         };
         Closed += (_, _) =>
         {
@@ -78,14 +79,17 @@ public partial class IslandWindow : Window
             _eyeFrameTimer?.Stop();
             _blinkTimer?.Stop();
             _demoTimer?.Stop();
+            DisposeMedia();
             _settings.PropertyChanged -= OnSettingsChanged;
         };
         ApplySettings();
     }
 
-    private double CompactWidth => _settings?.ClockInCompact == true
-        ? (EyeStyleCatalog.IsMinimal(_settings.SelectedStyle) ? 145 : 176)
-        : (EyeStyleCatalog.IsMinimal(_settings?.SelectedStyle) ? 64 : 110);
+    private double CompactWidth => HasCompactMedia
+        ? (_settings?.ClockInCompact == true ? 284 : 232)
+        : _settings?.ClockInCompact == true
+            ? (EyeStyleCatalog.IsMinimal(_settings.SelectedStyle) ? 145 : 176)
+            : (EyeStyleCatalog.IsMinimal(_settings?.SelectedStyle) ? 64 : 110);
 
     private void OnSettingsChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -103,6 +107,7 @@ public partial class IslandWindow : Window
         // Al cambiar de punto minimalista a ojos (o viceversa) hay que iniciar o detener
         // el motor, no basta con dibujar el nuevo estilo.
         ConfigureEyeMotion();
+        SyncMediaSession();
     }
 
     public void ApplySettings()
@@ -119,6 +124,7 @@ public partial class IslandWindow : Window
         UpdateClock();
         SyncClockTimer();
         UpdateAnimationRate();
+        RefreshMediaPresentation(false);
 
         if (_initialLayout)
         {
@@ -132,7 +138,7 @@ public partial class IslandWindow : Window
         else
         {
             AnimateTo(_expanded ? ExpandedWidth : CompactWidth,
-                _expanded ? ExpandedHeight : CompactHeight);
+                _expanded ? ExpandedHeightForContent : CompactHeight);
         }
     }
 
@@ -204,8 +210,10 @@ public partial class IslandWindow : Window
         {
             ExpandedTools.IsVisible = true;
         }
+        CompactTrackText.IsVisible = HasCompactMedia && !expanded;
+        SyncMediaProgressTimer();
         AnimateTo(expanded ? ExpandedWidth : CompactWidth,
-                  expanded ? ExpandedHeight : CompactHeight);
+                  expanded ? ExpandedHeightForContent : CompactHeight);
     }
 
     private void AnimateTo(double width, double height)
@@ -245,7 +253,7 @@ public partial class IslandWindow : Window
         Width = _fromWidth + (_toWidth - _fromWidth) * ease;
         Height = _fromHeight + (_toHeight - _fromHeight) * ease;
         // La opacidad depende del tamano real, asi tampoco salta al invertir a mitad.
-        double reveal = (Height - CompactHeight) / (ExpandedHeight - CompactHeight);
+        double reveal = (Height - CompactHeight) / Math.Max(1, ExpandedHeightForContent - CompactHeight);
         ExpandedTools.Opacity = Math.Clamp((reveal - 0.12) / 0.58, 0, 1);
         Reposition();
         if (t >= 1) FinishAnimation();

@@ -80,6 +80,10 @@
     <sys:String x:Key="IslandTestEyes">Test eyes</sys:String>
     <sys:String x:Key="IslandOpenDashboard">Nokto</sys:String>
     <sys:String x:Key="IslandHideIsland">Hide</sys:String>
+    <sys:String x:Key="IslandMediaHeading">MEDIA</sys:String>
+    <sys:String x:Key="IslandMediaControls">Show player when expanded</sys:String>
+    <sys:String x:Key="IslandMediaCompact">Show song in compact mode (during playback)</sys:String>
+    <sys:String x:Key="IslandMediaNote">Uses Windows media sessions. Some players do not expose metadata or controls. Audio is not captured.</sys:String>
     <sys:String x:Key="IslandSystemControls">WINDOWS CONTROLS</sys:String>
     <sys:String x:Key="IslandShowAudioControls">Microphone, output and volume</sys:String>
     <sys:String x:Key="IslandShowBatteryStatus">Battery status</sys:String>

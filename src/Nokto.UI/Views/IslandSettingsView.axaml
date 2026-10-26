@@ -89,6 +89,17 @@
         </StackPanel>
       </Border>
       <Border Background="{DynamicResource ThemeCardBackground}" BorderBrush="{DynamicResource ThemeCardBorder}" BorderThickness="1" CornerRadius="10" Padding="20">
+        <StackPanel Spacing="10">
+          <TextBlock Text="{DynamicResource IslandMediaHeading}" Foreground="{DynamicResource ThemeAccent}" FontWeight="Bold" FontSize="12"/>
+          <CheckBox Content="{DynamicResource IslandMediaControls}" IsChecked="{Binding IslandVm.ShowMediaControls, Mode=TwoWay}"
+                    AutomationProperties.AutomationId="IslandMediaControls" Foreground="{DynamicResource ThemeTextPrimary}"/>
+          <CheckBox Content="{DynamicResource IslandMediaCompact}" IsChecked="{Binding IslandVm.ShowMediaInCompact, Mode=TwoWay}"
+                    AutomationProperties.AutomationId="IslandMediaCompact" Foreground="{DynamicResource ThemeTextPrimary}"/>
+          <TextBlock Text="{DynamicResource IslandMediaNote}" Foreground="{DynamicResource ThemeTextSecondary}"
+                     FontSize="11" TextWrapping="Wrap"/>
+        </StackPanel>
+      </Border>
+      <Border Background="{DynamicResource ThemeCardBackground}" BorderBrush="{DynamicResource ThemeCardBorder}" BorderThickness="1" CornerRadius="10" Padding="20">
         <StackPanel Spacing="12">
           <TextBlock Text="{DynamicResource IslandPerformanceHeading}" Foreground="{DynamicResource ThemeAccent}" FontWeight="Bold" FontSize="12"/>
           <TextBlock Text="{DynamicResource IslandPerformanceDescription}" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="11" TextWrapping="Wrap"/>

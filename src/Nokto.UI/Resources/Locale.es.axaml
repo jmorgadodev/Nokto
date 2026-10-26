@@ -80,6 +80,10 @@
     <sys:String x:Key="IslandTestEyes">Probar ojos</sys:String>
     <sys:String x:Key="IslandOpenDashboard">Nokto</sys:String>
     <sys:String x:Key="IslandHideIsland">Ocultar</sys:String>
+    <sys:String x:Key="IslandMediaHeading">MULTIMEDIA</sys:String>
+    <sys:String x:Key="IslandMediaControls">Mostrar reproductor al expandir</sys:String>
+    <sys:String x:Key="IslandMediaCompact">Mostrar canción en modo compacto (si hay reproducción)</sys:String>
+    <sys:String x:Key="IslandMediaNote">Se usan las sesiones multimedia de Windows. Algunos reproductores no proporcionan metadatos ni controles. No se captura el audio.</sys:String>
     <sys:String x:Key="IslandSystemControls">CONTROLES DE WINDOWS</sys:String>
     <sys:String x:Key="IslandShowAudioControls">Micrófono, audio y volumen</sys:String>
     <sys:String x:Key="IslandShowBatteryStatus">Estado de batería</sys:String>

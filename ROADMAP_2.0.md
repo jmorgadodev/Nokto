@@ -47,8 +47,14 @@ Referencias oficiales: Apple HIG Live Activities (https://developer.apple.com/de
 - Galería de 42 diseños accesible desde la pestaña, con previsualización grande para revisión.
 - Requiere todavía aprobación visual en equipo real; pruebas de fluidez/FPS, contraste en ambos modos y consumo son pendientes y no se deben presentar como aprobadas.
 
-## Fase 5 — Multimedia
-Sesiones multimedia de Windows, música, portada, progreso, controles y letras cuando estén disponibles.
+## Fase 5 — Multimedia (integración funcional en prueba)
+- Servicio Windows Media Control (GSMTC) sin dependencias externas ni captura de audio. Se conecta solo si la isla está abierta y Multimedia habilitado; se desconecta al cerrar/deshabilitar.
+- Observador por eventos para sesiones actuales, metadatos, reproducción y línea de tiempo, sin sondeo permanente de Windows.
+- Cuando el reproductor informa datos: título, artista, carátula en memoria limitada a 1,5 MB, progreso y estado, anterior/reproducir-pausar/siguiente según permisos del reproductor.
+- Al expandir, altura adaptativa: solo muestra el panel si existe sesión. Progreso local cada segundo solamente si se reproduce y la isla está expandida; cero temporizadores de progreso en reposo.
+- Selector independiente Isla Dinámica > Multimedia: mostrar controles al expandir; título en compacto solo cuando está reproduciendo (opt-in, apagado por defecto).
+- Validación preliminar: API de Windows detectó una sesión real, cargó carátula y se desconectó correctamente sin cambiar reproducción ni volumen.
+- Pendiente: aprobar diseño en pantalla, estados ante cambios de reproductor, multimedia con varios reproductores a la vez, barra de búsqueda interactiva, letras (fuentes, permisos y derechos), sincronización de eventos complejos, consumo e interacción teclado; no presentar pendiente como completado.
 
 ## Fase 6 — Productividad
 Reloj, alarmas, temporizador, cronómetro, Pomodoro, tareas, notas, hidratación y agenda.

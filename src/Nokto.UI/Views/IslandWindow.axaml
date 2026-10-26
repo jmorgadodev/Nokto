@@ -15,12 +15,47 @@
         <controls:NoktoEyesControl x:Name="EyesVisual" Width="74" Height="34"
                                    HorizontalAlignment="Left" VerticalAlignment="Center"
                                    AutomationProperties.Name="Ojos de Nokto"/>
-        <TextBlock x:Name="ClockText" Grid.Column="1" Text="--:--" IsVisible="False"
-                   Foreground="#E6F0F8" FontFamily="Consolas" FontWeight="Medium"
-                   FontSize="16" VerticalAlignment="Center" Margin="8,0,1,0"/>
+        <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+          <TextBlock x:Name="ClockText" Text="--:--" IsVisible="False"
+                     Foreground="#E6F0F8" FontFamily="Consolas" FontWeight="Medium"
+                     FontSize="16" VerticalAlignment="Center" Margin="8,0,1,0"/>
+          <TextBlock x:Name="CompactTrackText" IsVisible="False" MaxWidth="152"
+                     FontSize="11" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
+                     Foreground="#8AF1E2" Margin="5,0,0,0"/>
+        </StackPanel>
       </Grid>
       <StackPanel x:Name="ExpandedTools" IsVisible="False" Opacity="0" Spacing="8">
         <Border Height="1" Background="#2D4053"/>
+        <StackPanel x:Name="MediaPanel" IsVisible="False" Spacing="5"
+                    AutomationProperties.AutomationId="IslandMediaPanel">
+          <StackPanel Orientation="Horizontal" Spacing="9">
+            <Border x:Name="MediaCoverFrame" Width="44" Height="44" IsVisible="False"
+                    CornerRadius="6" ClipToBounds="True" Background="#172535">
+              <Image x:Name="MediaCover" Stretch="UniformToFill" Width="44" Height="44"/>
+            </Border>
+            <StackPanel Spacing="3" VerticalAlignment="Center">
+              <TextBlock x:Name="MediaTitle" FontSize="13" FontWeight="SemiBold"
+                         Foreground="#E8F7FF" TextTrimming="CharacterEllipsis" MaxWidth="234"/>
+              <TextBlock x:Name="MediaArtist" FontSize="11" Foreground="#99AFC1"
+                         TextTrimming="CharacterEllipsis" MaxWidth="234"/>
+            </StackPanel>
+          </StackPanel>
+          <ProgressBar x:Name="MediaProgress" Minimum="0" Maximum="100" Value="0"
+                       Height="3" Background="#263747" Foreground="#72EBD2"/>
+          <StackPanel Orientation="Horizontal" Spacing="12" HorizontalAlignment="Center">
+            <Button x:Name="MediaPreviousButton" Content="⏮" Click="OnMediaPrevious"
+                    Background="#213747" Foreground="#E8FAFC" Padding="12,4"
+                    AutomationProperties.AutomationId="IslandMediaPrevious"/>
+            <Button x:Name="MediaPlayPauseButton" Content="⏯" Click="OnMediaToggle"
+                    Background="#1C4A4F" Foreground="#F0FAFF" Padding="14,4"
+                    AutomationProperties.AutomationId="IslandMediaPlayPause"/>
+            <Button x:Name="MediaNextButton" Content="⏭" Click="OnMediaNext"
+                    Background="#213747" Foreground="#E8FAFC" Padding="12,4"
+                    AutomationProperties.AutomationId="IslandMediaNext"/>
+            <TextBlock x:Name="MediaTime" Foreground="#B8CBDA" FontFamily="Consolas"
+                       FontSize="10" VerticalAlignment="Center"/>
+          </StackPanel>
+        </StackPanel>
         <StackPanel x:Name="SystemStatus" Spacing="2">
           <TextBlock x:Name="BatteryStatusText" Text="{Binding BatteryAndPowerText}"
                      TextTrimming="CharacterEllipsis" MaxWidth="290" Foreground="#9AB0C2" FontSize="11"/>

@@ -130,6 +130,22 @@ foreach ($scenario in $Scenarios) {
         }
         Write-Output ('[PASS] Estilo ' + $selection[2] + ': seleccion y persistencia.')
       }
+      foreach ($mediaSetting in @(@('IslandMediaControls','showMediaControls',$true),@('IslandMediaCompact','showMediaInCompact',$false))) {
+        $control = $main.FindFirst(
+          [System.Windows.Automation.TreeScope]::Descendants,
+          [System.Windows.Automation.PropertyCondition]::new(
+            [System.Windows.Automation.AutomationElement]::AutomationIdProperty,$mediaSetting[0]))
+        if ($null -eq $control) { throw ('No existe ajuste Multimedia: '+$mediaSetting[0]) }
+        foreach ($expected in @(!$mediaSetting[2],$mediaSetting[2])) {
+          $control.GetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern).Toggle()
+          Start-Sleep -Milliseconds 250
+          $configNow = Get-Content -Raw (Join-Path $testDir 'data\config.json') | ConvertFrom-Json
+          if ([bool]($configNow.island.($mediaSetting[1])) -ne [bool]$expected) {
+            throw ('Multimedia no guardo '+$mediaSetting[1]+'='+$expected)
+          }
+        }
+      }
+      Write-Output '[PASS] Multimedia: mostrar reproductor y canción compacta, persistencia en ambos sentidos.'
       $checkCondition = [System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::NameProperty,'Mostrar la isla flotante')
       $check = $main.FindFirst([System.Windows.Automation.TreeScope]::Descendants,$checkCondition)
       if ($null -eq $check) { throw 'Pestaña existe pero no contiene el control de activación.' }

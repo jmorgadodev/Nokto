@@ -35,6 +35,8 @@ public partial class IslandViewModel : ObservableObject
         _showAudioControls = config.Island.ShowAudioControls;
         _showBatteryStatus = config.Island.ShowBatteryStatus;
         _showNetworkStatus = config.Island.ShowNetworkStatus;
+        _showMediaControls = config.Island.ShowMediaControls;
+        _showMediaInCompact = config.Island.ShowMediaInCompact;
         _expandOnHover = config.Island.ExpandOnHover;
         _reducedMotion = config.Island.ReducedMotion;
         _followCursor = config.Island.FollowCursor;
@@ -57,6 +59,8 @@ public partial class IslandViewModel : ObservableObject
     [ObservableProperty] private bool _showAudioControls;
     [ObservableProperty] private bool _showBatteryStatus;
     [ObservableProperty] private bool _showNetworkStatus;
+    [ObservableProperty] private bool _showMediaControls;
+    [ObservableProperty] private bool _showMediaInCompact;
     public bool ClockInCompact => ClockModeIndex == 1;
     public bool ClockInExpanded => ClockModeIndex != 2;
     [ObservableProperty] private bool _expandOnHover;
@@ -128,6 +132,8 @@ public partial class IslandViewModel : ObservableObject
     partial void OnShowAudioControlsChanged(bool value) => Save();
     partial void OnShowBatteryStatusChanged(bool value) => Save();
     partial void OnShowNetworkStatusChanged(bool value) => Save();
+    partial void OnShowMediaControlsChanged(bool value) => Save();
+    partial void OnShowMediaInCompactChanged(bool value) => Save();
     partial void OnExpandOnHoverChanged(bool value) => Save();
     partial void OnReducedMotionChanged(bool value) => Save();
     partial void OnFollowCursorChanged(bool value) => Save();
@@ -152,6 +158,8 @@ public partial class IslandViewModel : ObservableObject
         _config.Island.ShowAudioControls = ShowAudioControls;
         _config.Island.ShowBatteryStatus = ShowBatteryStatus;
         _config.Island.ShowNetworkStatus = ShowNetworkStatus;
+        _config.Island.ShowMediaControls = ShowMediaControls;
+        _config.Island.ShowMediaInCompact = ShowMediaInCompact;
         _config.Island.ExpandOnHover = ExpandOnHover;
         _config.Island.ReducedMotion = ReducedMotion;
         _config.Island.FollowCursor = FollowCursor;
