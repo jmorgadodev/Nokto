@@ -130,6 +130,42 @@ foreach ($scenario in $Scenarios) {
         }
         Write-Output ('[PASS] Estilo ' + $selection[2] + ': seleccion y persistencia.')
       }
+      # Seleccion directa haciendo clic sobre una tarjeta de la galeria (no por lista).
+      $galleryChoice = $main.FindFirst(
+        [System.Windows.Automation.TreeScope]::Descendants,
+        [System.Windows.Automation.PropertyCondition]::new(
+          [System.Windows.Automation.AutomationElement]::AutomationIdProperty,'Eyes'))
+      if ($null -eq $galleryChoice) { throw 'No se encontro la tarjeta de galeria Eyes.' }
+      $galleryChoice.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+      Start-Sleep -Milliseconds 350
+      $galleryConfig = Get-Content -Raw (Join-Path $testDir 'data\config.json') | ConvertFrom-Json
+      if ($galleryConfig.island.style -ne 'Eyes') { throw 'Clic en galeria no modifico el estilo.' }
+      Write-Output '[PASS] Galeria: tarjeta Eyes seleccionada y persistida con un clic.'
+
+      $sizeSlider = $main.FindFirst(
+        [System.Windows.Automation.TreeScope]::Descendants,
+        [System.Windows.Automation.PropertyCondition]::new(
+          [System.Windows.Automation.AutomationElement]::AutomationIdProperty,'IslandSizeSlider'))
+      if ($null -eq $sizeSlider) { throw 'Falta configuracion de tamaño de la isla.' }
+      $sizeSlider.GetCurrentPattern([System.Windows.Automation.RangeValuePattern]::Pattern).SetValue(130)
+      Start-Sleep -Milliseconds 350
+      $sizeConfig = Get-Content -Raw (Join-Path $testDir 'data\config.json') | ConvertFrom-Json
+      if ([int]$sizeConfig.island.sizePercent -ne 130) {
+        throw ('Tamaño de isla no se guardo: '+$sizeConfig.island.sizePercent)
+      }
+      Write-Output '[PASS] Tamaño: 130 % seleccionado y persistido.'
+
+      $shelfCheck = $main.FindFirst(
+        [System.Windows.Automation.TreeScope]::Descendants,
+        [System.Windows.Automation.PropertyCondition]::new(
+          [System.Windows.Automation.AutomationElement]::AutomationIdProperty,'IslandShelfEnabled'))
+      if ($null -eq $shelfCheck) { throw 'No existe opcion Bandeja de archivos.' }
+      $shelfCheck.GetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern).Toggle()
+      Start-Sleep -Milliseconds 230
+      $shelfConfig = Get-Content -Raw (Join-Path $testDir 'data\config.json') | ConvertFrom-Json
+      if ($shelfConfig.island.showFileShelf -ne $true) { throw 'Bandeja de archivos no guardo habilitacion.' }
+      Write-Output '[PASS] Bandeja de archivos: activacion opt-in guardada.'
+
       foreach ($mediaSetting in @(@('IslandMediaControls','showMediaControls',$true),@('IslandMediaCompact','showMediaInCompact',$false))) {
         $control = $main.FindFirst(
           [System.Windows.Automation.TreeScope]::Descendants,

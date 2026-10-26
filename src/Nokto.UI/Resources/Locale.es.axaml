@@ -95,6 +95,9 @@
     <sys:String x:Key="IslandFocusMinutes">Minutos de enfoque</sys:String>
     <sys:String x:Key="IslandBreakMinutes">Minutos de descanso</sys:String>
     <sys:String x:Key="IslandProductivityNote">Temporizador, cronómetro, Pomodoro, tareas y alarmas locales. Los avisos necesitan Nokto abierto; no despiertan el PC suspendido ni se envían si la app está cerrada.</sys:String>
+    <sys:String x:Key="IslandShelfHeading">ARCHIVOS LOCALES</sys:String>
+    <sys:String x:Key="IslandShelfToggle">Mostrar bandeja de archivos en la isla</sys:String>
+    <sys:String x:Key="IslandShelfInfo">Puedes elegir hasta seis archivos locales. Nokto solo guarda su ubicación, nunca copia contenido ni utiliza la red. Abre archivos únicamente al pulsarlos.</sys:String>
     <sys:String x:Key="IslandPerformanceHeading">RENDIMIENTO Y ANIMACIONES</sys:String>
     <sys:String x:Key="IslandPerformanceDescription">Nokto detecta la frecuencia del monitor donde se muestra la isla y adapta su animación. Puedes limitarla manualmente.</sys:String>
     <sys:String x:Key="IslandAnimationRateLabel">Actualización de animaciones</sys:String>
@@ -103,6 +106,11 @@
     <sys:String x:Key="IslandPerformanceNote">Los FPS son un objetivo de interpolación, no una garantía de fotogramas renderizados. En reposo no hay animación continua.</sys:String>
     <sys:String x:Key="IslandExpandOnHover">Expandir al acercar el cursor</sys:String>
     <sys:String x:Key="IslandReducedMotion">Reducir movimiento (sin transiciones)</sys:String>
+    <sys:String x:Key="IslandGalleryGuide">Selecciona un diseño directamente en la galería: se aplicará al instante. El contorno verde indica el estilo activo.</sys:String>
+    <sys:String x:Key="IslandGalleryFilter">Filtrar familia</sys:String>
+    <sys:String x:Key="IslandGalleryAll">Todas las familias</sys:String>
+    <sys:String x:Key="IslandSizeLabel">Tamaño de la isla</sys:String>
+    <sys:String x:Key="IslandSizeHint">80 % a 140 %. Escala ojos, controles y ventana al mismo tiempo; 100 % es el tamaño original.</sys:String>
     <sys:String x:Key="IslandGalleryHeading">Galería de las 42 apariencias</sys:String>
     <sys:String x:Key="IslandEyePreview">VISTA PREVIA</sys:String>
     <sys:String x:Key="IslandEyeMotionHeading">MIRADA Y COMPORTAMIENTO</sys:String>

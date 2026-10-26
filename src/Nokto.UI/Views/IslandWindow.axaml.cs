@@ -19,8 +19,9 @@ namespace Nokto.UI.Views;
 /// </summary>
 public partial class IslandWindow : Window
 {
-    private const double CompactHeight = 48;
-    private const double ExpandedWidth = 332;
+    private double ScaleFactor => _settings?.IslandScale ?? 1.0;
+    private double CompactHeight => 48 * ScaleFactor;
+    private double ExpandedWidth => 332 * ScaleFactor;
     // La altura expandida crece únicamente si hay una sesión multimedia real.
     private const double TransitionSeconds = 0.26;
 
@@ -70,6 +71,7 @@ public partial class IslandWindow : Window
             ConfigureEyeMotion();
             SyncMediaSession();
             SubscribeProductivity();
+            RefreshShelf();
         };
         Closed += (_, _) =>
         {
@@ -87,12 +89,12 @@ public partial class IslandWindow : Window
         ApplySettings();
     }
 
-    private double CompactWidth => HasCompactMedia
+    private double CompactWidth => ScaleFactor * (HasCompactMedia
         ? (_settings?.ClockInCompact == true ? 284 : 232) : HasCompactProductivity
         ? (_settings?.ClockInCompact == true ? 245 : 196)
         : _settings?.ClockInCompact == true
             ? (EyeStyleCatalog.IsMinimal(_settings.SelectedStyle) ? 145 : 176)
-            : (EyeStyleCatalog.IsMinimal(_settings?.SelectedStyle) ? 64 : 110);
+            : (EyeStyleCatalog.IsMinimal(_settings?.SelectedStyle) ? 64 : 110));
 
     private void OnSettingsChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -117,6 +119,8 @@ public partial class IslandWindow : Window
     {
         if (_settings is null) return;
         EyesVisual.StyleId = _settings.SelectedStyle;
+        IslandSurface.RenderTransform = new ScaleTransform(ScaleFactor, ScaleFactor);
+        IslandSurface.RenderTransformOrigin = new RelativePoint(0, 0, RelativeUnit.Relative);
         EyesVisual.Width = EyeStyleCatalog.IsMinimal(_settings.SelectedStyle) ? 30 : 74;
         TestEyesButton.IsVisible = !_settings.ReducedMotion && !EyeStyleCatalog.IsMinimal(_settings.SelectedStyle);
         ClockText.IsVisible = _expanded ? _settings.ClockInExpanded : _settings.ClockInCompact;
@@ -125,6 +129,7 @@ public partial class IslandWindow : Window
         NetworkStatusText.IsVisible = _settings.ShowNetworkStatus;
         SystemStatus.IsVisible = _settings.ShowBatteryStatus || _settings.ShowNetworkStatus;
         RefreshProductivity();
+        RefreshShelf();
         UpdateClock();
         SyncClockTimer();
         UpdateAnimationRate();
@@ -133,8 +138,7 @@ public partial class IslandWindow : Window
         if (_initialLayout)
         {
             _initialLayout = false;
-            Width = CompactWidth;
-            Height = CompactHeight;
+            SetIslandDimensions(CompactWidth, CompactHeight);
             _toWidth = Width;
             _toHeight = Height;
             Reposition();
@@ -174,6 +178,14 @@ public partial class IslandWindow : Window
         if (ClockText.Text != time) ClockText.Text = time;
     }
 
+    private void SetIslandDimensions(double width, double height)
+    {
+        Width = width;
+        Height = height;
+        IslandSurface.Width = width / ScaleFactor;
+        IslandSurface.Height = height / ScaleFactor;
+    }
+
     private void Reposition()
     {
         // La posicion del centro es estable: el ancho crece por ambos lados.
@@ -184,14 +196,24 @@ public partial class IslandWindow : Window
         Position = new PixelPoint(bounds.X + (int)Math.Round((bounds.Width - Width * scale) / 2), bounds.Y);
     }
 
+    private bool CursorPhysicallyInside()
+    {
+        if (!CursorPositionReader.TryGet(out int x, out int y)) return false;
+        double scale = Screens.Primary?.Scaling ?? 1.0;
+        return x >= Position.X && x < Position.X + Width * scale &&
+               y >= Position.Y && y < Position.Y + Height * scale;
+    }
+
     private void OnPointerEntered(object? sender, PointerEventArgs e)
     {
-        if (_settings?.ExpandOnHover == true) SetExpanded(true);
+        // El compositor puede emitir Enter mientras se reajusta el tamaño de
+        // ventanas sin marco. Solo es hover real si el cursor está dentro.
+        if (_settings?.ExpandOnHover == true && CursorPhysicallyInside()) SetExpanded(true);
     }
 
     private void OnPointerExited(object? sender, PointerEventArgs e)
     {
-        if (!_pinned) SetExpanded(false);
+        if (!_pinned && !CursorPhysicallyInside()) SetExpanded(false);
     }
 
     private void OnSurfacePressed(object? sender, PointerPressedEventArgs e)
@@ -228,8 +250,7 @@ public partial class IslandWindow : Window
         if (_settings?.ReducedMotion == true)
         {
             _animationTimer.Stop();
-            Width = width;
-            Height = height;
+            SetIslandDimensions(width, height);
             ExpandedTools.Opacity = _expanded ? 1 : 0;
             ExpandedTools.IsVisible = _expanded;
             Reposition();
@@ -255,8 +276,8 @@ public partial class IslandWindow : Window
         double t = Math.Clamp(Stopwatch.GetElapsedTime(_animationStart).TotalSeconds / TransitionSeconds, 0, 1);
         // ease-out cubic: respuesta rapida al inicio, frenado suave al terminar.
         double ease = 1 - Math.Pow(1 - t, 3);
-        Width = _fromWidth + (_toWidth - _fromWidth) * ease;
-        Height = _fromHeight + (_toHeight - _fromHeight) * ease;
+        SetIslandDimensions(_fromWidth + (_toWidth - _fromWidth) * ease,
+            _fromHeight + (_toHeight - _fromHeight) * ease);
         // La opacidad depende del tamano real, asi tampoco salta al invertir a mitad.
         double reveal = (Height - CompactHeight) / Math.Max(1, ExpandedHeightForContent - CompactHeight);
         ExpandedTools.Opacity = Math.Clamp((reveal - 0.12) / 0.58, 0, 1);
@@ -267,8 +288,7 @@ public partial class IslandWindow : Window
     private void FinishAnimation()
     {
         _animationTimer?.Stop();
-        Width = _toWidth;
-        Height = _toHeight;
+        SetIslandDimensions(_toWidth, _toHeight);
         ExpandedTools.Opacity = _expanded ? 1 : 0;
         ExpandedTools.IsVisible = _expanded;
         Reposition();

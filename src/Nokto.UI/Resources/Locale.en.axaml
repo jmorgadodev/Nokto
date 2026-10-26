@@ -95,6 +95,9 @@
     <sys:String x:Key="IslandFocusMinutes">Focus minutes</sys:String>
     <sys:String x:Key="IslandBreakMinutes">Break minutes</sys:String>
     <sys:String x:Key="IslandProductivityNote">Local countdown, stopwatch, Pomodoro, tasks and alarms. Notifications require Nokto running; they do not wake a sleeping PC or fire while the app is closed.</sys:String>
+    <sys:String x:Key="IslandShelfHeading">LOCAL FILES</sys:String>
+    <sys:String x:Key="IslandShelfToggle">Show file shelf in island</sys:String>
+    <sys:String x:Key="IslandShelfInfo">Choose up to six local files. Nokto stores their locations only; it never copies their contents or connects to a server. Files open only after you click them.</sys:String>
     <sys:String x:Key="IslandPerformanceHeading">PERFORMANCE AND ANIMATIONS</sys:String>
     <sys:String x:Key="IslandPerformanceDescription">Nokto detects the refresh rate of the island's screen and adapts its animations. You may set a manual limit.</sys:String>
     <sys:String x:Key="IslandAnimationRateLabel">Animation update rate</sys:String>
@@ -103,6 +106,11 @@
     <sys:String x:Key="IslandPerformanceNote">FPS is an interpolation target, not guaranteed rendered frames. No continuous animation runs while idle.</sys:String>
     <sys:String x:Key="IslandExpandOnHover">Expand when hovering</sys:String>
     <sys:String x:Key="IslandReducedMotion">Reduce motion (no transitions)</sys:String>
+    <sys:String x:Key="IslandGalleryGuide">Click a design to use it immediately. The green outline marks the current selection.</sys:String>
+    <sys:String x:Key="IslandGalleryFilter">Filter family</sys:String>
+    <sys:String x:Key="IslandGalleryAll">All families</sys:String>
+    <sys:String x:Key="IslandSizeLabel">Island size</sys:String>
+    <sys:String x:Key="IslandSizeHint">80 % to 140 %. Eyes, controls and window scale together; 100 % is the original size.</sys:String>
     <sys:String x:Key="IslandGalleryHeading">Gallery of all 42 appearances</sys:String>
     <sys:String x:Key="IslandEyePreview">PREVIEW</sys:String>
     <sys:String x:Key="IslandEyeMotionHeading">GAZE AND BEHAVIOR</sys:String>

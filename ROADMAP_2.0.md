@@ -24,7 +24,10 @@ Referencias oficiales: Apple HIG Live Activities (https://developer.apple.com/de
 - Soportar pantallas múltiples, escalado DPI, cambios de monitor, ocultación en pantalla completa, accesibilidad y prioridad de eventos.
 - Pruebas: 100 alternancias hover/leave/clic, múltiples resoluciones, pantalla completa, latencia y medición CPU/GPU/RAM en reposo.
 
-## Fase 3 — Ojos y personalidad (implementacion base; revision visual pendiente)
+## Fase 3 — Ojos y personalidad (iteración gráfica ampliada; revisión visual pendiente)
+- La galería es un selector clicable en cuadrícula: 42 tarjetas con contorno del estilo activo, filtro por siete familias y selección guardada inmediatamente. La lista anterior se conserva como alternativa.
+- Segunda pasada vectorial: firma específica por cada uno de los 36 estilos de ojos (ornamentos, visores, órbitas, rasgos, luces y geometrías), más seis indicadores minimalistas.
+- Tamaño de isla configurable del 80 al 140 % en la pestaña Isla Dinámica, escalando ventana y contenido junto con la posición anclada.
 - Catálogo de 42 variantes vectoriales originales en 7 packs: Minimal, Nokto Classic, Cyber, Anime Inspired (sin copiar iconografía de franquicias), Creature, Cute y Dark.
 - Selector con traducciones ES/EN y vista previa dentro de la pestaña independiente Isla Dinámica.
 - Motor local de dibujo sin recursos externos: solo se renderiza el estilo seleccionado.
@@ -69,8 +72,13 @@ Referencias oficiales: Apple HIG Live Activities (https://developer.apple.com/de
 - Pruebas: motor con reloj simulado para pausas, reinicios, vencimientos, alarmas diarias, tareas, serialización JSON; UI automatizada en copia DEV temporal; pendiente QA final de ventanas y regresión.
 
 
-## Fase 7 — Archivos, clima y notificaciones
-Shelf de archivos, portapapeles opcional, clima con caché, notificaciones, privacidad.
+## Fase 7 — Archivos, clima y notificaciones (inicio)
+- Bandeja de archivos locales opt-in en la expansión de la isla: botón para elegir archivo del equipo con selector nativo, máximo seis referencias, abrir solo al pulsar y quitar sin borrar el archivo.
+- Persistir exclusivamente rutas de archivos seleccionadas; sin copiar contenidos, sincronización remota, escaneo de carpetas ni vigilancia de archivos.
+- Pendiente: arrastrar y soltar si el usuario lo desea, portapapeles explícito opt-in con privacidad, clima consultado con ciudad/caché y frecuencia controlada, notificaciones nativas de Windows y modos de privacidad (pantalla compartida).
+- QA inicial: galería por clic y persistencia verificados desde UIA; ajuste 130 % guardado; escalado 80 % (compacta 88×39), 100 % (110×48) y 140 % (154×67) capturados, hover a 140 % reparado con verificación física del cursor. El 140 % expande a 464×464 con reproductor activo.
+- QA shelf: archivo sintético en copia temporal; bandeja oculta al no habilitar, expandida con selección de archivo, abierta sin recorte. No se abrió ningún archivo real durante pruebas.
+- Pendiente antes de cerrar: picker con teclado real, archivos inexistentes, rutas protegidas, DPI/multimonitor, privacidad al compartir pantalla, clima y notificaciones nativas, medición de recursos y aceptación visual del usuario.
 
 ## Fase 8 — Ajustes y localización
 Pestaña autónoma Isla Dinámica junto a Ajustes, ES/EN, persistencia, accesibilidad y preferencias de módulos.

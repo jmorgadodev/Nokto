@@ -4,6 +4,11 @@ public sealed class IslandSettings
 {
     public bool Enabled { get; set; } = false;
     public string Style { get; set; } = "Eyes";
+    // 80..140 %, 100 % corresponde al tamaño anterior.
+    public int SizePercent { get; set; } = 100;
+    public bool ShowFileShelf { get; set; } = false;
+    // Solo referencias locales seleccionadas por el usuario. Nunca copiar ni subir contenido.
+    public List<string> ShelfFiles { get; set; } = [];
     // Dashboard (legacy default), Island, Both, Tray.
     public string StartupMode { get; set; } = "Dashboard";
     // Los usuarios anteriores conservan su ajuste de inicio hasta elegir un modo nuevo.

@@ -6,7 +6,8 @@
         CanResize="False" SystemDecorations="None" ShowInTaskbar="False"
         Topmost="True" Background="Transparent" TransparencyLevelHint="Transparent"
         WindowStartupLocation="Manual">
-  <Border x:Name="IslandSurface" Background="#090D15" BorderBrush="#314254"
+  <Grid x:Name="IslandScaleHost" ClipToBounds="True">
+  <Border x:Name="IslandSurface" HorizontalAlignment="Left" VerticalAlignment="Top" Background="#090D15" BorderBrush="#314254"
           BorderThickness="1" CornerRadius="0,0,22,22" Padding="12,6"
           ClipToBounds="True" PointerPressed="OnSurfacePressed"
           PointerEntered="OnPointerEntered" PointerExited="OnPointerExited">
@@ -142,6 +143,33 @@
                        Foreground="#FFB884" FontSize="10" TextWrapping="Wrap"/>
           </StackPanel>
         </StackPanel>
+        <StackPanel x:Name="FileShelfPanel" IsVisible="False" Spacing="6">
+          <Button Content="{Binding IslandVm.ShelfLabel}" Click="OnToggleShelf"
+                  AutomationProperties.AutomationId="IslandShelfToggle"
+                  Background="#1C3445" Foreground="#A6E8E4" Padding="10,6"/>
+          <StackPanel x:Name="ShelfDetails" Spacing="6" IsVisible="False">
+            <Button Content="＋ Elegir archivo local" Click="OnShelfPick"
+                    AutomationProperties.AutomationId="IslandShelfPick"
+                    Background="#274958" Foreground="#F0F7FE" Padding="8,5"/>
+            <ListBox x:Name="ShelfList" Height="95" ItemsSource="{Binding IslandVm.ShelfFiles}"
+                     AutomationProperties.AutomationId="IslandShelfList">
+              <ListBox.ItemTemplate>
+                <DataTemplate>
+                  <TextBlock Text="{Binding DisplayName}" Foreground="#D8EDFA"
+                             TextTrimming="CharacterEllipsis" MaxWidth="275"/>
+                </DataTemplate>
+              </ListBox.ItemTemplate>
+            </ListBox>
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <Button Content="Abrir seleccionado" Click="OnShelfOpen"
+                      AutomationProperties.AutomationId="IslandShelfOpen" Padding="9,4"/>
+              <Button Content="Quitar de la lista" Click="OnShelfRemove"
+                      AutomationProperties.AutomationId="IslandShelfRemove" Padding="9,4"/>
+            </StackPanel>
+            <TextBlock x:Name="ShelfStatusText" FontSize="10" Foreground="#B8CDD9"
+                       MaxWidth="292" TextWrapping="Wrap"/>
+          </StackPanel>
+        </StackPanel>
         <StackPanel x:Name="SystemStatus" Spacing="2">
           <TextBlock x:Name="BatteryStatusText" Text="{Binding BatteryAndPowerText}"
                      TextTrimming="CharacterEllipsis" MaxWidth="290" Foreground="#9AB0C2" FontSize="11"/>
@@ -177,4 +205,5 @@
       </StackPanel>
     </StackPanel>
   </Border>
+  </Grid>
 </Window>

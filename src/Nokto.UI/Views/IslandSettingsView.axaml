@@ -42,28 +42,57 @@
               <controls:NoktoEyesControl Width="140" Height="64" StyleId="{Binding IslandVm.SelectedStyle}"/>
             </StackPanel>
           </Border>
-          <Expander Header="{DynamicResource IslandGalleryHeading}" IsExpanded="False">
-            <ItemsControl ItemsSource="{Binding IslandVm.EyeStyleOptions}">
+          <TextBlock Text="{DynamicResource IslandGalleryGuide}" FontSize="11" Foreground="{DynamicResource ThemeTextSecondary}" TextWrapping="Wrap"/>
+          <Grid ColumnDefinitions="175,250,*">
+            <TextBlock Text="{DynamicResource IslandGalleryFilter}" Foreground="{DynamicResource ThemeTextPrimary}" VerticalAlignment="Center"/>
+            <ComboBox Grid.Column="1" SelectedIndex="{Binding IslandVm.GalleryPackIndex, Mode=TwoWay}"
+                      AutomationProperties.AutomationId="IslandGalleryPackFilter">
+              <ComboBoxItem Content="{DynamicResource IslandGalleryAll}"/>
+              <ComboBoxItem Content="Minimal"/>
+              <ComboBoxItem Content="Nokto"/>
+              <ComboBoxItem Content="Cyber"/>
+              <ComboBoxItem Content="Anime"/>
+              <ComboBoxItem Content="Creature"/>
+              <ComboBoxItem Content="Cute"/>
+              <ComboBoxItem Content="Dark"/>
+            </ComboBox>
+          </Grid>
+          <Expander Header="{DynamicResource IslandGalleryHeading}" IsExpanded="True">
+            <ScrollViewer Height="350" VerticalScrollBarVisibility="Auto">
+            <ItemsControl ItemsSource="{Binding IslandVm.GalleryStyles}">
               <ItemsControl.ItemsPanel>
                 <ItemsPanelTemplate>
-                  <WrapPanel Orientation="Horizontal" ItemWidth="150" ItemHeight="104"/>
+                  <WrapPanel Orientation="Horizontal" ItemWidth="164" ItemHeight="120"/>
                 </ItemsPanelTemplate>
               </ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
                 <DataTemplate>
-                  <Border Background="#0A111D" BorderBrush="#293B4B" BorderThickness="1"
-                          CornerRadius="9" Margin="3" Padding="7">
-                    <StackPanel HorizontalAlignment="Center" Spacing="4">
-                      <controls:NoktoEyesControl StyleId="{Binding Id}" Width="110" Height="55"/>
+                  <Button Click="OnSelectEyeStyle" CommandParameter="{Binding Id}"
+                          AutomationProperties.AutomationId="{Binding Id}"
+                          AutomationProperties.Name="{Binding DisplayName}"
+                          BorderBrush="{Binding SelectionStroke}" Background="{Binding SelectionFill}"
+                          BorderThickness="2" CornerRadius="12" Padding="7" Margin="4">
+                    <StackPanel HorizontalAlignment="Center" Spacing="5">
+                      <controls:NoktoEyesControl StyleId="{Binding Id}" Width="118" Height="64"/>
                       <TextBlock Text="{Binding DisplayName}" FontSize="10"
-                                 Foreground="#D7E5F2" MaxWidth="140" TextTrimming="CharacterEllipsis"
+                                 Foreground="#E6F2FA" MaxWidth="140" TextTrimming="CharacterEllipsis"
                                  TextAlignment="Center"/>
                     </StackPanel>
-                  </Border>
+                  </Button>
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
+            </ScrollViewer>
           </Expander>
+          <Grid ColumnDefinitions="250,230,Auto">
+            <TextBlock Text="{DynamicResource IslandSizeLabel}" VerticalAlignment="Center" Foreground="{DynamicResource ThemeTextPrimary}"/>
+            <Slider Grid.Column="1" Minimum="80" Maximum="140" TickFrequency="10"
+                    IsSnapToTickEnabled="True" Value="{Binding IslandVm.SizePercent, Mode=TwoWay}"
+                    AutomationProperties.AutomationId="IslandSizeSlider"/>
+            <TextBlock Grid.Column="2" Text="{Binding IslandVm.SizePercent, StringFormat='{}{0}%'}"
+                       VerticalAlignment="Center" FontFamily="Consolas" Foreground="{DynamicResource ThemeAccent}"/>
+          </Grid>
+          <TextBlock Text="{DynamicResource IslandSizeHint}" TextWrapping="Wrap" FontSize="11" Foreground="{DynamicResource ThemeTextSecondary}"/>
           <TextBlock Text="{DynamicResource IslandEyeMotionHeading}" Foreground="{DynamicResource ThemeAccent}" FontWeight="SemiBold" FontSize="12"/>
           <CheckBox Content="{DynamicResource IslandFollowCursor}" IsChecked="{Binding IslandVm.FollowCursor, Mode=TwoWay}" Foreground="{DynamicResource ThemeTextPrimary}"/>
           <CheckBox Content="{DynamicResource IslandNaturalBlink}" IsChecked="{Binding IslandVm.NaturalBlink, Mode=TwoWay}" Foreground="{DynamicResource ThemeTextPrimary}"/>
@@ -121,6 +150,14 @@
                            AutomationProperties.AutomationId="IslandBreakMinutes"/>
           </Grid>
           <TextBlock Text="{DynamicResource IslandProductivityNote}" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="11" TextWrapping="Wrap"/>
+        </StackPanel>
+      </Border>
+      <Border Background="{DynamicResource ThemeCardBackground}" BorderBrush="{DynamicResource ThemeCardBorder}" BorderThickness="1" CornerRadius="10" Padding="20">
+        <StackPanel Spacing="9">
+          <TextBlock Text="{DynamicResource IslandShelfHeading}" Foreground="{DynamicResource ThemeAccent}" FontSize="12" FontWeight="Bold"/>
+          <CheckBox Content="{DynamicResource IslandShelfToggle}" IsChecked="{Binding IslandVm.ShowFileShelf, Mode=TwoWay}"
+                    AutomationProperties.AutomationId="IslandShelfEnabled" Foreground="{DynamicResource ThemeTextPrimary}"/>
+          <TextBlock Text="{DynamicResource IslandShelfInfo}" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource ThemeTextSecondary}"/>
         </StackPanel>
       </Border>
       <Border Background="{DynamicResource ThemeCardBackground}" BorderBrush="{DynamicResource ThemeCardBorder}" BorderThickness="1" CornerRadius="10" Padding="20">

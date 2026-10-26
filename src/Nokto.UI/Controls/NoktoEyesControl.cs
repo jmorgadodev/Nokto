@@ -9,7 +9,7 @@ namespace Nokto.UI.Controls;
 /// Renderer de arte vectorial original, escalable y sin carga de 42 imágenes.
 /// La posición y el parpadeo se suministran desde un motor de eventos externo.
 /// </summary>
-public sealed class NoktoEyesControl : Control
+public sealed partial class NoktoEyesControl : Control
 {
     public static readonly StyledProperty<string> StyleIdProperty =
         AvaloniaProperty.Register<NoktoEyesControl, string>(nameof(StyleId), "Eyes");
@@ -225,6 +225,9 @@ public sealed class NoktoEyesControl : Control
                 c.DrawRectangle(iris,null,new Rect(x-erx*1.10,y+hh*.65,erx*.4,hh*.11));
                 c.DrawRectangle(light,null,new Rect(x+erx*.7,y-hh*.86,erx*.55,hh*.13));
             }
+            // Firma gráfica específica para cada diseño: rasgos, orbitas y marcas
+            // propios, sin texturas externas ni recursos de terceros.
+            DrawSignature(c, s, eye, x, y, erx, hh, px, py);
         }
     }
 
