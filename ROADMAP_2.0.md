@@ -17,7 +17,10 @@ Referencias oficiales: Apple HIG Live Activities (https://developer.apple.com/de
 - Permitir invertir una animación a medio recorrido desde su geometría actual.
 - Movimiento reducido configurable y estado en reposo totalmente estático.
 - Motor de animación activado solamente durante transiciones/eventos; sin bucle de renderizado permanente.
-- Objetivo: transiciones perceptualmente fluidas (~60 FPS en equipos de 60 Hz), ~200–350 ms, sin garantizar FPS sin medirlos.
+- Frecuencia adaptable de actualización de animaciones: detección automática del modo ACTIVO del monitor que contiene la isla, mediante MonitorFromPoint/GetMonitorInfo/EnumDisplaySettings de Windows.
+- Ajuste propio de la pestaña Isla Dinámica > Rendimiento y animaciones: Automático (predeterminado), 60, 120, 144, 165 y 240 FPS objetivos. Normalizar modos reportados de 239/240 y 59/60 Hz.
+- El temporizador de animación se activa solo durante la transición; al contraerse y entrar en reposo se detiene. Jamás mantener 240 actualizaciones por segundo en reposo.
+- Objetivo: transición fluida ~200–350 ms a la frecuencia detectada; el objetivo de ticks en la UI no garantiza FPS renderizados, ya que Avalonia/Windows pueden imponer límites de compositor. Medir FPS reales/latencia antes de dar por aprobada la fase.
 - Soportar pantallas múltiples, escalado DPI, cambios de monitor, ocultación en pantalla completa, accesibilidad y prioridad de eventos.
 - Pruebas: 100 alternancias hover/leave/clic, múltiples resoluciones, pantalla completa, latencia y medición CPU/GPU/RAM en reposo.
 

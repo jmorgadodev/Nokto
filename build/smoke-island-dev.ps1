@@ -44,10 +44,11 @@ foreach ($scenario in @('Island','Dashboard','Both','Tray')) {
   [IO.File]::WriteAllText((Join-Path $testDir 'data\config.json'), ($cfg | ConvertTo-Json -Depth 6), [Text.UTF8Encoding]::new($false))
   $p = Start-Process -FilePath $exe -WorkingDirectory $testDir -PassThru
   try {
-    Start-Sleep -Seconds 6
+    Start-Sleep -Seconds 12
     $p.Refresh()
     if ($p.HasExited) { throw ('Se cerro Nokto DEV inesperadamente en ' + $scenario + ': ' + $p.ExitCode) }
     $titles = [WindowProbe]::ForProcess([uint32]$p.Id)
+    Write-Output ('[DEBUG] ' + $scenario + ' PID=' + $p.Id + ' ventanas=' + ($titles -join ' | '))
     $island = [bool](@($titles | Where-Object { $_ -like '*Nokto Island*' }).Count)
     $dashboard = [bool](@($titles | Where-Object { $_ -like '*Nokto 2.0 DEV*' }).Count)
     if ($scenario -eq 'Island' -and (!$island -or $dashboard)) { throw ('Fallo modo Isla: ' + ($titles -join ', ')) }
@@ -62,6 +63,23 @@ foreach ($scenario in @('Island','Dashboard','Both','Tray')) {
       if ($null -eq $islandTab) { throw ('No se encontro la quinta pestaña. Pestañas: ' + (($tabs | ForEach-Object { $_.Current.Name }) -join ', ')) }
       $islandTab.GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Select()
       Start-Sleep -Milliseconds 300
+
+      # El modo Automatico debe mostrar el monitor activo y el objetivo resultante.
+      $rateText = @($main.FindAll(
+        [System.Windows.Automation.TreeScope]::Descendants,
+        [System.Windows.Automation.PropertyCondition]::new(
+          [System.Windows.Automation.AutomationElement]::ControlTypeProperty,
+          [System.Windows.Automation.ControlType]::Text)) |
+        Where-Object { $_.Current.Name -match '(\d+) Hz\s+.+\s+(\d+) FPS' } |
+        Select-Object -First 1)
+      if ($rateText.Count -eq 0) { throw 'No se muestra la frecuencia detectada en Rendimiento y animaciones.' }
+      $label = $rateText[0].Current.Name
+      $numbers = [regex]::Match($label, '(\d+) Hz\s+.+\s+(\d+) FPS')
+      if ([int]$numbers.Groups[1].Value -ne [int]$numbers.Groups[2].Value) {
+        throw ('En modo automatico se esperaba igualar la frecuencia detectada: ' + $label)
+      }
+      Write-Output ('[PASS] Deteccion automatica: ' + $label)
+
       $checkCondition = [System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::NameProperty,'Mostrar la isla flotante')
       $check = $main.FindFirst([System.Windows.Automation.TreeScope]::Descendants,$checkCondition)
       if ($null -eq $check) { throw 'Pestaña existe pero no contiene el control de activación.' }
@@ -86,7 +104,44 @@ foreach ($scenario in @('Island','Dashboard','Both','Tray')) {
       if ($saved.island.expandOnHover -or !$saved.island.reducedMotion) {
         throw 'Las preferencias de movimiento no se guardaron en config.json.'
       }
-      Write-Output '[PASS] Quinta pestaña, activacion y ajustes de movimiento guardados.'
+      $fpsSelector = $main.FindFirst(
+        [System.Windows.Automation.TreeScope]::Descendants,
+        [System.Windows.Automation.PropertyCondition]::new(
+          [System.Windows.Automation.AutomationElement]::AutomationIdProperty,
+          'IslandFrameRateSelector'))
+      if ($null -eq $fpsSelector) { throw 'No se encontro el selector de frecuencia de la isla.' }
+      foreach ($limit in @(60,240)) {
+        $fpsSelector.GetCurrentPattern([System.Windows.Automation.ExpandCollapsePattern]::Pattern).Expand()
+        Start-Sleep -Milliseconds 150
+        $item = [System.Windows.Automation.AutomationElement]::RootElement.FindFirst(
+          [System.Windows.Automation.TreeScope]::Descendants,
+          [System.Windows.Automation.PropertyCondition]::new(
+            [System.Windows.Automation.AutomationElement]::NameProperty, "$limit FPS"))
+        if ($null -eq $item) { throw ("No existe la opcion $limit FPS") }
+        $item.GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Select()
+        Start-Sleep -Milliseconds 350
+        $cfgCurrent = Get-Content -Raw (Join-Path $testDir 'data\config.json') | ConvertFrom-Json
+        if ($cfgCurrent.island.animationRateMode -ne "$limit") {
+          throw ("El modo $limit FPS no se guardo correctamente.")
+        }
+        Write-Output ("[PASS] Frecuencia manual $limit FPS: persistencia correcta.")
+      }
+      # Dejar modo automatico al terminar la prueba de configuración.
+      $fpsSelector.GetCurrentPattern([System.Windows.Automation.ExpandCollapsePattern]::Pattern).Expand()
+      Start-Sleep -Milliseconds 150
+      $auto = @([System.Windows.Automation.AutomationElement]::RootElement.FindAll(
+        [System.Windows.Automation.TreeScope]::Descendants,
+        [System.Windows.Automation.PropertyCondition]::new(
+          [System.Windows.Automation.AutomationElement]::ControlTypeProperty,
+          [System.Windows.Automation.ControlType]::ListItem)) |
+        Where-Object { $_.Current.Name -like 'Auto*' } |
+        Select-Object -First 1)
+      if ($auto.Count -eq 0) { throw 'No se encontro el modo automatico de animacion.' }
+      $auto[0].GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Select()
+      Start-Sleep -Milliseconds 300
+      $cfgCurrent = Get-Content -Raw (Join-Path $testDir 'data\config.json') | ConvertFrom-Json
+      if ($cfgCurrent.island.animationRateMode -ne 'Auto') { throw 'No se restauro el modo automatico.' }
+      Write-Output '[PASS] Quinta pestaña, controles de movimiento y selector FPS verificados.'
     }
     Write-Output ('[PASS] ' + $scenario + ': island=' + $island + ', dashboard=' + $dashboard + ', RAM=' + [math]::Round($p.WorkingSet64/1MB,1) + ' MB')
   } finally {

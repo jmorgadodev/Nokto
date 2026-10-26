@@ -7,12 +7,13 @@ using Avalonia.Interactivity;
 using Avalonia.Media;
 using Avalonia.Threading;
 using Nokto.UI.ViewModels;
+using Nokto.Platform.Windows.Display;
 
 namespace Nokto.UI.Views;
 
 /// <summary>
 /// Compacta en reposo, transiciones bajo demanda y expansion interactiva.
-/// El timer de 16 ms SOLO funciona mientras hay una transicion activa.
+/// El temporizador se adapta al monitor y SOLO funciona durante una transicion.
 /// </summary>
 public partial class IslandWindow : Window
 {
@@ -37,12 +38,13 @@ public partial class IslandWindow : Window
         _settings = settings;
         _clockTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(1) };
         _clockTimer.Tick += (_, _) => UpdateClock();
-        _animationTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
+        _animationTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1.0 / settings.TargetAnimationFps) };
         _animationTimer.Tick += (_, _) => AdvanceAnimation();
         _settings.PropertyChanged += OnSettingsChanged;
         Opened += (_, _) =>
         {
             ApplySettings();
+            UpdateAnimationRate();
             SyncClockTimer();
         };
         Closed += (_, _) =>
@@ -60,7 +62,16 @@ public partial class IslandWindow : Window
 
     private void OnSettingsChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(IslandViewModel.Enabled)) return;
+        if (e.PropertyName == nameof(IslandViewModel.Enabled) ||
+            e.PropertyName == nameof(IslandViewModel.DetectedDisplayHz) ||
+            e.PropertyName == nameof(IslandViewModel.TargetAnimationFps) ||
+            e.PropertyName == nameof(IslandViewModel.DisplayRefreshStatus))
+            return;
+        if (e.PropertyName == nameof(IslandViewModel.AnimationRateIndex))
+        {
+            UpdateAnimationRate();
+            return;
+        }
         ApplySettings();
     }
 
@@ -78,6 +89,7 @@ public partial class IslandWindow : Window
         ClockText.IsVisible = _settings.ShowClock;
         UpdateClock();
         SyncClockTimer();
+        UpdateAnimationRate();
 
         if (_initialLayout)
         {
@@ -100,6 +112,18 @@ public partial class IslandWindow : Window
         if (_clockTimer is null) return;
         if (_settings?.ShowClock == true && IsVisible) _clockTimer.Start();
         else _clockTimer.Stop();
+    }
+
+    private void UpdateAnimationRate()
+    {
+        if (_settings is null || _animationTimer is null) return;
+        // Consultar al iniciar/cambiar opciones y antes de animar, nunca en cada fotograma.
+        var scale = Screens.Primary?.Scaling ?? 1.0;
+        int x = Position.X + (int)Math.Round(Width * scale / 2);
+        int y = Position.Y + 12;
+        int detected = DisplayRefreshRateDetector.GetRefreshRateAt(x, y);
+        _settings.UpdateDetectedDisplayHz(detected);
+        _animationTimer.Interval = TimeSpan.FromSeconds(1.0 / Math.Clamp(_settings.TargetAnimationFps, 30, 240));
     }
 
     private void UpdateClock()
@@ -154,6 +178,7 @@ public partial class IslandWindow : Window
     private void AnimateTo(double width, double height)
     {
         if (_animationTimer is null) return;
+        UpdateAnimationRate();
         if (_settings?.ReducedMotion == true)
         {
             _animationTimer.Stop();

@@ -73,6 +73,12 @@
     <sys:String x:Key="IslandStyleBlack">Black dot</sys:String>
     <sys:String x:Key="IslandStyleGlow">Glowing cyan dot</sys:String>
     <sys:String x:Key="IslandShowClock">Show clock in island</sys:String>
+    <sys:String x:Key="IslandPerformanceHeading">PERFORMANCE AND ANIMATIONS</sys:String>
+    <sys:String x:Key="IslandPerformanceDescription">Nokto detects the refresh rate of the island's screen and adapts its animations. You may set a manual limit.</sys:String>
+    <sys:String x:Key="IslandAnimationRateLabel">Animation update rate</sys:String>
+    <sys:String x:Key="IslandFpsAuto">Automatic (recommended)</sys:String>
+    <sys:String x:Key="IslandDetectedRateLabel">Display / target:</sys:String>
+    <sys:String x:Key="IslandPerformanceNote">FPS is an interpolation target, not guaranteed rendered frames. No continuous animation runs while idle.</sys:String>
     <sys:String x:Key="IslandExpandOnHover">Expand when hovering</sys:String>
     <sys:String x:Key="IslandReducedMotion">Reduce motion (no transitions)</sys:String>
     <sys:String x:Key="IslandAppearanceHint">These are the first working styles. More eyes, reactions and animations will arrive in the visual phase.</sys:String>

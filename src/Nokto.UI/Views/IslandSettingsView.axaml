@@ -32,6 +32,31 @@
       </Border>
       <Border Background="{DynamicResource ThemeCardBackground}" BorderBrush="{DynamicResource ThemeCardBorder}" BorderThickness="1" CornerRadius="10" Padding="20">
         <StackPanel Spacing="12">
+          <TextBlock Text="{DynamicResource IslandPerformanceHeading}" Foreground="{DynamicResource ThemeAccent}" FontWeight="Bold" FontSize="12"/>
+          <TextBlock Text="{DynamicResource IslandPerformanceDescription}" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="11" TextWrapping="Wrap"/>
+          <Grid ColumnDefinitions="250,*">
+            <TextBlock Text="{DynamicResource IslandAnimationRateLabel}" Foreground="{DynamicResource ThemeTextPrimary}" VerticalAlignment="Center"/>
+            <ComboBox Grid.Column="1" SelectedIndex="{Binding IslandVm.AnimationRateIndex, Mode=TwoWay}"
+                      AutomationProperties.AutomationId="IslandFrameRateSelector"
+                      AutomationProperties.Name="{DynamicResource IslandAnimationRateLabel}"
+                      MinWidth="230" HorizontalAlignment="Left">
+              <ComboBoxItem Content="{DynamicResource IslandFpsAuto}"/>
+              <ComboBoxItem Content="60 FPS"/>
+              <ComboBoxItem Content="120 FPS"/>
+              <ComboBoxItem Content="144 FPS"/>
+              <ComboBoxItem Content="165 FPS"/>
+              <ComboBoxItem Content="240 FPS"/>
+            </ComboBox>
+          </Grid>
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <TextBlock Text="{DynamicResource IslandDetectedRateLabel}" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="12"/>
+            <TextBlock Text="{Binding IslandVm.DisplayRefreshStatus}" Foreground="{DynamicResource ThemeAccent}" FontFamily="Consolas" FontSize="12" FontWeight="SemiBold"/>
+          </StackPanel>
+          <TextBlock Text="{DynamicResource IslandPerformanceNote}" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="11" TextWrapping="Wrap"/>
+        </StackPanel>
+      </Border>
+      <Border Background="{DynamicResource ThemeCardBackground}" BorderBrush="{DynamicResource ThemeCardBorder}" BorderThickness="1" CornerRadius="10" Padding="20">
+        <StackPanel Spacing="12">
           <TextBlock Text="{DynamicResource IslandStartupHeading}" Foreground="{DynamicResource ThemeAccent}" FontWeight="Bold" FontSize="12"/>
           <TextBlock Text="{DynamicResource IslandStartupDescription}" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="11" TextWrapping="Wrap"/>
           <ComboBox SelectedIndex="{Binding IslandVm.StartupModeIndex, Mode=TwoWay}" MinWidth="260" HorizontalAlignment="Left">

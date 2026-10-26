@@ -73,6 +73,12 @@
     <sys:String x:Key="IslandStyleBlack">Punto negro</sys:String>
     <sys:String x:Key="IslandStyleGlow">Punto cian luminoso</sys:String>
     <sys:String x:Key="IslandShowClock">Mostrar reloj en la isla</sys:String>
+    <sys:String x:Key="IslandPerformanceHeading">RENDIMIENTO Y ANIMACIONES</sys:String>
+    <sys:String x:Key="IslandPerformanceDescription">Nokto detecta la frecuencia del monitor donde se muestra la isla y adapta su animación. Puedes limitarla manualmente.</sys:String>
+    <sys:String x:Key="IslandAnimationRateLabel">Actualización de animaciones</sys:String>
+    <sys:String x:Key="IslandFpsAuto">Automático (recomendado)</sys:String>
+    <sys:String x:Key="IslandDetectedRateLabel">Pantalla / objetivo:</sys:String>
+    <sys:String x:Key="IslandPerformanceNote">Los FPS son un objetivo de interpolación, no una garantía de fotogramas renderizados. En reposo no hay animación continua.</sys:String>
     <sys:String x:Key="IslandExpandOnHover">Expandir al acercar el cursor</sys:String>
     <sys:String x:Key="IslandReducedMotion">Reducir movimiento (sin transiciones)</sys:String>
     <sys:String x:Key="IslandAppearanceHint">Estos estilos son la primera base funcional. Más ojos, reacciones y animaciones llegarán en la fase visual.</sys:String>
