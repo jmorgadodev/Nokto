@@ -39,7 +39,7 @@ public partial class IslandWindow
     private void RefreshProductivity()
     {
         if (Productivity is not { } p) return;
-        ProductivityPanel.IsVisible = true;
+        ProductivityPanel.IsVisible = _settings?.ShortcutsShowRoutines == true;
         ProductivityAlertFrame.IsVisible = p.Enabled && p.HasAlert;
         ProductivityAlertText.Text = p.AlertText;
         CompactProductivityText.Text = p.CompactText;

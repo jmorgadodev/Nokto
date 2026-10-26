@@ -8,7 +8,7 @@ New-Item -ItemType Directory -Force -Path (Join-Path $folder 'data') | Out-Null
 Copy-Item -LiteralPath $src -Destination (Join-Path $folder 'Nokto.Dev.exe')
 New-Item -ItemType File -Path (Join-Path $folder 'portable.lock') | Out-Null
 New-Item -ItemType Directory -Force -Path (Join-Path $folder 'QuickSample') | Out-Null
-$data=@{island=@{enabled=$true;style=$Eye;sizePercent=$SizePercent;quickFolders=@((Join-Path $folder 'QuickSample'));showQuickActions=$true;enableWheelPages=$true;showClipboardActions=$true;clockVisibility='Expand';showClock=$true;startupMode='Island';startupModeConfigured=$true;followCursor=$true;naturalBlink=$true;animationRateMode='60';reducedMotion=$false;expandOnHover=$true;showAudioControls=$true;showBatteryStatus=$true;showNetworkStatus=$false}; settings=@{language='es';theme='Dark';startMinimizedToTray=$false;checkUpdatesOnStartup=$false;startInWorkMode=$false};lanServer=@{enabled=$false}}
+$data=@{island=@{enabled=$true;style=$Eye;sizePercent=$SizePercent;quickFolders=@((Join-Path $folder 'QuickSample'));showQuickActions=$true;enableWheelPages=$true;showClipboardActions=$true;showMainButton=$false;showHideButton=$false;clockVisibility='Expand';showClock=$true;startupMode='Island';startupModeConfigured=$true;followCursor=$true;naturalBlink=$true;animationRateMode='60';reducedMotion=$false;expandOnHover=$true;showAudioControls=$true;showBatteryStatus=$true;showNetworkStatus=$false}; settings=@{language='es';theme='Dark';startMinimizedToTray=$false;checkUpdatesOnStartup=$false;startInWorkMode=$false};lanServer=@{enabled=$false}}
 [IO.File]::WriteAllText((Join-Path $folder 'data\config.json'),($data|ConvertTo-Json -Depth 8),[Text.UTF8Encoding]::new($false))
 Add-Type -AssemblyName System.Drawing
 Add-Type -AssemblyName UIAutomationClient,UIAutomationTypes
@@ -76,7 +76,12 @@ try{
   if($null -eq $wheelTitle -or $wheelTitle.Current.Name -notlike '*Sonido*'){ throw ('Rueda no cambió a Sonido: '+$wheelTitle.Current.Name) }
   [QaWindows]::mouse_event(0x0800,0,0,120,[UIntPtr]::Zero)
   Start-Sleep -Milliseconds 390
-  Write-Output '[PASS] Rueda: cambia y retrocede entre secciones sin cerrar la isla.'
+  if($wheelTitle.Current.Name -notlike '*Sonido*'){throw 'La rueda provocó salto dentro de Sonido'}
+  Write-Output '[PASS] Rueda en Sonido: no cambia de página.'
+  $previous=$ui.FindFirst([System.Windows.Automation.TreeScope]::Descendants,
+    [System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::AutomationIdProperty,'IslandPagePrevious'))
+  $previous.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
+  Start-Sleep -Milliseconds 250
   $next=$ui.FindFirst([System.Windows.Automation.TreeScope]::Descendants,[System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::AutomationIdProperty,'IslandPageNext'))
   if($null -eq $next){throw 'No se encontro navegación entre paginas'}
   $next.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()

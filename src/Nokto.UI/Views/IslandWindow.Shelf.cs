@@ -14,8 +14,8 @@ public partial class IslandWindow
     private void RefreshShelf()
     {
         if (_settings is null) return;
-        FileShelfPanel.IsVisible = _settings.ShowFileShelf;
-        ShelfDetails.IsVisible = _settings.ShowFileShelf && _shelfOpen;
+        FileShelfPanel.IsVisible = _settings.ShowFileShelf && !_settings.PrivacyMode;
+        ShelfDetails.IsVisible = _settings.ShowFileShelf && !_settings.PrivacyMode && _shelfOpen;
         if (_animationTimer is not null && _islandReady && _expanded)
         {
             double height = ExpandedHeightForContent;

@@ -49,6 +49,8 @@ public partial class IslandWindow : Window
     public IslandWindow(IslandViewModel settings, MainViewModel mainViewModel) : this()
     {
         _settings = settings;
+        IslandSurface.AddHandler(InputElement.PointerWheelChangedEvent, OnWheelGuard,
+            Avalonia.Interactivity.RoutingStrategies.Tunnel, handledEventsToo: true);
         _controlVm = mainViewModel;
         DataContext = mainViewModel;
         _clockTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(1) };
@@ -83,6 +85,7 @@ public partial class IslandWindow : Window
             _blinkTimer?.Stop();
             _demoTimer?.Stop();
             DisposeMedia();
+            DisposeWeather();
             UnsubscribeProductivity();
             _settings.PropertyChanged -= OnSettingsChanged;
         };
@@ -128,10 +131,10 @@ public partial class IslandWindow : Window
         EyesVisual.Width = EyeStyleCatalog.IsMinimal(_settings.SelectedStyle) ? 30 : 74;
         TestEyesButton.IsVisible = !_settings.ReducedMotion && !EyeStyleCatalog.IsMinimal(_settings.SelectedStyle);
         ClockText.IsVisible = _expanded ? _settings.ClockInExpanded : _settings.ClockInCompact;
-        AudioControls.IsVisible = _settings.ShowAudioControls;
+        AudioControls.IsVisible = true;
         BatteryStatusText.IsVisible = _settings.ShowBatteryStatus;
         NetworkStatusText.IsVisible = _settings.ShowNetworkStatus;
-        SystemStatus.IsVisible = _settings.ShowBatteryStatus || _settings.ShowNetworkStatus;
+        SystemStatus.IsVisible = !_settings.PrivacyMode && (_settings.ShowBatteryStatus || _settings.ShowNetworkStatus);
         RefreshPages();
         RefreshProductivity();
         RefreshShelf();

@@ -19,14 +19,18 @@ public partial class IslandWindow
 
     private double ExpandedHeightForContent => ScaleFactor * (_pageIndex switch
     {
-        0 => 143 + (MediaPanel.IsVisible ? 112 : 0) + (SystemStatus.IsVisible ? 31 : 0),
-        1 => 263,
-        _ => 176 + (ProductivityPanel.IsVisible ? 36 : 0) +
+        0 => 140 + (MediaPanel.IsVisible ? 155 : 0) + (MediaEmptyState.IsVisible ? 54 : 0) +
+            (SystemStatus.IsVisible ? 35 : 0) +
+            (WeatherPanel.IsVisible ? 53 : 0),
+        1 => 215 + (SoundMuteButtons.IsVisible ? 40 : 0) +
+            (VolumeRow.IsVisible ? 32 : 0) + (IslandFooter.IsVisible ? 24 : 0),
+        _ => 152 + (ProductivityPanel.IsVisible ? 36 : 0) +
             (QuickActionsPanel.IsVisible ? 158 : 0) +
             (FileShelfPanel.IsVisible ? 40 : 0) +
             (ShelfDetails.IsVisible ? 190 : 0) +
             (ClipboardPanel.IsVisible ? 56 : 0) +
-            (ProductivityAlertFrame.IsVisible ? 42 : 0)
+            (ProductivityAlertFrame.IsVisible ? 42 : 0) +
+            (IslandFooter.IsVisible ? 20 : 0)
     });
 
     private void SyncMediaSession()
@@ -68,10 +72,11 @@ public partial class IslandWindow
     {
         bool show = _settings?.ShowMediaControls == true && _mediaSnapshot.Available;
         MediaPanel.IsVisible = show;
+        MediaEmptyState.IsVisible = _settings?.ShowMediaControls == true && !show && _settings?.PrivacyMode != true;
         CompactTrackText.IsVisible = HasCompactMedia && !_expanded;
-        CompactTrackText.Text = _mediaSnapshot.Title;
-        MediaTitle.Text = _mediaSnapshot.Title;
-        MediaArtist.Text = _mediaSnapshot.Artist;
+        CompactTrackText.Text = _settings?.PrivacyMode == true ? "" : _mediaSnapshot.Title;
+        MediaTitle.Text = _settings?.PrivacyMode == true ? "Reproducción activa" : _mediaSnapshot.Title;
+        MediaArtist.Text = _settings?.PrivacyMode == true ? "" : _mediaSnapshot.Artist;
         if (!ReferenceEquals(_mediaArtworkSource, _mediaSnapshot.Artwork))
         {
             MediaCover.Source = null;
@@ -89,7 +94,7 @@ public partial class IslandWindow
                 catch (Exception) { _mediaArtwork = null; }
             }
         }
-        MediaCoverFrame.IsVisible = show && _mediaArtwork is not null;
+        MediaCoverFrame.IsVisible = show && _mediaArtwork is not null && _settings?.PrivacyMode != true;
         MediaPlayPauseButton.Content = _mediaSnapshot.IsPlaying ? "⏸" : "▶";
         MediaPlayPauseButton.IsEnabled = _mediaSnapshot.CanPlayPause;
         MediaPreviousButton.IsEnabled = _mediaSnapshot.CanPrevious;
@@ -127,7 +132,7 @@ public partial class IslandWindow
             _mediaProgressTimer.Tick += (_, _) => RefreshMediaProgress();
         }
         // Ningún temporizador cuando está compacta o pausada.
-        if (_islandReady && _expanded && MediaPanel.IsVisible && _mediaSnapshot.IsPlaying)
+        if (_islandReady && _expanded && _pageIndex == 0 && MediaPanel.IsVisible && _mediaSnapshot.IsPlaying)
             _mediaProgressTimer.Start();
         else
             _mediaProgressTimer.Stop();

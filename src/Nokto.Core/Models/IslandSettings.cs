@@ -13,6 +13,22 @@ public sealed class IslandSettings
     public bool EnableWheelPages { get; set; } = true;
     public List<string> QuickFolders { get; set; } = [];
     public bool ShowClipboardActions { get; set; } = false;
+    // Preferencias independientes por página. Defaults conservan versiones anteriores.
+    public bool ShowOverviewPage { get; set; } = true;
+    public bool ShowSoundPage { get; set; } = true;
+    public bool ShowShortcutsPage { get; set; } = true;
+    public bool ShowMainButton { get; set; } = true;
+    public bool ShowHideButton { get; set; } = true;
+    public bool SoundShowVolume { get; set; } = true;
+    public bool SoundShowMicrophone { get; set; } = true;
+    public bool SoundShowOutputMute { get; set; } = true;
+    public bool ShortcutsShowRoutines { get; set; } = true;
+    public bool ShortcutsShowExplorer { get; set; } = true;
+    public bool ShortcutsShowFolders { get; set; } = true;
+    public bool ShowWeather { get; set; } = false;
+    public string WeatherCity { get; set; } = "";
+    public bool ShowWindowsNotifications { get; set; } = false;
+    public bool PrivacyMode { get; set; } = false;
     // Dashboard (legacy default), Island, Both, Tray.
     public string StartupMode { get; set; } = "Dashboard";
     // Los usuarios anteriores conservan su ajuste de inicio hasta elegir un modo nuevo.

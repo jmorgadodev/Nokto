@@ -104,3 +104,13 @@ Pruebas de regresión de Nokto actual, memoria, CPU, GPU, despertar, monitor adi
 Portable e instalador, verificaciones de integridad, rollback, conservación de datos y publicación v2.0 autorizada.
 
 **Nota:** La primera iteración del motor ya cuenta con transición de geometría bajo demanda; no equivale a las pruebas de rendimiento ni a la experiencia final de Apple. Pendientes: seguimiento de ojos, opciones de animación avanzadas, pantalla completa, DPI/multimonitor, selección de actividades y acceso completo por teclado.
+
+## Fase 7 — Estado de entrega funcional 26-10-2026
+- Bandeja de archivos locales, carpetas y portapapeles opt-in integrados, sin subir ni copiar contenido.
+- Clima por ciudad introducida manualmente (Open-Meteo), geocodificación por nombre y país opcional, caché de 30 minutos, recarga manual y cancelación al desactivar/ocultar. La suite de clima con HttpClient simulado pasa, pero depende de conectividad/servicio externo en uso real.
+- Notificaciones opcionales por icono de bandeja de Windows para avisos de productividad, sin instalador adicional; falta validar un aviso visible de principio a fin en el sistema del usuario (Windows puede suprimirlo).
+- Modo privacidad para ocultar portapapeles, rutas, detalles multimedia, clima y estado de red.
+- Configuración granular por página: Resumen, Sonido y Accesos; cada una con controles seleccionables; pie Nokto/Ocultar opcional. Si no se elige ninguna página, Sonido es el fallback de navegación.
+- Diseño premium propio inspirado en jerarquía visual de Apple Music, con botones circulares, contraste y controles diferenciados; la aprobación estética final corresponde al usuario.
+- Corrección de rueda: se consume sobre Sonido y controles de lista/deslizador, con limitación de repetición y navegación con flechas; QA de 100 % confirmó que no salta de página ni cambia volumen.
+- QA: build Release, pruebas de clima con caché, productividad, galería y configuración; captura de Resumen/Sonido/Accesos. Pendiente prueba real de notificaciones, regresión final de inicio de 4 modos con esta compilación, alta DPI/multimonitor, accesibilidad y perfilado de RAM.

@@ -23,6 +23,7 @@ public partial class App : Application
     private MainWindow? _mainWindow;
     private IslandWindow? _islandWindow;
     private TrayIcon? _trayIcon;
+    private Nokto.UI.Services.WindowsBalloonNotifier? _notificationService;
     private bool _trayUpdateFailureLogged;
     private bool _isExiting;
     private DispatcherTimer? _scheduleThemeTimer;
@@ -45,6 +46,7 @@ public partial class App : Application
             var engine = new WorkflowEngine(_systemAdapter, persistence);
             _mainViewModel = new MainViewModel(_systemAdapter, engine, persistence);
             _mainViewModel.IslandVm.Changed += () => Dispatcher.UIThread.Post(SyncIslandVisibility);
+            _mainViewModel.IslandVm.Productivity.AlertRaised += HandleProductivityAlert;
 
             var config = persistence.LoadConfig();
 
@@ -62,6 +64,9 @@ public partial class App : Application
                 _trayIcon?.Dispose();
                 _trayIcon = null;
                 TrayIcon.SetIcons(this, new TrayIcons());
+                _mainViewModel.IslandVm.Productivity.AlertRaised -= HandleProductivityAlert;
+                _notificationService?.Dispose();
+                _notificationService = null;
                 _mainViewModel.IslandVm.Productivity.Dispose();
                 _mainViewModel.Dispose();
                 engine.Dispose();
@@ -322,6 +327,15 @@ public partial class App : Application
         _islandWindow.ApplySettings();
         if (!_islandWindow.IsVisible)
             _islandWindow.Show();
+    }
+
+    private void HandleProductivityAlert(Nokto.Core.Models.IslandProductivityAlert alert)
+    {
+        if (_mainViewModel?.IslandVm.ShowWindowsNotifications != true || _isExiting) return;
+        _notificationService ??= new Nokto.UI.Services.WindowsBalloonNotifier();
+        string text = _mainViewModel.IslandVm.PrivacyMode
+            ? "Hay un aviso pendiente en Nokto." : alert.Message;
+        _notificationService.Show("Nokto · Recordatorio", text);
     }
 
     public void ShowMainWindow()

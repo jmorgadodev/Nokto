@@ -8,6 +8,12 @@ public partial class IslandSettingsView : UserControl
 {
     public IslandSettingsView() => InitializeComponent();
 
+    private void OnWeatherCityCommitted(object? sender, RoutedEventArgs e)
+    {
+        if (sender is TextBox input && DataContext is MainViewModel main)
+            main.IslandVm.WeatherCity = input.Text?.Trim() ?? "";
+    }
+
     private void OnOpenRoutines(object? sender, RoutedEventArgs e)
     {
         if (DataContext is MainViewModel main)
