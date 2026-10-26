@@ -56,8 +56,18 @@ Referencias oficiales: Apple HIG Live Activities (https://developer.apple.com/de
 - Validación preliminar: API de Windows detectó una sesión real, cargó carátula y se desconectó correctamente sin cambiar reproducción ni volumen.
 - Pendiente: aprobar diseño en pantalla, estados ante cambios de reproductor, multimedia con varios reproductores a la vez, barra de búsqueda interactiva, letras (fuentes, permisos y derechos), sincronización de eventos complejos, consumo e interacción teclado; no presentar pendiente como completado.
 
-## Fase 6 — Productividad
-Reloj, alarmas, temporizador, cronómetro, Pomodoro, tareas, notas, hidratación y agenda.
+## Fase 6 — Productividad (núcleo implementado; pruebas visuales pendientes)
+- Estado de productividad local aislado en `IslandProductivityState`, serializado en el archivo de configuración del portable.
+- Cuenta atrás de 5/15/25 min, pausar, continuar y reiniciar; cronómetro con acumulación en pausas.
+- Pomodoro con minutos de enfoque (1–180) y descanso (1–60) configurables. Al vencer se cambia a la siguiente fase **detenida**; el usuario decide si la inicia.
+- Alarmas de una sola vez o diarias en hora local HH:mm (máx. 12); reprogramación diaria al completar sin duplicar alertas.
+- Tareas locales (máx. 30) con avisos opcionales a 15/60 min, completar primera pendiente y límite de 120 caracteres.
+- Avisos visuales en isla activa y aviso sonoro de Windows configurable; no capturan pantallas, ubicación ni red.
+- Reloj de servicio independiente del tamaño de la isla, activo al haber un temporizador/cronómetro/Pomodoro o alarmas/recordatorios futuros; parado sin trabajo.
+- En reposo la isla permanece compacta; el panel de productividad se despliega bajo demanda. Mostrar cuenta atrás en compacto es opt-in.
+- **Limitaciones honestas:** no puede despertar Windows suspendido ni avisar si la aplicación está cerrada; una alarma sin isla visible puede sonar, pero no aparece una notificación del sistema. Falta notificación nativa de Windows, notas persistentes, hidratación, agenda/calendario, gestión de múltiples tareas y alarmas desde UI, accesibilidad y pruebas con suspensión/horarios de verano.
+- Pruebas: motor con reloj simulado para pausas, reinicios, vencimientos, alarmas diarias, tareas, serialización JSON; UI automatizada en copia DEV temporal; pendiente QA final de ventanas y regresión.
+
 
 ## Fase 7 — Archivos, clima y notificaciones
 Shelf de archivos, portapapeles opcional, clima con caché, notificaciones, privacidad.

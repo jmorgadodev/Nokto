@@ -14,11 +14,13 @@ public partial class IslandViewModel : ObservableObject
     private readonly PersistenceService _persistence;
     private bool _loading;
     public event Action? Changed;
+    public IslandProductivityViewModel Productivity { get; }
 
     public IslandViewModel(AppConfig config, PersistenceService persistence)
     {
         _config = config;
         _persistence = persistence;
+        Productivity = new IslandProductivityViewModel(config, persistence);
         _loading = true;
         _enabled = config.Island.Enabled;
         _styleIndex = EyeStyleCatalog.IndexOf(config.Island.Style);

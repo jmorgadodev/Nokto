@@ -24,4 +24,5 @@ public sealed class IslandSettings
     public bool NaturalBlink { get; set; } = true;
     public bool SleepOnIdle { get; set; } = true;
     public double EyeSensitivity { get; set; } = 0.65;
+    public IslandProductivityState Productivity { get; set; } = new();
 }

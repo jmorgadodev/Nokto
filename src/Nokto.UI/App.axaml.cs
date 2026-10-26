@@ -62,6 +62,7 @@ public partial class App : Application
                 _trayIcon?.Dispose();
                 _trayIcon = null;
                 TrayIcon.SetIcons(this, new TrayIcons());
+                _mainViewModel.IslandVm.Productivity.Dispose();
                 _mainViewModel.Dispose();
                 engine.Dispose();
                 _systemAdapter?.Dispose();

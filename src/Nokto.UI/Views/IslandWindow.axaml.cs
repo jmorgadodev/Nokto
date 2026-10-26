@@ -69,6 +69,7 @@ public partial class IslandWindow : Window
             SyncClockTimer();
             ConfigureEyeMotion();
             SyncMediaSession();
+            SubscribeProductivity();
         };
         Closed += (_, _) =>
         {
@@ -80,13 +81,15 @@ public partial class IslandWindow : Window
             _blinkTimer?.Stop();
             _demoTimer?.Stop();
             DisposeMedia();
+            UnsubscribeProductivity();
             _settings.PropertyChanged -= OnSettingsChanged;
         };
         ApplySettings();
     }
 
     private double CompactWidth => HasCompactMedia
-        ? (_settings?.ClockInCompact == true ? 284 : 232)
+        ? (_settings?.ClockInCompact == true ? 284 : 232) : HasCompactProductivity
+        ? (_settings?.ClockInCompact == true ? 245 : 196)
         : _settings?.ClockInCompact == true
             ? (EyeStyleCatalog.IsMinimal(_settings.SelectedStyle) ? 145 : 176)
             : (EyeStyleCatalog.IsMinimal(_settings?.SelectedStyle) ? 64 : 110);
@@ -121,6 +124,7 @@ public partial class IslandWindow : Window
         BatteryStatusText.IsVisible = _settings.ShowBatteryStatus;
         NetworkStatusText.IsVisible = _settings.ShowNetworkStatus;
         SystemStatus.IsVisible = _settings.ShowBatteryStatus || _settings.ShowNetworkStatus;
+        RefreshProductivity();
         UpdateClock();
         SyncClockTimer();
         UpdateAnimationRate();
@@ -211,6 +215,7 @@ public partial class IslandWindow : Window
             ExpandedTools.IsVisible = true;
         }
         CompactTrackText.IsVisible = HasCompactMedia && !expanded;
+        RefreshProductivity();
         SyncMediaProgressTimer();
         AnimateTo(expanded ? ExpandedWidth : CompactWidth,
                   expanded ? ExpandedHeightForContent : CompactHeight);

@@ -19,6 +19,8 @@
           <TextBlock x:Name="ClockText" Text="--:--" IsVisible="False"
                      Foreground="#E6F0F8" FontFamily="Consolas" FontWeight="Medium"
                      FontSize="16" VerticalAlignment="Center" Margin="8,0,1,0"/>
+          <TextBlock x:Name="CompactProductivityText" IsVisible="False" MaxWidth="100" FontSize="11"
+                     Foreground="#FFD29B" FontFamily="Consolas" VerticalAlignment="Center"/>
           <TextBlock x:Name="CompactTrackText" IsVisible="False" MaxWidth="152"
                      FontSize="11" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
                      Foreground="#8AF1E2" Margin="5,0,0,0"/>
@@ -54,6 +56,90 @@
                     AutomationProperties.AutomationId="IslandMediaNext"/>
             <TextBlock x:Name="MediaTime" Foreground="#B8CBDA" FontFamily="Consolas"
                        FontSize="10" VerticalAlignment="Center"/>
+          </StackPanel>
+        </StackPanel>
+        <StackPanel x:Name="ProductivityPanel" IsVisible="True" Spacing="6">
+          <Button x:Name="ProductivityToggleButton" Content="⏱  Productividad" Click="OnToggleProductivity"
+                  HorizontalAlignment="Stretch" Background="#192F3B" Foreground="#C3F3E8"
+                  Padding="10,5" AutomationProperties.AutomationId="IslandProductivityToggle"/>
+          <Border x:Name="ProductivityAlertFrame" IsVisible="False" Background="#42321E"
+                  CornerRadius="7" Padding="8">
+            <StackPanel Orientation="Horizontal" Spacing="8">
+              <TextBlock x:Name="ProductivityAlertText" Foreground="#FFE4AE" FontWeight="SemiBold"
+                         Width="220" TextTrimming="CharacterEllipsis"/>
+              <Button Content="✓" Click="OnDismissProductivityAlert" Padding="6,2"
+                      AutomationProperties.AutomationId="IslandDismissAlert"/>
+            </StackPanel>
+          </Border>
+          <StackPanel x:Name="ProductivityDetails" IsVisible="False" Spacing="7">
+            <StackPanel Orientation="Horizontal" Spacing="5">
+              <TextBlock Text="Cuenta atrás" Foreground="#9DDBD8" VerticalAlignment="Center" Width="100"/>
+              <TextBlock Text="{Binding IslandVm.Productivity.TimerText}" FontFamily="Consolas"
+                         Foreground="#E9F7FF" VerticalAlignment="Center"/>
+              <Button Content="5m" Click="OnTimer5" Padding="8,3" Margin="8,0,0,0"
+                      AutomationProperties.AutomationId="IslandTimer5"/>
+              <Button Content="15m" Click="OnTimer15" Padding="8,3"/>
+              <Button Content="25m" Click="OnTimer25" Padding="8,3"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <Button Content="{Binding IslandVm.Productivity.TimerAction}" Click="OnTimerToggle" Padding="10,3"/>
+              <Button Content="Reiniciar" Click="OnTimerReset" Padding="10,3"/>
+              <TextBlock Text="Cronómetro" Foreground="#9DDBD8" VerticalAlignment="Center" Margin="12,0,0,0"/>
+              <TextBlock Text="{Binding IslandVm.Productivity.StopwatchText}" FontFamily="Consolas"
+                         Foreground="#E9F7FF" VerticalAlignment="Center"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <Button Content="{Binding IslandVm.Productivity.StopwatchAction}" Click="OnStopwatchToggle"
+                      Padding="10,3" AutomationProperties.AutomationId="IslandStopwatch"/>
+              <Button Content="Reiniciar crono" Click="OnStopwatchReset" Padding="10,3"/>
+            </StackPanel>
+            <Border Height="1" Background="#284558"/>
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <TextBlock Text="Pomodoro" Foreground="#9DDBD8" VerticalAlignment="Center"/>
+              <TextBlock Text="{Binding IslandVm.Productivity.PomodoroPhase}" Foreground="#D8EDFA"
+                         VerticalAlignment="Center"/>
+              <TextBlock Text="{Binding IslandVm.Productivity.PomodoroText}" Foreground="#E9F7FF"
+                         FontFamily="Consolas" VerticalAlignment="Center"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <Button Content="{Binding IslandVm.Productivity.PomodoroAction}" Click="OnPomodoroToggle"
+                      Padding="10,3" AutomationProperties.AutomationId="IslandPomodoro"/>
+              <Button Content="Reiniciar" Click="OnPomodoroReset" Padding="10,3"/>
+            </StackPanel>
+            <Border Height="1" Background="#284558"/>
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <TextBlock Text="Alarma" Foreground="#9DDBD8" VerticalAlignment="Center"/>
+              <TextBox x:Name="AlarmTimeInput" Width="65" Watermark="HH:mm"
+                       AutomationProperties.AutomationId="IslandAlarmTime"/>
+              <CheckBox x:Name="AlarmDailyCheck" Content="Diaria" Foreground="#BFD4E1"
+                        VerticalAlignment="Center"/>
+              <Button Content="Añadir" Click="OnAddAlarm" Padding="9,3"
+                      AutomationProperties.AutomationId="IslandAddAlarm"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <TextBlock Text="{Binding IslandVm.Productivity.NextAlarm}" Foreground="#DDEBFA"
+                         FontSize="11" TextTrimming="CharacterEllipsis" Width="190" VerticalAlignment="Center"/>
+              <Button Content="Eliminar alarma" Click="OnDeleteAlarm" FontSize="10" Padding="7,3"/>
+            </StackPanel>
+            <Border Height="1" Background="#284558"/>
+            <StackPanel Orientation="Horizontal" Spacing="5">
+              <TextBox x:Name="TaskInput" Width="119" Watermark="Nueva tarea..."
+                       AutomationProperties.AutomationId="IslandTaskInput"/>
+              <ComboBox x:Name="TaskReminderChoice" SelectedIndex="0" Width="105">
+                <ComboBoxItem Content="Sin aviso"/>
+                <ComboBoxItem Content="15 min"/>
+                <ComboBoxItem Content="1 hora"/>
+              </ComboBox>
+              <Button Content="Añadir" Click="OnAddTask" Padding="8,3"
+                      AutomationProperties.AutomationId="IslandAddTask"/>
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="6">
+              <TextBlock Text="{Binding IslandVm.Productivity.NextTask}" Foreground="#DDEBFA"
+                         FontSize="11" TextTrimming="CharacterEllipsis" Width="218" VerticalAlignment="Center"/>
+              <Button Content="✓ Hecha" Click="OnCompleteTask" Padding="8,3"/>
+            </StackPanel>
+            <TextBlock x:Name="ProductivityValidationText" IsVisible="False"
+                       Foreground="#FFB884" FontSize="10" TextWrapping="Wrap"/>
           </StackPanel>
         </StackPanel>
         <StackPanel x:Name="SystemStatus" Spacing="2">

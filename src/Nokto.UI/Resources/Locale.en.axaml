@@ -88,6 +88,13 @@
     <sys:String x:Key="IslandShowAudioControls">Microphone, output and volume</sys:String>
     <sys:String x:Key="IslandShowBatteryStatus">Battery status</sys:String>
     <sys:String x:Key="IslandShowNetworkStatus">Network connection status</sys:String>
+    <sys:String x:Key="IslandProductivityHeading">PRODUCTIVITY</sys:String>
+    <sys:String x:Key="IslandProductivityEnabled">Enable productivity in the island</sys:String>
+    <sys:String x:Key="IslandProductivityCompact">Show countdown on compact island</sys:String>
+    <sys:String x:Key="IslandProductivitySound">Play sound when a timer or reminder finishes</sys:String>
+    <sys:String x:Key="IslandFocusMinutes">Focus minutes</sys:String>
+    <sys:String x:Key="IslandBreakMinutes">Break minutes</sys:String>
+    <sys:String x:Key="IslandProductivityNote">Local countdown, stopwatch, Pomodoro, tasks and alarms. Notifications require Nokto running; they do not wake a sleeping PC or fire while the app is closed.</sys:String>
     <sys:String x:Key="IslandPerformanceHeading">PERFORMANCE AND ANIMATIONS</sys:String>
     <sys:String x:Key="IslandPerformanceDescription">Nokto detects the refresh rate of the island's screen and adapts its animations. You may set a manual limit.</sys:String>
     <sys:String x:Key="IslandAnimationRateLabel">Animation update rate</sys:String>

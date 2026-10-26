@@ -101,6 +101,30 @@
       </Border>
       <Border Background="{DynamicResource ThemeCardBackground}" BorderBrush="{DynamicResource ThemeCardBorder}" BorderThickness="1" CornerRadius="10" Padding="20">
         <StackPanel Spacing="12">
+          <TextBlock Text="{DynamicResource IslandProductivityHeading}" Foreground="{DynamicResource ThemeAccent}" FontWeight="Bold" FontSize="12"/>
+          <CheckBox Content="{DynamicResource IslandProductivityEnabled}"
+                    IsChecked="{Binding IslandVm.Productivity.Enabled, Mode=TwoWay}"
+                    AutomationProperties.AutomationId="IslandProductivityEnabled" Foreground="{DynamicResource ThemeTextPrimary}"/>
+          <CheckBox Content="{DynamicResource IslandProductivityCompact}"
+                    IsChecked="{Binding IslandVm.Productivity.CompactProgress, Mode=TwoWay}"
+                    AutomationProperties.AutomationId="IslandProductivityCompact" Foreground="{DynamicResource ThemeTextPrimary}"/>
+          <CheckBox Content="{DynamicResource IslandProductivitySound}"
+                    IsChecked="{Binding IslandVm.Productivity.AlertSound, Mode=TwoWay}" Foreground="{DynamicResource ThemeTextPrimary}"/>
+          <Grid ColumnDefinitions="250,105" RowDefinitions="Auto,Auto">
+            <TextBlock Text="{DynamicResource IslandFocusMinutes}" Foreground="{DynamicResource ThemeTextPrimary}" VerticalAlignment="Center"/>
+            <NumericUpDown Grid.Column="1" Minimum="1" Maximum="180" Increment="5"
+                           Value="{Binding IslandVm.Productivity.WorkMinutes, Mode=TwoWay}"
+                           AutomationProperties.AutomationId="IslandWorkMinutes"/>
+            <TextBlock Grid.Row="1" Text="{DynamicResource IslandBreakMinutes}" Foreground="{DynamicResource ThemeTextPrimary}" VerticalAlignment="Center"/>
+            <NumericUpDown Grid.Row="1" Grid.Column="1" Minimum="1" Maximum="60" Increment="1"
+                           Value="{Binding IslandVm.Productivity.BreakMinutes, Mode=TwoWay}"
+                           AutomationProperties.AutomationId="IslandBreakMinutes"/>
+          </Grid>
+          <TextBlock Text="{DynamicResource IslandProductivityNote}" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="11" TextWrapping="Wrap"/>
+        </StackPanel>
+      </Border>
+      <Border Background="{DynamicResource ThemeCardBackground}" BorderBrush="{DynamicResource ThemeCardBorder}" BorderThickness="1" CornerRadius="10" Padding="20">
+        <StackPanel Spacing="12">
           <TextBlock Text="{DynamicResource IslandPerformanceHeading}" Foreground="{DynamicResource ThemeAccent}" FontWeight="Bold" FontSize="12"/>
           <TextBlock Text="{DynamicResource IslandPerformanceDescription}" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="11" TextWrapping="Wrap"/>
           <Grid ColumnDefinitions="250,*">

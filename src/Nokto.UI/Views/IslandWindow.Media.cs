@@ -17,7 +17,10 @@ public partial class IslandWindow
     private bool HasCompactMedia => _settings?.ShowMediaInCompact == true &&
         _mediaSnapshot.Available && _mediaSnapshot.IsPlaying;
 
-    private double ExpandedHeightForContent => 214 + (MediaPanel.IsVisible ? 112 : 0);
+    private double ExpandedHeightForContent => 180 + (MediaPanel.IsVisible ? 112 : 0) +
+        (ProductivityPanel.IsVisible ? 40 : 0) +
+        (ProductivityDetails.IsVisible ? 320 : 0) +
+        (ProductivityAlertFrame.IsVisible ? 42 : 0);
 
     private void SyncMediaSession()
     {
