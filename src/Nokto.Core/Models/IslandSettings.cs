@@ -9,4 +9,6 @@ public sealed class IslandSettings
     // Los usuarios anteriores conservan su ajuste de inicio hasta elegir un modo nuevo.
     public bool StartupModeConfigured { get; set; } = false;
     public bool ShowClock { get; set; } = true;
+    public bool ExpandOnHover { get; set; } = true;
+    public bool ReducedMotion { get; set; } = false;
 }

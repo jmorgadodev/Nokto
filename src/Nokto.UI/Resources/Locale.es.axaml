@@ -73,6 +73,8 @@
     <sys:String x:Key="IslandStyleBlack">Punto negro</sys:String>
     <sys:String x:Key="IslandStyleGlow">Punto cian luminoso</sys:String>
     <sys:String x:Key="IslandShowClock">Mostrar reloj en la isla</sys:String>
+    <sys:String x:Key="IslandExpandOnHover">Expandir al acercar el cursor</sys:String>
+    <sys:String x:Key="IslandReducedMotion">Reducir movimiento (sin transiciones)</sys:String>
     <sys:String x:Key="IslandAppearanceHint">Estos estilos son la primera base funcional. Más ojos, reacciones y animaciones llegarán en la fase visual.</sys:String>
     <sys:String x:Key="IslandStartupHeading">INICIO DE NOKTO</sys:String>
     <sys:String x:Key="IslandStartupDescription">Selecciona qué interfaz aparecerá al abrir Nokto. La opción Iniciar con Windows continúa siendo voluntaria en Ajustes.</sys:String>

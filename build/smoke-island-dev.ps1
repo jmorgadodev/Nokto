@@ -73,7 +73,20 @@ foreach ($scenario in @('Island','Dashboard','Both','Tray')) {
       if (-not @($visibleNow | Where-Object { $_ -like '*Nokto Island*' }).Count) {
         throw 'Al activar la isla desde la pestaña no apareció la ventana.'
       }
-      Write-Output '[PASS] Quinta pestaña seleccionada; control funcional y persistencia verificada.'
+      foreach ($entry in @(@('Expandir al acercar el cursor','expandOnHover'),@('Reducir movimiento (sin transiciones)','reducedMotion'))) {
+        $control = $main.FindFirst(
+          [System.Windows.Automation.TreeScope]::Descendants,
+          [System.Windows.Automation.PropertyCondition]::new(
+            [System.Windows.Automation.AutomationElement]::NameProperty, $entry[0]))
+        if ($null -eq $control) { throw ('Control de animacion ausente: ' + $entry[0]) }
+        $control.GetCurrentPattern([System.Windows.Automation.TogglePattern]::Pattern).Toggle()
+      }
+      Start-Sleep -Milliseconds 400
+      $saved = Get-Content -Raw (Join-Path $testDir 'data\config.json') | ConvertFrom-Json
+      if ($saved.island.expandOnHover -or !$saved.island.reducedMotion) {
+        throw 'Las preferencias de movimiento no se guardaron en config.json.'
+      }
+      Write-Output '[PASS] Quinta pestaña, activacion y ajustes de movimiento guardados.'
     }
     Write-Output ('[PASS] ' + $scenario + ': island=' + $island + ', dashboard=' + $dashboard + ', RAM=' + [math]::Round($p.WorkingSet64/1MB,1) + ' MB')
   } finally {

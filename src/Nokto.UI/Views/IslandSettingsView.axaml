@@ -25,6 +25,8 @@
             </ComboBox>
             <CheckBox Grid.Row="1" Grid.ColumnSpan="2" Content="{DynamicResource IslandShowClock}" IsChecked="{Binding IslandVm.ShowClock, Mode=TwoWay}" Margin="0,14,0,0" Foreground="{DynamicResource ThemeTextPrimary}"/>
           </Grid>
+          <CheckBox Content="{DynamicResource IslandExpandOnHover}" IsChecked="{Binding IslandVm.ExpandOnHover, Mode=TwoWay}" Foreground="{DynamicResource ThemeTextPrimary}"/>
+          <CheckBox Content="{DynamicResource IslandReducedMotion}" IsChecked="{Binding IslandVm.ReducedMotion, Mode=TwoWay}" Foreground="{DynamicResource ThemeTextPrimary}"/>
           <TextBlock Text="{DynamicResource IslandAppearanceHint}" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="11" TextWrapping="Wrap"/>
         </StackPanel>
       </Border>

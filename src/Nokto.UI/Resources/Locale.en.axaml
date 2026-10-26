@@ -73,6 +73,8 @@
     <sys:String x:Key="IslandStyleBlack">Black dot</sys:String>
     <sys:String x:Key="IslandStyleGlow">Glowing cyan dot</sys:String>
     <sys:String x:Key="IslandShowClock">Show clock in island</sys:String>
+    <sys:String x:Key="IslandExpandOnHover">Expand when hovering</sys:String>
+    <sys:String x:Key="IslandReducedMotion">Reduce motion (no transitions)</sys:String>
     <sys:String x:Key="IslandAppearanceHint">These are the first working styles. More eyes, reactions and animations will arrive in the visual phase.</sys:String>
     <sys:String x:Key="IslandStartupHeading">NOKTO STARTUP</sys:String>
     <sys:String x:Key="IslandStartupDescription">Choose the interface shown when launching Nokto. Starting with Windows remains optional in Settings.</sys:String>
