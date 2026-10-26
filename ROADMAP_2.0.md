@@ -34,8 +34,18 @@ Referencias oficiales: Apple HIG Live Activities (https://developer.apple.com/de
 - Pendientes para aprobación visual: asegurar que las 42 variantes realmente resulten suficientemente distintas en 26 px; pruebas de DPI/multimonitor, recuperación de suspensión, FPS reales, perfiles GPU, animaciones contextualizadas con música/alarmas (dependerán de fases 5/6).
 - Pruebas de catálogo y de persistencia, cuatro modos de arranque y no regresión básica antes del siguiente avance.
 
-## Fase 4 — Sistema Windows y controles rápidos
-Audio/micrófono, trabajo/actividad, volumen, batería, conectividad, brillo si disponible y atajos.
+## Fase 4 — Sistema Windows y controles rápidos (primera integración)
+- Integrado en la expansión: mute de micrófono y salida, subir/bajar volumen en pasos de 5 %, información de batería y estado de conexión; reutiliza el mismo MainViewModel y WindowsSystemAdapter de la consola (sin controlador WASAPI duplicado).
+- Opciones independientes para mostrar u ocultar controles de audio, batería y red desde Isla Dinámica.
+- Pendiente: iconos refinados y estado real de cada control, brillo compatible, accesos rápidos, integración con modo trabajo y validación en varios dispositivos.
+
+## Correcciones visuales tras revisión del usuario (Fases 2 y 3)
+- Reloj configurado por defecto para mostrarse solo en expansión; opciones Siempre / Expandir / Nunca, con migración automática del bool antiguo.
+- Catálogo de 42 estilos con nueva geometría vectorial por familia: adornos, cejas, anillos, sensores, párpados y pupilas de mayor recorrido.
+- Corrección de arranque de animación: la captura de ratón se activa al abrir la ventana, sin depender de IsVisible prematuro.
+- Seguimiento más sensible y reacción animada de miradas; botón Probar animación dentro del panel expandido. Nada de animaciones continuas en estilos mínimos o con movimiento reducido.
+- Galería de 42 diseños accesible desde la pestaña, con previsualización grande para revisión.
+- Requiere todavía aprobación visual en equipo real; pruebas de fluidez/FPS, contraste en ambos modos y consumo son pendientes y no se deben presentar como aprobadas.
 
 ## Fase 5 — Multimedia
 Sesiones multimedia de Windows, música, portada, progreso, controles y letras cuando estén disponibles.

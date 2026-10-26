@@ -73,6 +73,17 @@
     <sys:String x:Key="IslandStyleBlack">Punto negro</sys:String>
     <sys:String x:Key="IslandStyleGlow">Punto cian luminoso</sys:String>
     <sys:String x:Key="IslandShowClock">Mostrar reloj en la isla</sys:String>
+    <sys:String x:Key="IslandClockBehavior">VISIBILIDAD DEL RELOJ</sys:String>
+    <sys:String x:Key="IslandClockExpand">Solo al expandir (recomendado)</sys:String>
+    <sys:String x:Key="IslandClockAlways">Siempre visible</sys:String>
+    <sys:String x:Key="IslandClockNever">Ocultar reloj</sys:String>
+    <sys:String x:Key="IslandTestEyes">Probar ojos</sys:String>
+    <sys:String x:Key="IslandOpenDashboard">Nokto</sys:String>
+    <sys:String x:Key="IslandHideIsland">Ocultar</sys:String>
+    <sys:String x:Key="IslandSystemControls">CONTROLES DE WINDOWS</sys:String>
+    <sys:String x:Key="IslandShowAudioControls">Micrófono, audio y volumen</sys:String>
+    <sys:String x:Key="IslandShowBatteryStatus">Estado de batería</sys:String>
+    <sys:String x:Key="IslandShowNetworkStatus">Estado de conexión de red</sys:String>
     <sys:String x:Key="IslandPerformanceHeading">RENDIMIENTO Y ANIMACIONES</sys:String>
     <sys:String x:Key="IslandPerformanceDescription">Nokto detecta la frecuencia del monitor donde se muestra la isla y adapta su animación. Puedes limitarla manualmente.</sys:String>
     <sys:String x:Key="IslandAnimationRateLabel">Actualización de animaciones</sys:String>
@@ -81,6 +92,7 @@
     <sys:String x:Key="IslandPerformanceNote">Los FPS son un objetivo de interpolación, no una garantía de fotogramas renderizados. En reposo no hay animación continua.</sys:String>
     <sys:String x:Key="IslandExpandOnHover">Expandir al acercar el cursor</sys:String>
     <sys:String x:Key="IslandReducedMotion">Reducir movimiento (sin transiciones)</sys:String>
+    <sys:String x:Key="IslandGalleryHeading">Galería de las 42 apariencias</sys:String>
     <sys:String x:Key="IslandEyePreview">VISTA PREVIA</sys:String>
     <sys:String x:Key="IslandEyeMotionHeading">MIRADA Y COMPORTAMIENTO</sys:String>
     <sys:String x:Key="IslandFollowCursor">Seguir el cursor por el escritorio</sys:String>

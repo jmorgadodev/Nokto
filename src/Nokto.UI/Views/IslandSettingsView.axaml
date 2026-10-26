@@ -28,14 +28,42 @@
                 </DataTemplate>
               </ComboBox.ItemTemplate>
             </ComboBox>
-            <CheckBox Grid.Row="1" Grid.ColumnSpan="2" Content="{DynamicResource IslandShowClock}" IsChecked="{Binding IslandVm.ShowClock, Mode=TwoWay}" Margin="0,14,0,0" Foreground="{DynamicResource ThemeTextPrimary}"/>
+            <TextBlock Grid.Row="1" Grid.Column="0" Text="{DynamicResource IslandClockBehavior}" Margin="0,14,0,0" VerticalAlignment="Center" Foreground="{DynamicResource ThemeTextPrimary}"/>
+            <ComboBox Grid.Row="1" Grid.Column="1" Margin="0,14,0,0" SelectedIndex="{Binding IslandVm.ClockModeIndex, Mode=TwoWay}"
+                      AutomationProperties.AutomationId="IslandClockVisibilitySelector">
+              <ComboBoxItem Content="{DynamicResource IslandClockExpand}"/>
+              <ComboBoxItem Content="{DynamicResource IslandClockAlways}"/>
+              <ComboBoxItem Content="{DynamicResource IslandClockNever}"/>
+            </ComboBox>
           </Grid>
           <Border CornerRadius="10" Background="#080B10" Padding="10" HorizontalAlignment="Left" MinWidth="175">
             <StackPanel Orientation="Horizontal" Spacing="16">
               <TextBlock Text="{DynamicResource IslandEyePreview}" VerticalAlignment="Center" Foreground="#9EADB9" FontSize="11"/>
-              <controls:NoktoEyesControl Width="56" Height="26" StyleId="{Binding IslandVm.SelectedStyle}"/>
+              <controls:NoktoEyesControl Width="140" Height="64" StyleId="{Binding IslandVm.SelectedStyle}"/>
             </StackPanel>
           </Border>
+          <Expander Header="{DynamicResource IslandGalleryHeading}" IsExpanded="False">
+            <ItemsControl ItemsSource="{Binding IslandVm.EyeStyleOptions}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <WrapPanel Orientation="Horizontal" ItemWidth="150" ItemHeight="104"/>
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Border Background="#0A111D" BorderBrush="#293B4B" BorderThickness="1"
+                          CornerRadius="9" Margin="3" Padding="7">
+                    <StackPanel HorizontalAlignment="Center" Spacing="4">
+                      <controls:NoktoEyesControl StyleId="{Binding Id}" Width="110" Height="55"/>
+                      <TextBlock Text="{Binding DisplayName}" FontSize="10"
+                                 Foreground="#D7E5F2" MaxWidth="140" TextTrimming="CharacterEllipsis"
+                                 TextAlignment="Center"/>
+                    </StackPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </Expander>
           <TextBlock Text="{DynamicResource IslandEyeMotionHeading}" Foreground="{DynamicResource ThemeAccent}" FontWeight="SemiBold" FontSize="12"/>
           <CheckBox Content="{DynamicResource IslandFollowCursor}" IsChecked="{Binding IslandVm.FollowCursor, Mode=TwoWay}" Foreground="{DynamicResource ThemeTextPrimary}"/>
           <CheckBox Content="{DynamicResource IslandNaturalBlink}" IsChecked="{Binding IslandVm.NaturalBlink, Mode=TwoWay}" Foreground="{DynamicResource ThemeTextPrimary}"/>
@@ -50,6 +78,14 @@
           <CheckBox Content="{DynamicResource IslandExpandOnHover}" IsChecked="{Binding IslandVm.ExpandOnHover, Mode=TwoWay}" Foreground="{DynamicResource ThemeTextPrimary}"/>
           <CheckBox Content="{DynamicResource IslandReducedMotion}" IsChecked="{Binding IslandVm.ReducedMotion, Mode=TwoWay}" Foreground="{DynamicResource ThemeTextPrimary}"/>
           <TextBlock Text="{DynamicResource IslandAppearanceHint}" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="11" TextWrapping="Wrap"/>
+        </StackPanel>
+      </Border>
+      <Border Background="{DynamicResource ThemeCardBackground}" BorderBrush="{DynamicResource ThemeCardBorder}" BorderThickness="1" CornerRadius="10" Padding="20">
+        <StackPanel Spacing="10">
+          <TextBlock Text="{DynamicResource IslandSystemControls}" Foreground="{DynamicResource ThemeAccent}" FontWeight="Bold" FontSize="12"/>
+          <CheckBox Content="{DynamicResource IslandShowAudioControls}" IsChecked="{Binding IslandVm.ShowAudioControls, Mode=TwoWay}" Foreground="{DynamicResource ThemeTextPrimary}"/>
+          <CheckBox Content="{DynamicResource IslandShowBatteryStatus}" IsChecked="{Binding IslandVm.ShowBatteryStatus, Mode=TwoWay}" Foreground="{DynamicResource ThemeTextPrimary}"/>
+          <CheckBox Content="{DynamicResource IslandShowNetworkStatus}" IsChecked="{Binding IslandVm.ShowNetworkStatus, Mode=TwoWay}" Foreground="{DynamicResource ThemeTextPrimary}"/>
         </StackPanel>
       </Border>
       <Border Background="{DynamicResource ThemeCardBackground}" BorderBrush="{DynamicResource ThemeCardBorder}" BorderThickness="1" CornerRadius="10" Padding="20">

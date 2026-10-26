@@ -317,7 +317,7 @@ public partial class App : Application
     private void ShowIslandWindow()
     {
         if (_isExiting || _mainViewModel == null) return;
-        _islandWindow ??= new IslandWindow(_mainViewModel.IslandVm);
+        _islandWindow ??= new IslandWindow(_mainViewModel.IslandVm, _mainViewModel);
         _islandWindow.ApplySettings();
         if (!_islandWindow.IsVisible)
             _islandWindow.Show();

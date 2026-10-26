@@ -73,6 +73,17 @@
     <sys:String x:Key="IslandStyleBlack">Black dot</sys:String>
     <sys:String x:Key="IslandStyleGlow">Glowing cyan dot</sys:String>
     <sys:String x:Key="IslandShowClock">Show clock in island</sys:String>
+    <sys:String x:Key="IslandClockBehavior">CLOCK VISIBILITY</sys:String>
+    <sys:String x:Key="IslandClockExpand">Only when expanded (recommended)</sys:String>
+    <sys:String x:Key="IslandClockAlways">Always visible</sys:String>
+    <sys:String x:Key="IslandClockNever">Hide clock</sys:String>
+    <sys:String x:Key="IslandTestEyes">Test eyes</sys:String>
+    <sys:String x:Key="IslandOpenDashboard">Nokto</sys:String>
+    <sys:String x:Key="IslandHideIsland">Hide</sys:String>
+    <sys:String x:Key="IslandSystemControls">WINDOWS CONTROLS</sys:String>
+    <sys:String x:Key="IslandShowAudioControls">Microphone, output and volume</sys:String>
+    <sys:String x:Key="IslandShowBatteryStatus">Battery status</sys:String>
+    <sys:String x:Key="IslandShowNetworkStatus">Network connection status</sys:String>
     <sys:String x:Key="IslandPerformanceHeading">PERFORMANCE AND ANIMATIONS</sys:String>
     <sys:String x:Key="IslandPerformanceDescription">Nokto detects the refresh rate of the island's screen and adapts its animations. You may set a manual limit.</sys:String>
     <sys:String x:Key="IslandAnimationRateLabel">Animation update rate</sys:String>
@@ -81,6 +92,7 @@
     <sys:String x:Key="IslandPerformanceNote">FPS is an interpolation target, not guaranteed rendered frames. No continuous animation runs while idle.</sys:String>
     <sys:String x:Key="IslandExpandOnHover">Expand when hovering</sys:String>
     <sys:String x:Key="IslandReducedMotion">Reduce motion (no transitions)</sys:String>
+    <sys:String x:Key="IslandGalleryHeading">Gallery of all 42 appearances</sys:String>
     <sys:String x:Key="IslandEyePreview">PREVIEW</sys:String>
     <sys:String x:Key="IslandEyeMotionHeading">GAZE AND BEHAVIOR</sys:String>
     <sys:String x:Key="IslandFollowCursor">Follow cursor across the desktop</sys:String>

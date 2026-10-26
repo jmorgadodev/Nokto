@@ -9,6 +9,11 @@ public sealed class IslandSettings
     // Los usuarios anteriores conservan su ajuste de inicio hasta elegir un modo nuevo.
     public bool StartupModeConfigured { get; set; } = false;
     public bool ShowClock { get; set; } = true;
+    // Auto migra el ajuste anterior: activado => Expand, desactivado => Never.
+    public string ClockVisibility { get; set; } = "Auto";
+    public bool ShowAudioControls { get; set; } = true;
+    public bool ShowBatteryStatus { get; set; } = true;
+    public bool ShowNetworkStatus { get; set; } = false;
     public bool ExpandOnHover { get; set; } = true;
     public bool ReducedMotion { get; set; } = false;
     // Auto usa la frecuencia actual del monitor; valores manuales: 60,120,144,165,240.

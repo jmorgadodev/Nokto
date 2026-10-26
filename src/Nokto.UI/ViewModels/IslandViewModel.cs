@@ -28,6 +28,13 @@ public partial class IslandViewModel : ObservableObject
             "Dashboard" => 1, "Island" => 2, "Both" => 3, "Tray" => 4, _ => 1
         };
         _showClock = config.Island.ShowClock;
+        _clockModeIndex = config.Island.ClockVisibility switch
+        {
+            "Always" => 1, "Never" => 2, "Expand" => 0, _ => config.Island.ShowClock ? 0 : 2
+        };
+        _showAudioControls = config.Island.ShowAudioControls;
+        _showBatteryStatus = config.Island.ShowBatteryStatus;
+        _showNetworkStatus = config.Island.ShowNetworkStatus;
         _expandOnHover = config.Island.ExpandOnHover;
         _reducedMotion = config.Island.ReducedMotion;
         _followCursor = config.Island.FollowCursor;
@@ -46,6 +53,12 @@ public partial class IslandViewModel : ObservableObject
     [ObservableProperty] private int _styleIndex;
     [ObservableProperty] private int _startupModeIndex;
     [ObservableProperty] private bool _showClock;
+    [ObservableProperty] private int _clockModeIndex;
+    [ObservableProperty] private bool _showAudioControls;
+    [ObservableProperty] private bool _showBatteryStatus;
+    [ObservableProperty] private bool _showNetworkStatus;
+    public bool ClockInCompact => ClockModeIndex == 1;
+    public bool ClockInExpanded => ClockModeIndex != 2;
     [ObservableProperty] private bool _expandOnHover;
     [ObservableProperty] private bool _reducedMotion;
     [ObservableProperty] private bool _followCursor;
@@ -106,6 +119,15 @@ public partial class IslandViewModel : ObservableObject
         Save();
     }
     partial void OnShowClockChanged(bool value) => Save();
+    partial void OnClockModeIndexChanged(int value)
+    {
+        OnPropertyChanged(nameof(ClockInCompact));
+        OnPropertyChanged(nameof(ClockInExpanded));
+        Save();
+    }
+    partial void OnShowAudioControlsChanged(bool value) => Save();
+    partial void OnShowBatteryStatusChanged(bool value) => Save();
+    partial void OnShowNetworkStatusChanged(bool value) => Save();
     partial void OnExpandOnHoverChanged(bool value) => Save();
     partial void OnReducedMotionChanged(bool value) => Save();
     partial void OnFollowCursorChanged(bool value) => Save();
@@ -125,7 +147,11 @@ public partial class IslandViewModel : ObservableObject
         _config.Island.Enabled = Enabled;
         _config.Island.Style = SelectedStyle;
         _config.Island.StartupMode = SelectedStartupMode;
-        _config.Island.ShowClock = ShowClock;
+        _config.Island.ShowClock = ClockModeIndex != 2;
+        _config.Island.ClockVisibility = ClockModeIndex switch { 1 => "Always", 2 => "Never", _ => "Expand" };
+        _config.Island.ShowAudioControls = ShowAudioControls;
+        _config.Island.ShowBatteryStatus = ShowBatteryStatus;
+        _config.Island.ShowNetworkStatus = ShowNetworkStatus;
         _config.Island.ExpandOnHover = ExpandOnHover;
         _config.Island.ReducedMotion = ReducedMotion;
         _config.Island.FollowCursor = FollowCursor;

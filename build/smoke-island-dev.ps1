@@ -80,6 +80,30 @@ foreach ($scenario in $Scenarios) {
       }
       Write-Output ('[PASS] Deteccion automatica: ' + $label)
 
+      $clockSelector = $main.FindFirst(
+        [System.Windows.Automation.TreeScope]::Descendants,
+        [System.Windows.Automation.PropertyCondition]::new(
+          [System.Windows.Automation.AutomationElement]::AutomationIdProperty,'IslandClockVisibilitySelector'))
+      if ($null -eq $clockSelector) { throw 'No se encontro configuracion de reloj.' }
+      foreach ($clockTest in @(@('Siempre visible','Always'),@('Ocultar reloj','Never'),@('Solo al expandir','Expand'))) {
+        $clockSelector.GetCurrentPattern([System.Windows.Automation.ExpandCollapsePattern]::Pattern).Expand()
+        Start-Sleep -Milliseconds 160
+        $clockOption = @([System.Windows.Automation.AutomationElement]::RootElement.FindAll(
+          [System.Windows.Automation.TreeScope]::Descendants,
+          [System.Windows.Automation.PropertyCondition]::new(
+            [System.Windows.Automation.AutomationElement]::ControlTypeProperty,
+            [System.Windows.Automation.ControlType]::ListItem)) |
+          Where-Object { $_.Current.Name -like ('*' + $clockTest[0] + '*') } |
+          Select-Object -First 1)
+        if ($clockOption.Count -eq 0) { throw ('No se encontro modo de reloj '+$clockTest[0]) }
+        $clockOption[0].GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Select()
+        Start-Sleep -Milliseconds 220
+        $clockCfg = Get-Content -Raw (Join-Path $testDir 'data\config.json') | ConvertFrom-Json
+        if ($clockCfg.island.clockVisibility -ne $clockTest[1]) {
+          throw ('Modo de reloj no se guardo: ' + $clockTest[1])
+        }
+      }
+      Write-Output '[PASS] Reloj: Expand, Always y Never persistidos; predeterminado Expand.'
       $eyeSelector = $main.FindFirst(
         [System.Windows.Automation.TreeScope]::Descendants,
         [System.Windows.Automation.PropertyCondition]::new(

@@ -19,9 +19,9 @@ namespace Nokto.UI.Views;
 /// </summary>
 public partial class IslandWindow : Window
 {
-    private const double CompactHeight = 42;
-    private const double ExpandedWidth = 270;
-    private const double ExpandedHeight = 114;
+    private const double CompactHeight = 48;
+    private const double ExpandedWidth = 332;
+    private const double ExpandedHeight = 214;
     private const double TransitionSeconds = 0.26;
 
     private IslandViewModel? _settings;
@@ -40,12 +40,16 @@ public partial class IslandWindow : Window
     private long _animationStart;
     private double _fromWidth, _fromHeight, _toWidth, _toHeight;
     private bool _initialLayout = true;
+    private bool _islandReady;
+    private MainViewModel? _controlVm;
 
     public IslandWindow() => InitializeComponent();
 
-    public IslandWindow(IslandViewModel settings) : this()
+    public IslandWindow(IslandViewModel settings, MainViewModel mainViewModel) : this()
     {
         _settings = settings;
+        _controlVm = mainViewModel;
+        DataContext = mainViewModel;
         _clockTimer = new DispatcherTimer { Interval = TimeSpan.FromMinutes(1) };
         _clockTimer.Tick += (_, _) => UpdateClock();
         _animationTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1.0 / settings.TargetAnimationFps) };
@@ -59,6 +63,7 @@ public partial class IslandWindow : Window
         _settings.PropertyChanged += OnSettingsChanged;
         Opened += (_, _) =>
         {
+            _islandReady = true;
             ApplySettings();
             UpdateAnimationRate();
             SyncClockTimer();
@@ -66,19 +71,21 @@ public partial class IslandWindow : Window
         };
         Closed += (_, _) =>
         {
+            _islandReady = false;
             _animationTimer.Stop();
             _clockTimer.Stop();
             _cursorTimer?.Stop();
             _eyeFrameTimer?.Stop();
             _blinkTimer?.Stop();
+            _demoTimer?.Stop();
             _settings.PropertyChanged -= OnSettingsChanged;
         };
         ApplySettings();
     }
 
-    private double CompactWidth => _settings?.ShowClock == true
-        ? (EyeStyleCatalog.IsMinimal(_settings.SelectedStyle) ? 128 : 162)
-        : (EyeStyleCatalog.IsMinimal(_settings?.SelectedStyle) ? 58 : 90);
+    private double CompactWidth => _settings?.ClockInCompact == true
+        ? (EyeStyleCatalog.IsMinimal(_settings.SelectedStyle) ? 145 : 176)
+        : (EyeStyleCatalog.IsMinimal(_settings?.SelectedStyle) ? 64 : 110);
 
     private void OnSettingsChanged(object? sender, PropertyChangedEventArgs e)
     {
@@ -93,14 +100,22 @@ public partial class IslandWindow : Window
             return;
         }
         ApplySettings();
+        // Al cambiar de punto minimalista a ojos (o viceversa) hay que iniciar o detener
+        // el motor, no basta con dibujar el nuevo estilo.
+        ConfigureEyeMotion();
     }
 
     public void ApplySettings()
     {
         if (_settings is null) return;
         EyesVisual.StyleId = _settings.SelectedStyle;
-        EyesVisual.Width = EyeStyleCatalog.IsMinimal(_settings.SelectedStyle) ? 26 : 56;
-        ClockText.IsVisible = _settings.ShowClock;
+        EyesVisual.Width = EyeStyleCatalog.IsMinimal(_settings.SelectedStyle) ? 30 : 74;
+        TestEyesButton.IsVisible = !_settings.ReducedMotion && !EyeStyleCatalog.IsMinimal(_settings.SelectedStyle);
+        ClockText.IsVisible = _expanded ? _settings.ClockInExpanded : _settings.ClockInCompact;
+        AudioControls.IsVisible = _settings.ShowAudioControls;
+        BatteryStatusText.IsVisible = _settings.ShowBatteryStatus;
+        NetworkStatusText.IsVisible = _settings.ShowNetworkStatus;
+        SystemStatus.IsVisible = _settings.ShowBatteryStatus || _settings.ShowNetworkStatus;
         UpdateClock();
         SyncClockTimer();
         UpdateAnimationRate();
@@ -124,7 +139,7 @@ public partial class IslandWindow : Window
     private void SyncClockTimer()
     {
         if (_clockTimer is null) return;
-        if (_settings?.ShowClock == true && IsVisible) _clockTimer.Start();
+        if (_settings?.ClockModeIndex != 2 && IsVisible) _clockTimer.Start();
         else _clockTimer.Stop();
     }
 
@@ -144,7 +159,7 @@ public partial class IslandWindow : Window
 
     private void UpdateClock()
     {
-        if (_settings?.ShowClock != true) return;
+        if (_settings?.ClockModeIndex == 2) return;
         string time = DateTime.Now.ToString("HH:mm");
         if (ClockText.Text != time) ClockText.Text = time;
     }
@@ -183,6 +198,8 @@ public partial class IslandWindow : Window
     {
         if (_expanded == expanded) return;
         _expanded = expanded;
+        if (_settings is not null)
+            ClockText.IsVisible = expanded ? _settings.ClockInExpanded : _settings.ClockInCompact;
         if (expanded)
         {
             ExpandedTools.IsVisible = true;
@@ -246,6 +263,16 @@ public partial class IslandWindow : Window
 
     private void OnOpenDashboard(object? sender, RoutedEventArgs e)
         => App.CurrentInstance?.ShowMainWindow();
+
+    private void OnVolumeDown(object? sender, RoutedEventArgs e)
+    {
+        if (_controlVm is not null) _controlVm.MasterVolumePercent = Math.Clamp(_controlVm.MasterVolumePercent - 5, 0, 100);
+    }
+
+    private void OnVolumeUp(object? sender, RoutedEventArgs e)
+    {
+        if (_controlVm is not null) _controlVm.MasterVolumePercent = Math.Clamp(_controlVm.MasterVolumePercent + 5, 0, 100);
+    }
 
     private void OnHideIsland(object? sender, RoutedEventArgs e)
     {

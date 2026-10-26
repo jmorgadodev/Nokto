@@ -2,32 +2,56 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="clr-namespace:Nokto.UI.Controls"
         x:Class="Nokto.UI.Views.IslandWindow"
-        Title="Nokto Island"
-        Width="162" Height="42" MinWidth="0"
+        Title="Nokto Island" Width="116" Height="48" MinWidth="0" MinHeight="0"
         CanResize="False" SystemDecorations="None" ShowInTaskbar="False"
-        Topmost="True" Background="Transparent"
-        TransparencyLevelHint="Transparent" WindowStartupLocation="Manual">
-  <Border x:Name="IslandSurface" Background="#080B10" BorderBrush="#283542"
-          BorderThickness="1" CornerRadius="0,0,21,21" Padding="15,6"
+        Topmost="True" Background="Transparent" TransparencyLevelHint="Transparent"
+        WindowStartupLocation="Manual">
+  <Border x:Name="IslandSurface" Background="#090D15" BorderBrush="#314254"
+          BorderThickness="1" CornerRadius="0,0,22,22" Padding="12,6"
           ClipToBounds="True" PointerPressed="OnSurfacePressed"
           PointerEntered="OnPointerEntered" PointerExited="OnPointerExited">
-    <StackPanel Spacing="8">
-      <Grid ColumnDefinitions="*,Auto">
-        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
-          <controls:NoktoEyesControl x:Name="EyesVisual" Width="56" Height="26"
-                                     VerticalAlignment="Center"
-                                     AutomationProperties.Name="Ojos de Nokto"/>
-        </StackPanel>
-        <TextBlock x:Name="ClockText" Grid.Column="1" Text="--:--" Foreground="#E6ECF3"
-                   FontFamily="Consolas" FontSize="13" VerticalAlignment="Center"/>
+    <StackPanel Spacing="7">
+      <Grid ColumnDefinitions="*,Auto" MinHeight="34">
+        <controls:NoktoEyesControl x:Name="EyesVisual" Width="74" Height="34"
+                                   HorizontalAlignment="Left" VerticalAlignment="Center"
+                                   AutomationProperties.Name="Ojos de Nokto"/>
+        <TextBlock x:Name="ClockText" Grid.Column="1" Text="--:--" IsVisible="False"
+                   Foreground="#E6F0F8" FontFamily="Consolas" FontWeight="Medium"
+                   FontSize="16" VerticalAlignment="Center" Margin="8,0,1,0"/>
       </Grid>
       <StackPanel x:Name="ExpandedTools" IsVisible="False" Opacity="0" Spacing="8">
-        <Border Height="1" Background="#35414C"/>
-        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
-          <Button Content="Nokto" Click="OnOpenDashboard" Background="#263747" Foreground="#EDF6FF"
-                  Padding="13,5" CornerRadius="6"/>
-          <Button Content="Ocultar" Click="OnHideIsland" Background="#202934" Foreground="#C9D5DF"
-                  Padding="13,5" CornerRadius="6"/>
+        <Border Height="1" Background="#2D4053"/>
+        <StackPanel x:Name="SystemStatus" Spacing="2">
+          <TextBlock x:Name="BatteryStatusText" Text="{Binding BatteryAndPowerText}"
+                     TextTrimming="CharacterEllipsis" MaxWidth="290" Foreground="#9AB0C2" FontSize="11"/>
+          <TextBlock x:Name="NetworkStatusText" Text="{Binding NetworkInterfaceText}"
+                     TextTrimming="CharacterEllipsis" MaxWidth="290" Foreground="#9AB0C2" FontSize="11"
+                     IsVisible="False"/>
+        </StackPanel>
+        <StackPanel x:Name="AudioControls" Spacing="4">
+          <StackPanel Orientation="Horizontal" Spacing="6" HorizontalAlignment="Center">
+            <Button Content="{Binding InputMuteButtonText}" Command="{Binding ToggleInputMuteCommand}"
+                    FontSize="11" MinWidth="125" MaxWidth="147" Padding="7,5"
+                    Foreground="#E8F3FF" Background="#1B3042" CornerRadius="7"/>
+            <Button Content="{Binding OutputMuteButtonText}" Command="{Binding ToggleOutputMuteCommand}"
+                    FontSize="11" MinWidth="125" MaxWidth="147" Padding="7,5"
+                    Foreground="#E8F3FF" Background="#1B3042" CornerRadius="7"/>
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" Spacing="7" HorizontalAlignment="Center">
+            <Button Content="−" Click="OnVolumeDown" FontSize="16" Padding="12,2"
+                    Background="#1B3042" Foreground="#DDECF8" CornerRadius="7"/>
+            <TextBlock Text="{Binding MasterVolumeText}" VerticalAlignment="Center"
+                       Foreground="#B8CBDD" FontSize="12" MinWidth="45" TextAlignment="Center"/>
+            <Button Content="+" Click="OnVolumeUp" FontSize="16" Padding="12,2"
+                    Background="#1B3042" Foreground="#DDECF8" CornerRadius="7"/>
+          </StackPanel>
+        </StackPanel>
+        <StackPanel Orientation="Horizontal" Spacing="7" HorizontalAlignment="Center">
+          <Button x:Name="TestEyesButton" Content="{DynamicResource IslandTestEyes}" Click="OnTestEyes" Background="#263B4C" Foreground="#9CF9F0" Padding="9,5" CornerRadius="7"/>
+          <Button Content="{DynamicResource IslandOpenDashboard}" Click="OnOpenDashboard" Background="#243E51"
+                  Foreground="#F3FBFF" Padding="15,5" CornerRadius="7"/>
+          <Button Content="{DynamicResource IslandHideIsland}" Click="OnHideIsland" Background="#222B38"
+                  Foreground="#C9D5DF" Padding="15,5" CornerRadius="7"/>
         </StackPanel>
       </StackPanel>
     </StackPanel>
