@@ -21,6 +21,7 @@ public partial class App : Application
     private ISystemAdapter? _systemAdapter;
     private MainViewModel? _mainViewModel;
     private MainWindow? _mainWindow;
+    private IslandWindow? _islandWindow;
     private TrayIcon? _trayIcon;
     private bool _trayUpdateFailureLogged;
     private bool _isExiting;
@@ -43,6 +44,7 @@ public partial class App : Application
             _systemAdapter = new WindowsSystemAdapter();
             var engine = new WorkflowEngine(_systemAdapter, persistence);
             _mainViewModel = new MainViewModel(_systemAdapter, engine, persistence);
+            _mainViewModel.IslandVm.Changed += () => Dispatcher.UIThread.Post(SyncIslandVisibility);
 
             var config = persistence.LoadConfig();
 
@@ -54,6 +56,8 @@ public partial class App : Application
             {
                 _isExiting = true;
                 _scheduleThemeTimer?.Stop();
+                _islandWindow?.Close();
+                _islandWindow = null;
                 // Remove the shell icon before releasing services: it must not outlive its UI.
                 _trayIcon?.Dispose();
                 _trayIcon = null;
@@ -76,22 +80,45 @@ public partial class App : Application
 
             ConfigureTrayIcon(desktop);
 
-            // Tarea 4: Soporte de argumentos de línea de comandos (Modo Sigiloso / Modo Trabajo)
-            bool isSilent = config.Settings.StartMinimizedToTray || desktop.Args?.Any(a =>
+            // La seleccion de inicio de Isla Dinamica es independiente de Iniciar con Windows.
+            // Los argumentos --tray / --silent prevalecen para permitir pruebas sin ventanas.
+            bool forcedTray = desktop.Args?.Any(a =>
                 a.Equals("--silent", StringComparison.OrdinalIgnoreCase) ||
                 a.Equals("--tray", StringComparison.OrdinalIgnoreCase) ||
                 a.Equals("-s", StringComparison.OrdinalIgnoreCase)) == true;
+            string launchMode = config.Island?.StartupModeConfigured == true
+                ? config.Island.StartupMode
+                : config.Settings.StartMinimizedToTray ? "Tray" : "Dashboard";
+            if (config.Island?.Enabled != true && (launchMode == "Island" || launchMode == "Both"))
+                launchMode = "Dashboard";
+            bool isSilent = forcedTray || launchMode is "Island" or "Tray";
 
             bool startWork = config.Settings.StartInWorkMode || desktop.Args?.Any(a =>
                 a.Equals("--work", StringComparison.OrdinalIgnoreCase) ||
                 a.Equals("-w", StringComparison.OrdinalIgnoreCase)) == true;
 
-            if (!isSilent)
+            if (isSilent)
+            {
+                // Avalonia puede abrir MainWindow automaticamente al iniciar el lifetime.
+                // Ocultarla en Opened evita que aparezca de forma persistente en Isla/Bandeja.
+                bool hideInitialOpen = true;
+                _mainWindow.Opened += (_, _) =>
+                {
+                    if (!hideInitialOpen) return;
+                    hideInitialOpen = false;
+                    _mainWindow.Hide();
+                };
+            }
+            else
             {
                 _mainWindow.Show();
                 _mainWindow.WindowState = WindowState.Maximized;
                 _mainWindow.Activate();
             }
+
+            if (!forcedTray && config.Island?.Enabled == true &&
+                (launchMode == "Island" || launchMode == "Both"))
+                ShowIslandWindow();
 
             if (startWork)
             {
@@ -207,6 +234,13 @@ public partial class App : Application
         };
 
         menu.Items.Add(itemOpen);
+        var itemIsland = new NativeMenuItem("Mostrar / ocultar Isla Dinámica");
+        itemIsland.Click += (_, _) =>
+        {
+            if (_mainViewModel != null)
+                _mainViewModel.IslandVm.Enabled = !_mainViewModel.IslandVm.Enabled;
+        };
+        menu.Items.Add(itemIsland);
         menu.Items.Add(new NativeMenuItemSeparator());
         menu.Items.Add(itemDisplays);
         menu.Items.Add(itemPostpone);
@@ -265,6 +299,27 @@ public partial class App : Application
                 });
             };
         }
+    }
+
+    private void SyncIslandVisibility()
+    {
+        if (_isExiting || _mainViewModel == null) return;
+        if (_mainViewModel.IslandVm.Enabled)
+            ShowIslandWindow();
+        else
+        {
+            _islandWindow?.Close();
+            _islandWindow = null;
+        }
+    }
+
+    private void ShowIslandWindow()
+    {
+        if (_isExiting || _mainViewModel == null) return;
+        _islandWindow ??= new IslandWindow(_mainViewModel.IslandVm);
+        _islandWindow.ApplySettings();
+        if (!_islandWindow.IsVisible)
+            _islandWindow.Show();
     }
 
     public void ShowMainWindow()

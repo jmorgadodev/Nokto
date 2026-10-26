@@ -60,4 +60,27 @@
     <sys:String x:Key="BtnViewGallery">🖼 View Evidence Gallery</sys:String>
     <sys:String x:Key="BtnOpenData">📂 Open data folder</sys:String>
     <sys:String x:Key="BtnResetSettings">🔄 Reset Settings</sys:String>
+    <sys:String x:Key="TabIsland">◉ Dynamic Island</sys:String>
+    <sys:String x:Key="IslandTitle">DYNAMIC ISLAND</sys:String>
+    <sys:String x:Key="IslandIntro">Your compact desktop interface for quick access to Nokto without opening the full console.</sys:String>
+    <sys:String x:Key="IslandVisibilityHeading">ACTIVATION</sys:String>
+    <sys:String x:Key="IslandEnable">Show the floating island</sys:String>
+    <sys:String x:Key="IslandEnableHint">The island appears on your desktop and can be hidden at any time.</sys:String>
+    <sys:String x:Key="IslandAppearanceHeading">APPEARANCE AND COMPACT MODES</sys:String>
+    <sys:String x:Key="IslandStyleLabel">Island indicator</sys:String>
+    <sys:String x:Key="IslandStyleEyes">Nokto Eyes · Classic</sys:String>
+    <sys:String x:Key="IslandStyleGreen">Green dot</sys:String>
+    <sys:String x:Key="IslandStyleBlack">Black dot</sys:String>
+    <sys:String x:Key="IslandStyleGlow">Glowing cyan dot</sys:String>
+    <sys:String x:Key="IslandShowClock">Show clock in island</sys:String>
+    <sys:String x:Key="IslandAppearanceHint">These are the first working styles. More eyes, reactions and animations will arrive in the visual phase.</sys:String>
+    <sys:String x:Key="IslandStartupHeading">NOKTO STARTUP</sys:String>
+    <sys:String x:Key="IslandStartupDescription">Choose the interface shown when launching Nokto. Starting with Windows remains optional in Settings.</sys:String>
+    <sys:String x:Key="IslandStartupLegacy">Keep previous startup behavior</sys:String>
+    <sys:String x:Key="IslandStartupDashboard">Dashboard only</sys:String>
+    <sys:String x:Key="IslandStartupIsland">Dynamic island only</sys:String>
+    <sys:String x:Key="IslandStartupBoth">Dashboard and island</sys:String>
+    <sys:String x:Key="IslandStartupTray">System tray only</sys:String>
+    <sys:String x:Key="IslandStartupNote">Island-only mode keeps the dashboard hidden until you open it. Enable the island first.</sys:String>
+    <sys:String x:Key="IslandNextSteps">Nokto 2.0 DEV · Initial module. Additional features will be added and tested in stages.</sys:String>
 </ResourceDictionary>

@@ -8,9 +8,12 @@ if (-not (Test-Path -LiteralPath $dotnet)) {
 }
 $existing = Get-Process -Name 'Nokto.Dev' -ErrorAction SilentlyContinue
 if ($existing) {
-    throw 'Cierra Nokto.Dev antes de recompilar el portable. No se terminara ningun proceso automaticamente.'
+    # Conservar intacto el binario que el usuario esta ejecutando.
+    $destination = Join-Path $root 'artifacts\Nokto-Dev-Portable-staging'
+    Write-Output '[INFO] Nokto.Dev esta abierto. Se prepara una nueva compilacion en staging, sin cerrar ni sobrescribir el ejecutable actual.'
+} else {
+    $destination = Join-Path $root 'artifacts\Nokto-Dev-Portable-x64'
 }
-$destination = Join-Path $root 'artifacts\Nokto-Dev-Portable-x64'
 New-Item -ItemType Directory -Path $destination -Force | Out-Null
 & $dotnet publish (Join-Path $root 'src\Nokto.UI\Nokto.UI.csproj') -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:NuGetAudit=false -o $destination
 if ($LASTEXITCODE -ne 0) { throw 'Error al publicar Nokto Portable Dev.' }

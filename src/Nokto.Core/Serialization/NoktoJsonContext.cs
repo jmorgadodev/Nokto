@@ -10,6 +10,7 @@ namespace Nokto.Core.Serialization;
 )]
 [JsonSerializable(typeof(AppConfig))]
 [JsonSerializable(typeof(AppSettings))]
+[JsonSerializable(typeof(IslandSettings))]
 [JsonSerializable(typeof(PresetsFile))]
 [JsonSerializable(typeof(WorkflowActionItem))]
 [JsonSerializable(typeof(SystemStatusState))]

@@ -32,6 +32,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
     private readonly PersistenceService _persistence;
     private readonly CancellationTokenSource _disposalCts = new();
     private readonly AppConfig _config;
+    public IslandViewModel IslandVm { get; }
     private GlobalHotkeyService? _panicHotkeyService;
     private readonly IAiQuotaService _aiQuotaService;
 
@@ -48,10 +49,10 @@ public partial class MainViewModel : ObservableObject, IDisposable
     public event Func<Task<string?>>? RequestFilePicker;
 
     // ========================================================
-    // --- NAVEGACIÓN PRINCIPAL (4 PESTAÑAS) -------------------
+    // --- NAVEGACIÓN PRINCIPAL (5 PESTAÑAS) -------------------
     // ========================================================
     [ObservableProperty]
-    private int _selectedTabIndex = 0; // 0=Inicio, 1=Control Manual, 2=Rutinas, 3=Ajustes
+    private int _selectedTabIndex = 0; // 0=Inicio, 1=Control Manual, 2=Rutinas, 3=Ajustes, 4=Isla
 
     [RelayCommand]
     public void NavigateToTab(object? param)
@@ -792,12 +793,15 @@ public partial class MainViewModel : ObservableObject, IDisposable
     }
 
     // TELETRABAJO Y ARRANQUE
+    private bool ShouldUseSilentStartup => _config.Island.StartupModeConfigured
+        ? _config.Island.StartupMode == "Tray" : StartMinimizedToTray;
+
     [ObservableProperty]
     private bool _startWithWindows;
 
     partial void OnStartWithWindowsChanged(bool value)
     {
-        WindowsStartupHelper.SetStartup(value, StartMinimizedToTray, StartInWorkMode);
+        WindowsStartupHelper.SetStartup(value, ShouldUseSilentStartup, StartInWorkMode);
     }
 
     [ObservableProperty]
@@ -809,7 +813,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         _persistence.SaveConfig(_config);
         if (StartWithWindows)
         {
-            WindowsStartupHelper.SetStartup(true, value, StartInWorkMode);
+            WindowsStartupHelper.SetStartup(true, ShouldUseSilentStartup, StartInWorkMode);
         }
     }
 
@@ -822,7 +826,7 @@ public partial class MainViewModel : ObservableObject, IDisposable
         _persistence.SaveConfig(_config);
         if (StartWithWindows)
         {
-            WindowsStartupHelper.SetStartup(true, StartMinimizedToTray, value);
+            WindowsStartupHelper.SetStartup(true, ShouldUseSilentStartup, value);
         }
     }
 
@@ -904,6 +908,15 @@ public partial class MainViewModel : ObservableObject, IDisposable
         _persistence = persistence ?? new PersistenceService();
         _workflowEngine = engine ?? new WorkflowEngine(systemAdapter, _persistence);
         _config = _persistence.LoadConfig();
+        _config.Island ??= new IslandSettings();
+        IslandVm = new IslandViewModel(_config, _persistence);
+        IslandVm.PropertyChanged += (_, change) =>
+        {
+            // Al elegir el inicio en la pestaña Isla, actualizar solamente la entrada DEV
+            // ya habilitada; no activar Windows Startup sin consentimiento.
+            if (change.PropertyName == nameof(IslandViewModel.StartupModeIndex) && StartWithWindows)
+                WindowsStartupHelper.SetStartup(true, ShouldUseSilentStartup, StartInWorkMode);
+        };
         Config = new HomeDashboardSettings(_config.Settings, () => _persistence.SaveConfig(_config));
         Config.PropertyChanged += (_, e) =>
         {
@@ -968,9 +981,10 @@ public partial class MainViewModel : ObservableObject, IDisposable
         ScheduleDayTime = _config.Settings.ScheduleDayTime;
         ScheduleNightTime = _config.Settings.ScheduleNightTime;
 
-        StartWithWindows = WindowsStartupHelper.IsStartupEnabled();
+        // Leer preferencias antes de reescribir la entrada de arranque existente.
         StartMinimizedToTray = _config.Settings.StartMinimizedToTray;
         StartInWorkMode = _config.Settings.StartInWorkMode;
+        StartWithWindows = WindowsStartupHelper.IsStartupEnabled();
 
         BatteryProtectionEnabled = _config.Settings.BatteryProtectionEnabled;
         BatteryThresholdPercentIndex = _config.Settings.BatteryThresholdPercent switch

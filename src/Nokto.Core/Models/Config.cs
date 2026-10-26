@@ -8,6 +8,7 @@ public record AppConfig
     public AppSettings App { get => Settings; set => Settings = value; }
     public KeepAliveSettings KeepAlive { get; set; } = new();
     public LanServerSettings LanServer { get; set; } = new();
+    public IslandSettings Island { get; set; } = new();
 }
 
 public record AppSettings

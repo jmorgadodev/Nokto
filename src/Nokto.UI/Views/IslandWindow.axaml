@@ -1,0 +1,45 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Nokto.UI.Views.IslandWindow"
+        Title="Nokto Island"
+        Width="206" Height="42" MinWidth="206"
+        CanResize="False" SystemDecorations="None" ShowInTaskbar="False"
+        Topmost="True" Background="Transparent"
+        TransparencyLevelHint="Transparent" WindowStartupLocation="Manual">
+  <Border x:Name="IslandSurface" Background="#080B10" BorderBrush="#283542"
+          BorderThickness="1" CornerRadius="0,0,21,21" Padding="15,6"
+          PointerEntered="OnPointerEntered" PointerExited="OnPointerExited">
+    <StackPanel Spacing="8">
+      <Grid ColumnDefinitions="*,Auto">
+        <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+          <StackPanel x:Name="EyesVisual" Orientation="Horizontal" Spacing="7" VerticalAlignment="Center">
+            <Grid Width="23" Height="24">
+              <Ellipse Width="22" Height="22" Fill="#E8F3FA"/>
+              <Ellipse Width="8" Height="10" Fill="#0D1825" HorizontalAlignment="Center"/>
+            </Grid>
+            <Grid Width="23" Height="24">
+              <Ellipse Width="22" Height="22" Fill="#E8F3FA"/>
+              <Ellipse Width="8" Height="10" Fill="#0D1825" HorizontalAlignment="Center"/>
+            </Grid>
+          </StackPanel>
+          <Border x:Name="IndicatorFrame" Width="26" Height="26" IsVisible="False"
+                  Background="#24303B" CornerRadius="13" HorizontalAlignment="Left">
+            <Ellipse x:Name="IndicatorVisual" Width="14" Height="14" Fill="#00E676"
+                     HorizontalAlignment="Center" VerticalAlignment="Center"/>
+          </Border>
+        </StackPanel>
+        <TextBlock x:Name="ClockText" Grid.Column="1" Text="--:--" Foreground="#E6ECF3"
+                   FontFamily="Consolas" FontSize="13" VerticalAlignment="Center"/>
+      </Grid>
+      <StackPanel x:Name="ExpandedTools" IsVisible="False" Spacing="8">
+        <Border Height="1" Background="#35414C"/>
+        <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Center">
+          <Button Content="Nokto" Click="OnOpenDashboard" Background="#263747" Foreground="#EDF6FF"
+                  Padding="13,5" CornerRadius="6"/>
+          <Button Content="Ocultar" Click="OnHideIsland" Background="#202934" Foreground="#C9D5DF"
+                  Padding="13,5" CornerRadius="6"/>
+        </StackPanel>
+      </StackPanel>
+    </StackPanel>
+  </Border>
+</Window>

@@ -1,0 +1,48 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Nokto.UI.Views.IslandSettingsView">
+  <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+    <StackPanel Margin="24,18" Spacing="18" MaxWidth="850" HorizontalAlignment="Left">
+      <TextBlock Text="{DynamicResource IslandTitle}" Foreground="{DynamicResource ThemeTextPrimary}" FontSize="22" FontWeight="Bold"/>
+      <TextBlock Text="{DynamicResource IslandIntro}" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="12" TextWrapping="Wrap"/>
+      <Border Background="{DynamicResource ThemeCardBackground}" BorderBrush="{DynamicResource ThemeCardBorder}" BorderThickness="1" CornerRadius="10" Padding="20">
+        <StackPanel Spacing="10">
+          <TextBlock Text="{DynamicResource IslandVisibilityHeading}" Foreground="{DynamicResource ThemeAccent}" FontWeight="Bold" FontSize="12"/>
+          <CheckBox Content="{DynamicResource IslandEnable}" IsChecked="{Binding IslandVm.Enabled, Mode=TwoWay}" Foreground="{DynamicResource ThemeTextPrimary}" FontSize="14"/>
+          <TextBlock Text="{DynamicResource IslandEnableHint}" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="11" TextWrapping="Wrap"/>
+        </StackPanel>
+      </Border>
+      <Border Background="{DynamicResource ThemeCardBackground}" BorderBrush="{DynamicResource ThemeCardBorder}" BorderThickness="1" CornerRadius="10" Padding="20">
+        <StackPanel Spacing="12">
+          <TextBlock Text="{DynamicResource IslandAppearanceHeading}" Foreground="{DynamicResource ThemeAccent}" FontWeight="Bold" FontSize="12"/>
+          <Grid ColumnDefinitions="250,*" RowDefinitions="Auto,Auto">
+            <TextBlock Grid.Row="0" Text="{DynamicResource IslandStyleLabel}" Foreground="{DynamicResource ThemeTextPrimary}" VerticalAlignment="Center"/>
+            <ComboBox Grid.Column="1" Grid.Row="0" SelectedIndex="{Binding IslandVm.StyleIndex, Mode=TwoWay}" MinWidth="230" HorizontalAlignment="Left">
+              <ComboBoxItem Content="{DynamicResource IslandStyleEyes}"/>
+              <ComboBoxItem Content="{DynamicResource IslandStyleGreen}"/>
+              <ComboBoxItem Content="{DynamicResource IslandStyleBlack}"/>
+              <ComboBoxItem Content="{DynamicResource IslandStyleGlow}"/>
+            </ComboBox>
+            <CheckBox Grid.Row="1" Grid.ColumnSpan="2" Content="{DynamicResource IslandShowClock}" IsChecked="{Binding IslandVm.ShowClock, Mode=TwoWay}" Margin="0,14,0,0" Foreground="{DynamicResource ThemeTextPrimary}"/>
+          </Grid>
+          <TextBlock Text="{DynamicResource IslandAppearanceHint}" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="11" TextWrapping="Wrap"/>
+        </StackPanel>
+      </Border>
+      <Border Background="{DynamicResource ThemeCardBackground}" BorderBrush="{DynamicResource ThemeCardBorder}" BorderThickness="1" CornerRadius="10" Padding="20">
+        <StackPanel Spacing="12">
+          <TextBlock Text="{DynamicResource IslandStartupHeading}" Foreground="{DynamicResource ThemeAccent}" FontWeight="Bold" FontSize="12"/>
+          <TextBlock Text="{DynamicResource IslandStartupDescription}" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="11" TextWrapping="Wrap"/>
+          <ComboBox SelectedIndex="{Binding IslandVm.StartupModeIndex, Mode=TwoWay}" MinWidth="260" HorizontalAlignment="Left">
+            <ComboBoxItem Content="{DynamicResource IslandStartupLegacy}"/>
+            <ComboBoxItem Content="{DynamicResource IslandStartupDashboard}"/>
+            <ComboBoxItem Content="{DynamicResource IslandStartupIsland}"/>
+            <ComboBoxItem Content="{DynamicResource IslandStartupBoth}"/>
+            <ComboBoxItem Content="{DynamicResource IslandStartupTray}"/>
+          </ComboBox>
+          <TextBlock Text="{DynamicResource IslandStartupNote}" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="11" TextWrapping="Wrap"/>
+        </StackPanel>
+      </Border>
+      <TextBlock Text="{DynamicResource IslandNextSteps}" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="11" TextWrapping="Wrap"/>
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

@@ -60,4 +60,27 @@
     <sys:String x:Key="BtnViewGallery">🖼 Ver Galería de Evidencias</sys:String>
     <sys:String x:Key="BtnOpenData">📂 Abrir carpeta de datos</sys:String>
     <sys:String x:Key="BtnResetSettings">🔄 Restablecer Ajustes</sys:String>
+    <sys:String x:Key="TabIsland">◉ Isla Dinámica</sys:String>
+    <sys:String x:Key="IslandTitle">ISLA DINÁMICA</sys:String>
+    <sys:String x:Key="IslandIntro">Tu nueva interfaz compacta para acceder a Nokto sin abrir la consola completa.</sys:String>
+    <sys:String x:Key="IslandVisibilityHeading">ACTIVACIÓN</sys:String>
+    <sys:String x:Key="IslandEnable">Mostrar la isla flotante</sys:String>
+    <sys:String x:Key="IslandEnableHint">La isla se muestra encima del escritorio y puedes ocultarla cuando quieras.</sys:String>
+    <sys:String x:Key="IslandAppearanceHeading">APARIENCIA Y MODOS COMPACTOS</sys:String>
+    <sys:String x:Key="IslandStyleLabel">Indicador de la isla</sys:String>
+    <sys:String x:Key="IslandStyleEyes">Ojos Nokto · Clásicos</sys:String>
+    <sys:String x:Key="IslandStyleGreen">Punto verde</sys:String>
+    <sys:String x:Key="IslandStyleBlack">Punto negro</sys:String>
+    <sys:String x:Key="IslandStyleGlow">Punto cian luminoso</sys:String>
+    <sys:String x:Key="IslandShowClock">Mostrar reloj en la isla</sys:String>
+    <sys:String x:Key="IslandAppearanceHint">Estos estilos son la primera base funcional. Más ojos, reacciones y animaciones llegarán en la fase visual.</sys:String>
+    <sys:String x:Key="IslandStartupHeading">INICIO DE NOKTO</sys:String>
+    <sys:String x:Key="IslandStartupDescription">Selecciona qué interfaz aparecerá al abrir Nokto. La opción Iniciar con Windows continúa siendo voluntaria en Ajustes.</sys:String>
+    <sys:String x:Key="IslandStartupLegacy">Conservar inicio anterior</sys:String>
+    <sys:String x:Key="IslandStartupDashboard">Solo dashboard</sys:String>
+    <sys:String x:Key="IslandStartupIsland">Solo isla dinámica</sys:String>
+    <sys:String x:Key="IslandStartupBoth">Dashboard e isla</sys:String>
+    <sys:String x:Key="IslandStartupTray">Solo bandeja, sin ventanas</sys:String>
+    <sys:String x:Key="IslandStartupNote">Al seleccionar Solo isla, el dashboard se abrirá únicamente cuando lo solicites. La isla debe estar activada.</sys:String>
+    <sys:String x:Key="IslandNextSteps">Nokto 2.0 DEV · Módulo inicial. El resto de funcionalidades se incorporará y probará por fases.</sys:String>
 </ResourceDictionary>

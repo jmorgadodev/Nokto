@@ -519,6 +519,10 @@
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
+            <!-- Isla Dinamica: quinta pestaña, espacio propio separado de Ajustes -->
+            <TabItem Header="{DynamicResource TabIsland}">
+                <views:IslandSettingsView/>
+            </TabItem>
         </TabControl>
 
         <Button x:Name="RemoteConnectionButton" Grid.Row="1" IsVisible="{Binding RemoteControlEnabled}" Content="Conectar móvil · QR"
