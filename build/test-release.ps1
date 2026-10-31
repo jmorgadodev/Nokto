@@ -13,6 +13,11 @@ try {
     if (!$NoRestore) {
         & $DotnetPath restore (Join-Path $root 'Nokto.sln') --ignore-failed-sources -p:NuGetAudit=false -m:1
         if ($LASTEXITCODE -ne 0) { throw 'No se pudieron restaurar las dependencias disponibles para QA.' }
+        # Standalone probes are deliberately kept outside the main solution.
+        foreach ($project in @('Nokto.ProductivityProbe','Nokto.WeatherProbe')) {
+            & $DotnetPath restore "tests/$project/$project.csproj" --ignore-failed-sources -p:NuGetAudit=false -m:1
+            if ($LASTEXITCODE -ne 0) { throw "No se pudieron restaurar las dependencias de QA: $project" }
+        }
         $restoreArgs += '--no-restore'
     }
     foreach ($project in @('Nokto.ConsoleTest','Nokto.TrayTest','Nokto.ProductivityProbe','Nokto.WeatherProbe')) {
