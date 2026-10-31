@@ -1,4 +1,6 @@
 using Avalonia.Interactivity;
+using Avalonia.Automation;
+using Avalonia.Controls;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using Nokto.Platform.Windows.Media;
@@ -17,21 +19,16 @@ public partial class IslandWindow
     private bool HasCompactMedia => _settings?.ShowMediaInCompact == true &&
         _mediaSnapshot.Available && _mediaSnapshot.IsPlaying;
 
-    private double ExpandedHeightForContent => ScaleFactor * (_pageIndex switch
+    private double ExpandedHeightForContent
     {
-        0 => 140 + (MediaPanel.IsVisible ? 155 : 0) + (MediaEmptyState.IsVisible ? 54 : 0) +
-            (SystemStatus.IsVisible ? 35 : 0) +
-            (WeatherPanel.IsVisible ? 53 : 0),
-        1 => 215 + (SoundMuteButtons.IsVisible ? 40 : 0) +
-            (VolumeRow.IsVisible ? 32 : 0) + (IslandFooter.IsVisible ? 24 : 0),
-        _ => 152 + (ProductivityPanel.IsVisible ? 36 : 0) +
-            (QuickActionsPanel.IsVisible ? 158 : 0) +
-            (FileShelfPanel.IsVisible ? 40 : 0) +
-            (ShelfDetails.IsVisible ? 190 : 0) +
-            (ClipboardPanel.IsVisible ? 56 : 0) +
-            (ProductivityAlertFrame.IsVisible ? 42 : 0) +
-            (IslandFooter.IsVisible ? 20 : 0)
-    });
+        get
+        {
+            if (_noticeOnly) return 142 * ScaleFactor;
+            ArrangeContentSections();
+            _cachedExpandedHeight = ScaleFactor * ((IslandPageNav.IsVisible ? 118 : 78) + (IslandFooter.IsVisible ? 34 : 0) + _contentHeight + (HudPanel.IsVisible ? 84 : 0));
+            return _cachedExpandedHeight;
+        }
+    }
 
     private void SyncMediaSession()
     {
@@ -70,10 +67,11 @@ public partial class IslandWindow
 
     private void RefreshMediaPresentation(bool animate)
     {
-        bool show = _settings?.ShowMediaControls == true && _mediaSnapshot.Available;
+        bool enabledHere = _settings?.ShowMediaControls == true && _settings.PageHasFeature("media", _pageIndex);
+        bool show = enabledHere && _mediaSnapshot.Available;
         MediaPanel.IsVisible = show;
-        MediaEmptyState.IsVisible = _settings?.ShowMediaControls == true && !show && _settings?.PrivacyMode != true;
-        CompactTrackText.IsVisible = HasCompactMedia && !_expanded;
+        MediaEmptyState.IsVisible = enabledHere && !show && _settings?.PrivacyMode != true;
+        CompactTrackText.IsVisible = HasCompactMedia && !_expanded && !HasCustomCompactHeader;
         CompactTrackText.Text = _settings?.PrivacyMode == true ? "" : _mediaSnapshot.Title;
         MediaTitle.Text = _settings?.PrivacyMode == true ? "Reproducción activa" : _mediaSnapshot.Title;
         MediaArtist.Text = _settings?.PrivacyMode == true ? "" : _mediaSnapshot.Artist;
@@ -95,10 +93,28 @@ public partial class IslandWindow
             }
         }
         MediaCoverFrame.IsVisible = show && _mediaArtwork is not null && _settings?.PrivacyMode != true;
-        MediaPlayPauseButton.Content = _mediaSnapshot.IsPlaying ? "⏸" : "▶";
+        MediaPlayIcon.IsVisible = !_mediaSnapshot.IsPlaying;
+        MediaPauseIcon.IsVisible = _mediaSnapshot.IsPlaying;
+        string action = _mediaSnapshot.IsPlaying
+            ? PageLabel("IslandMediaPauseLabel", "Pausar") : PageLabel("IslandMediaPlayLabel", "Reproducir");
+        MediaPlayLabel.Text = action;
+        ToolTip.SetTip(MediaPlayPauseButton, action);
+        AutomationProperties.SetName(MediaPlayPauseButton, action);
+        MediaStateText.Text = _mediaSnapshot.IsPlaying
+            ? PageLabel("IslandMediaPlayingState", "REPRODUCIENDO") : PageLabel("IslandMediaPausedState", "EN PAUSA");
         MediaPlayPauseButton.IsEnabled = _mediaSnapshot.CanPlayPause;
         MediaPreviousButton.IsEnabled = _mediaSnapshot.CanPrevious;
         MediaNextButton.IsEnabled = _mediaSnapshot.CanNext;
+        LyricsButton.IsEnabled = show && _settings?.EnableOnlineLyrics == true && _settings.PrivacyMode != true;
+        bool lyrics = enabledHere && _settings?.ShowLyricsButton == true;
+        bool recognition = enabledHere && _settings?.ShowRecognitionButton == true;
+        LyricsButton.IsVisible = lyrics;
+        RecognitionButton.IsVisible = recognition;
+        MediaToolsRow.ColumnDefinitions[0].Width = new GridLength(lyrics ? 1 : 0, lyrics ? GridUnitType.Star : GridUnitType.Pixel);
+        MediaToolsRow.ColumnDefinitions[1].Width = new GridLength(recognition ? 1 : 0, recognition ? GridUnitType.Star : GridUnitType.Pixel);
+        LyricsButton.Margin = new Avalonia.Thickness(0, 0, recognition ? 4 : 0, 0);
+        RecognitionButton.Margin = new Avalonia.Thickness(lyrics ? 4 : 0, 0, 0, 0);
+        MediaToolsRow.IsVisible = lyrics || recognition;
         RefreshMediaProgress();
         SyncMediaProgressTimer();
 
@@ -109,19 +125,18 @@ public partial class IslandWindow
 
     private void RefreshMediaProgress()
     {
+        RefreshLyrics();
         if (_mediaSnapshot.Duration <= TimeSpan.Zero)
         {
             MediaProgress.Value = 0;
-            MediaTime.Text = "—";
+            MediaTime.Text = "--:--";
+            MediaDuration.Text = "--:--";
             return;
         }
-        var elapsed = _mediaSnapshot.Position;
-        if (_mediaSnapshot.IsPlaying)
-            elapsed += DateTimeOffset.UtcNow - _mediaUpdatedAt;
-        if (elapsed < TimeSpan.Zero) elapsed = TimeSpan.Zero;
-        if (elapsed > _mediaSnapshot.Duration) elapsed = _mediaSnapshot.Duration;
+        var elapsed = CurrentPlaybackPosition();
         MediaProgress.Value = 100 * elapsed.TotalMilliseconds / _mediaSnapshot.Duration.TotalMilliseconds;
         MediaTime.Text = $"{(int)elapsed.TotalMinutes:00}:{elapsed.Seconds:00}";
+        MediaDuration.Text = $"{(int)_mediaSnapshot.Duration.TotalMinutes:00}:{_mediaSnapshot.Duration.Seconds:00}";
     }
 
     private void SyncMediaProgressTimer()
@@ -131,8 +146,9 @@ public partial class IslandWindow
             _mediaProgressTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
             _mediaProgressTimer.Tick += (_, _) => RefreshMediaProgress();
         }
+        _mediaProgressTimer.Interval = TimeSpan.FromMilliseconds(_lyricsOpen ? 250 : 1000);
         // Ningún temporizador cuando está compacta o pausada.
-        if (_islandReady && _expanded && _pageIndex == 0 && MediaPanel.IsVisible && _mediaSnapshot.IsPlaying)
+        if (_islandReady && _expanded && (MediaPanel.IsVisible || _lyricsOpen) && _mediaSnapshot.IsPlaying)
             _mediaProgressTimer.Start();
         else
             _mediaProgressTimer.Stop();
@@ -153,6 +169,10 @@ public partial class IslandWindow
 
     private void DisposeMedia()
     {
+        CloseLyrics();
+        FinishLyricsClose();
+        _lyricsService?.Dispose(); _lyricsService = null;
+        CloseRecognition();
         _mediaProgressTimer?.Stop();
         _mediaProgressTimer = null;
         MediaCover.Source = null;

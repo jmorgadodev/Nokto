@@ -10,12 +10,17 @@ namespace Nokto.UI.Views;
 public partial class IslandWindow
 {
     private bool _shelfOpen;
+    private void OnShelfSelectionChanged(object? sender, Avalonia.Controls.SelectionChangedEventArgs args)
+    {
+        if (ShelfOpenButton is null || ShelfRemoveButton is null) return;
+        ShelfOpenButton.IsEnabled = ShelfRemoveButton.IsEnabled = ShelfList.SelectedItem is IslandViewModel.ShelfFileOption;
+    }
 
     private void RefreshShelf()
     {
         if (_settings is null) return;
-        FileShelfPanel.IsVisible = _settings.ShowFileShelf && !_settings.PrivacyMode;
-        ShelfDetails.IsVisible = _settings.ShowFileShelf && !_settings.PrivacyMode && _shelfOpen;
+        FileShelfPanel.IsVisible = _settings.ShowFileShelf && _settings.PageHasFeature("files", _pageIndex) && !_settings.PrivacyMode;
+        ShelfDetails.IsVisible = FileShelfPanel.IsVisible && _shelfOpen;
         if (_animationTimer is not null && _islandReady && _expanded)
         {
             double height = ExpandedHeightForContent;

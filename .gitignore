@@ -1,6 +1,5 @@
 ## Internal Documentation & Specs
 docs/
-CHANGELOG.md
 
 ## Logs, Telemetry & Temporary
 *.log
@@ -29,6 +28,7 @@ Generated/
 data/snapshots/*
 !data/snapshots/.gitkeep
 portable.lock
+installed.lock
 
 ## OS Generated
 Thumbs.db

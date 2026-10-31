@@ -1,5 +1,19 @@
 # Nokto 2.0 — Desarrollo local y criterios de la isla dinámica
 
+## Iteración de páginas y controles — 26 octubre 2026
+- Implementado en DEV: orden intercambiable de páginas, rueda en Sonido protegida sobre el deslizador, contracción al abandonar la isla, iconos de sonido y revisión del iris CrimsonRing.
+- Build Release y pruebas existentes de clima manual y catálogo aprobados; quedan pendientes prueba visual y de interacción real, persistencia del orden, DPI y aprobación estética.
+- Clima automático por ubicación autorizado el 27 de octubre de 2026 e implementado como opción voluntaria con permiso de Windows y envío de coordenadas a Open-Meteo. Prueba simulada aprobada; falta verificación real del permiso y la consulta. Ciudad manual sin cambios.
+- Sharingan rediseñado con ojos completos y tres tomoe vectoriales, activación giratoria al expandir y vista de prueba en Ajustes. Capturas estáticas verificadas en galería y tamaño compacto; animación en ventana real y aprobación visual pendientes.
+- Variantes Uchiha añadidas con patrones vectoriales y activación por clic; catálogo de 53 diseños más modo vacío. Render de 12 variantes y giro con dispatcher activo probados; quedan revisión de fidelidad, prueba en ventana real y aceptación del usuario. La lista no se declara exhaustiva.
+- Ajuste posterior: iris sin formas laterales, activación con transición de tomoe a Mangekyō y clic directo sobre los ojos; prueba con dispatcher verifica movimiento y regreso a reposo, pendiente QA interactiva.
+- Nueva revisión: despertar con anticipación, progresión de tomoe y transformación al Mangekyō, basado en investigación de referencias de animación. Cuatro fases capturadas y retorno a reposo verificados; fidelidad artística y uso real pendientes de aprobación.
+- Selector persistente de uno o dos ojos, Rinnegan de Madara, felino y reacciones por familia; pruebas de render y respuesta con ambas cantidades para los 54 estilos. Calidad artística y validación interactiva continúan pendientes.
+- Seguimiento binocular independiente hacia el puntero y cuatro apariencias adicionales inspiradas en anime; falta validar movimiento en ventana real, DPI y fidelidad artística.
+- Ojos centrados; matriz de elementos para combinar funciones en cada página, con scroll para contenido largo; carpetas abren desde su nombre y se quitan con X. Persistencia y render probados localmente con datos temporales; falta QA interactiva de Explorador, rueda y DPI.
+- Tras revisión del usuario, la galería refleja uno/dos ojos y el selector está junto a ella. Módulos 01–03 disponen de activación y acción rápida para mover audio completo; sus casillas siguen admitiendo combinaciones libres. Controles de Ajustes probados fuera de pantalla; pendiente aceptación interactiva.
+- Reproductor redibujado con controles vectoriales y etiquetas, estado y tiempo transcurrido/total. Estados simulados, matriz y centrado con reloj verificados fuera de pantalla; faltan sesión real y aprobación visual. Las capturas del usuario mostraban la interfaz anterior.
+
 Estado: desarrollo en la rama local `feature/nokto-2-dev`. Sin publicación pública hasta validación y autorización.
 
 ## Fase 0 — Portable Dev (hecha)
@@ -114,3 +128,37 @@ Portable e instalador, verificaciones de integridad, rollback, conservación de 
 - Diseño premium propio inspirado en jerarquía visual de Apple Music, con botones circulares, contraste y controles diferenciados; la aprobación estética final corresponde al usuario.
 - Corrección de rueda: se consume sobre Sonido y controles de lista/deslizador, con limitación de repetición y navegación con flechas; QA de 100 % confirmó que no salta de página ni cambia volumen.
 - QA: build Release, pruebas de clima con caché, productividad, galería y configuración; captura de Resumen/Sonido/Accesos. Pendiente prueba real de notificaciones, regresión final de inicio de 4 modos con esta compilación, alta DPI/multimonitor, accesibilidad y perfilado de RAM.
+
+## Extensión de música y avisos — 30-10-2026
+- Implementado en DEV: letras LRCLIB por botón, panel compañero animado, línea sincronizada y salto con soporte del reproductor. Caché y cancelación; sin letra/instrumental/error explícitos.
+- Reconocimiento preparado para micrófono y audio del PC mediante AudD; inactivo sin clave por elección del usuario. Confirmación por captura de 8 s, cancelación y credencial en la bóveda Windows.
+- HUD transitorio para volumen/brillo WMI, Bloq Mayús/idioma, cargador, Internet y dispositivos de salida. Preferencias por categoría y privacidad; retorno automático al ojo.
+- Verificación sintética de servicios y UI, más regresión de módulos y transición. Pendientes pruebas voluntarias de captura con clave propia, proveedores reales, compatibilidad de reproductores, hardware, DPI y fluidez del panel dividido. No equiparar con fidelidad 1:1 a Nusa ni a iOS.
+
+### Reconocimiento sin clave — revisión 30-10-2026
+El modo predeterminado ya no depende de una clave AudD: huella acústica C# local y consulta no oficial a Shazam por Internet. Micrófono y audio del PC bajo botón explícito de 8 s; AudD avanzado opcional. Licencia ISC de la adaptación incluida. Verificado con servicios simulados, normalización PCM/float y reconocimiento real de una muestra pública de 8 s sin grabar el equipo. Pendientes pruebas voluntarias de micrófono/loopback, ruido, compatibilidad de dispositivos y estabilidad del endpoint no oficial.
+
+### Estabilidad de audio — 30-10-2026
+Corregida caída InvalidCastException del perfil de audio al coexistir con NAudio. Reproducida antes y verificada después con prueba nativa de solo lectura en STA/MTA y ambos órdenes de activación. Se conserva el registro original; pendiente confirmar estabilidad durante uso habitual del portable.
+
+### Audio pulido sin reorganizar el menú — 30-10-2026
+Botones con plantilla circular propia, estados vectoriales de silencio, etiquetas separadas y feedback de color acotado. Los avisos no empujan el menú abierto; protección contra eventos propios o tardíos evita reabrir la isla tras salir. Vistazos externos conservados en compacto. Pruebas de estados y geometría, captura inspeccionada y regresiones UI aprobadas; validación de uso real pendiente.
+
+### Diseño integral y visibilidad de música — 30-10-2026
+Familia visual común para todas las acciones y secciones de la isla, reproductor con utilidades integradas, deslizador coherente, bandeja completa sin virtualización y paneles musicales con el mismo material. Letras y Reconocer tienen ajustes de visibilidad independientes y persistentes; se libera el espacio al ocultarlos. Criterios en DESIGN.md. Escenas de los tres módulos inspeccionadas y regresiones UI aprobadas; aprobación visual del usuario pendiente. Eliminado únicamente el crash.log con los dos errores de audio corregidos, a petición del usuario.
+
+### Reconocimiento dentro de la isla y columnas equilibradas — 30-10-2026
+Corregidas regresiones reportadas en capturas: Reconocer sustituye el módulo dentro de la cápsula, permite volver y se cancela al contraer; ya no abre una ventana aparte. Distribución por altura útil y partición equilibrada que conserva el orden elegido; mensajes vacíos de carpetas no reservan espacio. Prueba reproduce ambos fallos antes de corregir; escenas sintéticas de menú combinado, escala alta y reconocimiento integrado. Pendientes aceptación visual y captura voluntaria con hardware real.
+
+### Letras: recuperación ante fallo de consulta directa — 30-10-2026
+Caso PXNDX reproducido: LRCLIB /get da 503 mientras /search sí entrega coincidencia sincronizada. Búsqueda alternativa única, selección por título/artista/duración compatible, caché de éxitos y respeto de Retry-After sin evadir 429. Mensajes distinguen servicio/red/cobertura y permiten Reintentar. Servicio compilado verificado en vivo: 42 líneas para la pista de la captura; pruebas sintéticas de selección, límites, cancelación y estados. La cobertura sigue dependiendo del catálogo de LRCLIB, no del de Spotify.
+
+### Reconocimiento, avisos y cabecera útil — 30-10-2026
+- Reconocimiento sin selector de proveedor/claves; onda del audio real ya capturado, barrido, cancelación y respeto de movimiento reducido. Cliente AudD y acceso a credenciales retirados.
+- Trece avisos configurables, observadores por selección, migración de grupos previos y nuevos apagados. Añadidos micrófono, Num, batería, ahorro, Bluetooth y unidades externas. Validación sintética de estados y UI; compatibilidad física de dispositivos pendiente.
+- Notificaciones de aplicaciones y correos enumerados como pendientes de integración/permiso de Windows, no activos en el portable actual.
+- Cuota Codex asignable a módulos/cabecera: sesión local, porcentaje restante, ventana real y fechas de restablecimiento. Lector compilado probado contra cuenta real por protocolo oficial de solo lectura; sin chats ni resets. Caché cinco minutos y datos desconocidos explícitos.
+- Orden por arrastre con marcador y alternativa de teclado, persistencia y validación de origen. Un módulo elimina navegación/contador; varios usan total real. Cabecera configurable con información contextual y ojo centrado. Capturas revisadas y regresiones aprobadas; aceptación de interacción cotidiana pendiente.
+
+### Ajustes listos para el usuario — 30-10-2026
+Retirada la sección de integraciones pendientes y sus entradas de la vista/catálogo; se muestran solo los trece avisos implementados. El trabajo futuro permanece en documentación de desarrollo. Build y prueba de avisos aprobados, captura revisada y portable canónico actualizado conservando data.

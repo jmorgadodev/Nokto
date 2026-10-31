@@ -12,7 +12,13 @@ public partial class IslandViewModel
     [ObservableProperty] private bool _enableWheelPages = true;
     [ObservableProperty] private bool _showClipboardActions;
 
-    public string QuickFoldersLabel => $"Carpetas · {QuickFolders.Count}";
+    public string QuickFoldersLabel => QuickFolders.Count == 0 ? "Añade las carpetas que usas a diario" :
+        QuickFolders.Count == 1 ? "1 acceso guardado" : $"{QuickFolders.Count} accesos guardados";
+    private static string FolderName(string path)
+    {
+        string name = Path.GetFileName(Path.TrimEndingDirectorySeparator(path));
+        return string.IsNullOrEmpty(name) ? path : name;
+    }
 
     private void InitializeShortcuts()
     {
@@ -22,7 +28,7 @@ public partial class IslandViewModel
         foreach (var folder in (_config.Island.QuickFolders ?? []).Take(8))
         {
             if (!string.IsNullOrWhiteSpace(folder))
-                QuickFolders.Add(new QuickFolderOption(folder, Path.GetFileName(Path.TrimEndingDirectorySeparator(folder))));
+                QuickFolders.Add(new QuickFolderOption(folder, FolderName(folder)));
         }
     }
 
@@ -31,7 +37,7 @@ public partial class IslandViewModel
         if (QuickFolders.Count >= 8 || !Directory.Exists(folder)) return false;
         string path = Path.GetFullPath(folder);
         if (QuickFolders.Any(f => string.Equals(f.Path, path, StringComparison.OrdinalIgnoreCase))) return false;
-        QuickFolders.Add(new QuickFolderOption(path, Path.GetFileName(Path.TrimEndingDirectorySeparator(path))));
+        QuickFolders.Add(new QuickFolderOption(path, FolderName(path)));
         OnPropertyChanged(nameof(QuickFoldersLabel));
         Save();
         return true;

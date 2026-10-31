@@ -2,7 +2,7 @@
 param()
 $ErrorActionPreference='Stop'
 $root=Split-Path -Parent $PSScriptRoot
-$src=Join-Path $root 'artifacts\Nokto-Dev-Portable-x64\Nokto.Dev.exe'
+$src=Join-Path $root 'artifacts\Nokto-Dev-Portable-miradas\Nokto.Dev.exe'
 $folder=Join-Path $env:TEMP ('nokto-qa-art-' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Force -Path (Join-Path $folder 'data') | Out-Null
 Copy-Item -LiteralPath $src -Destination (Join-Path $folder 'Nokto.Dev.exe')

@@ -2,7 +2,7 @@
 param([int]$SizePercent=100,[string]$Eye='Orbital')
 $ErrorActionPreference='Stop'
 $root=Split-Path -Parent $PSScriptRoot
-$src=Join-Path $root 'artifacts\Nokto-Dev-Portable-x64\Nokto.Dev.exe'
+$src=Join-Path $root 'artifacts\Nokto-Dev-Portable-miradas\Nokto.Dev.exe'
 $folder=Join-Path $env:TEMP ('nokto-qa-art-' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Force -Path (Join-Path $folder 'data') | Out-Null
 Copy-Item -LiteralPath $src -Destination (Join-Path $folder 'Nokto.Dev.exe')
@@ -73,15 +73,11 @@ try{
   Start-Sleep -Milliseconds 390
   $wheelTitle=$ui.FindFirst([System.Windows.Automation.TreeScope]::Descendants,
     [System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::AutomationIdProperty,'IslandPageTitle'))
-  if($null -eq $wheelTitle -or $wheelTitle.Current.Name -notlike '*Sonido*'){ throw ('Rueda no cambió a Sonido: '+$wheelTitle.Current.Name) }
+  if($null -eq $wheelTitle -or $wheelTitle.Current.Name -notlike '*02/03*'){ throw ('Rueda no cambió al módulo 02: '+$wheelTitle.Current.Name) }
   [QaWindows]::mouse_event(0x0800,0,0,120,[UIntPtr]::Zero)
   Start-Sleep -Milliseconds 390
-  if($wheelTitle.Current.Name -notlike '*Sonido*'){throw 'La rueda provocó salto dentro de Sonido'}
-  Write-Output '[PASS] Rueda en Sonido: no cambia de página.'
-  $previous=$ui.FindFirst([System.Windows.Automation.TreeScope]::Descendants,
-    [System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::AutomationIdProperty,'IslandPagePrevious'))
-  $previous.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
-  Start-Sleep -Milliseconds 250
+  if($wheelTitle.Current.Name -notlike '*01/03*'){throw 'La rueda no volvió al módulo 01'}
+  Write-Output '[PASS] Rueda navega entre módulos desde la cabecera.'
   $next=$ui.FindFirst([System.Windows.Automation.TreeScope]::Descendants,[System.Windows.Automation.PropertyCondition]::new([System.Windows.Automation.AutomationElement]::AutomationIdProperty,'IslandPageNext'))
   if($null -eq $next){throw 'No se encontro navegación entre paginas'}
   $next.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()

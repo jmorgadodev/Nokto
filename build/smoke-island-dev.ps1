@@ -2,7 +2,7 @@
 param([string[]]$Scenarios = @('Island','Dashboard','Both','Tray'))
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
-$original = Join-Path $root 'artifacts\Nokto-Dev-Portable-x64\Nokto.Dev.exe'
+$original = Join-Path $root 'artifacts\Nokto-Dev-Portable-miradas\Nokto.Dev.exe'
 if (!(Test-Path $original)) { throw 'Ejecutable DEV ausente.' }
 if (Get-Process -Name 'Nokto.Dev' -ErrorAction SilentlyContinue) {
     throw 'Cierra Nokto.Dev antes de esta prueba; nunca se cerrara otra instancia.'

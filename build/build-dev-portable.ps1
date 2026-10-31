@@ -1,28 +1,36 @@
 [CmdletBinding()]
-param()
+param([string]$DotnetPath, [switch]$NoRestore)
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
-$dotnet = Join-Path $env:LOCALAPPDATA 'Microsoft\dotnet\dotnet.exe'
-if (-not (Test-Path -LiteralPath $dotnet)) {
-    $dotnet = (Get-Command dotnet -ErrorAction Stop).Source
+$dotnet = if ($DotnetPath) { (Resolve-Path -LiteralPath $DotnetPath).Path } else { Join-Path $env:LOCALAPPDATA 'Microsoft\dotnet\dotnet.exe' }
+if (-not (Test-Path -LiteralPath $dotnet)) { $dotnet = (Get-Command dotnet -ErrorAction Stop).Source }
+$destination = Join-Path $root 'artifacts\Nokto-Dev-Portable-miradas'
+$target = Join-Path $destination 'Nokto.Dev.exe'
+$stage = Join-Path $root ('artifacts\.nokto-build-' + [guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Path $stage -Force | Out-Null
+try {
+    $restoreArgs = @()
+    if ($NoRestore) { $restoreArgs += '--no-restore' }
+    & $dotnet publish (Join-Path $root 'src\Nokto.UI\Nokto.UI.csproj') -c Release -m:1 -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:NuGetAudit=false -o $stage @restoreArgs
+    if ($LASTEXITCODE -ne 0) { throw 'Error al publicar Nokto Portable Dev.' }
+    $built = Join-Path $stage 'Nokto.exe'
+    if (-not (Test-Path -LiteralPath $built)) { throw 'No se genero Nokto.exe.' }
+    New-Item -ItemType Directory -Path $destination -Force | Out-Null
+    if (Test-Path -LiteralPath $target) {
+        try { $lock = [IO.File]::Open($target,[IO.FileMode]::Open,[IO.FileAccess]::ReadWrite,[IO.FileShare]::None); $lock.Dispose() }
+        catch { throw 'Cierra Nokto.Dev completamente antes de actualizar el portable.' }
+    }
+    Copy-Item -LiteralPath $built -Destination (Join-Path $destination 'Nokto.Dev.nuevo.tmp') -Force
+    if (Test-Path -LiteralPath $target) { [IO.File]::Replace((Join-Path $destination 'Nokto.Dev.nuevo.tmp'),$target,[NullString]::Value) }
+    else { Move-Item -LiteralPath (Join-Path $destination 'Nokto.Dev.nuevo.tmp') -Destination $target }
+    New-Item -ItemType File -Path (Join-Path $destination 'portable.lock') -Force | Out-Null
+    $notices = Join-Path $destination 'ThirdPartyNotices'
+    New-Item -ItemType Directory -Path $notices -Force | Out-Null
+    Copy-Item -LiteralPath (Join-Path $root 'ThirdPartyNotices\shazam-for-real.txt') -Destination $notices -Force
+    Write-Output ('Portable DEV actualizado: ' + $target)
+} finally {
+    $resolved = (Resolve-Path -LiteralPath $stage).Path
+    $tempRoot = (Resolve-Path -LiteralPath (Join-Path $root 'artifacts')).Path + [IO.Path]::DirectorySeparatorChar
+    if (-not $resolved.StartsWith($tempRoot,[StringComparison]::OrdinalIgnoreCase) -or -not (Split-Path $resolved -Leaf).StartsWith('.nokto-build-')) { throw 'Ruta temporal inesperada.' }
+    Remove-Item -LiteralPath $resolved -Recurse -Force
 }
-$existing = Get-Process -Name 'Nokto.Dev' -ErrorAction SilentlyContinue
-if ($existing) {
-    # Conservar intacto el binario que el usuario esta ejecutando.
-    $destination = Join-Path $root 'artifacts\Nokto-Dev-Portable-staging'
-    Write-Output '[INFO] Nokto.Dev esta abierto. Se prepara una nueva compilacion en staging, sin cerrar ni sobrescribir el ejecutable actual.'
-} else {
-    $destination = Join-Path $root 'artifacts\Nokto-Dev-Portable-x64'
-}
-New-Item -ItemType Directory -Path $destination -Force | Out-Null
-& $dotnet publish (Join-Path $root 'src\Nokto.UI\Nokto.UI.csproj') -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:NuGetAudit=false -o $destination
-if ($LASTEXITCODE -ne 0) { throw 'Error al publicar Nokto Portable Dev.' }
-$originalExe = Join-Path $destination 'Nokto.exe'
-$devExe = Join-Path $destination 'Nokto.Dev.exe'
-if (-not (Test-Path -LiteralPath $originalExe)) { throw 'No se genero Nokto.exe.' }
-if (Test-Path -LiteralPath $devExe) { Remove-Item -LiteralPath $devExe -Force }
-Move-Item -LiteralPath $originalExe -Destination $devExe
-New-Item -ItemType File -Path (Join-Path $destination 'portable.lock') -Force | Out-Null
-Write-Output ('Portable DEV preparado en: ' + $devExe)
-Write-Output 'Iniciar manualmente Nokto.Dev.exe --tray para pruebas en bandeja.'
-Write-Output 'Esta compilacion NO publica en GitHub ni se instala en Windows.'

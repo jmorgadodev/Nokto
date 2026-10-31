@@ -3,6 +3,7 @@ using Avalonia;
 using Avalonia.Threading;
 using Nokto.Core.Models;
 using Nokto.Platform.Windows.Input;
+using Nokto.UI.Controls;
 
 namespace Nokto.UI.Views;
 
@@ -15,11 +16,16 @@ public partial class IslandWindow
         bool eyes = _islandReady && !EyeStyleCatalog.IsMinimal(_settings.SelectedStyle) && !_settings.ReducedMotion;
         if (!eyes)
         {
+            _demoTimer?.Stop();
+            EyesVisual.StopActivation();
             _cursorTimer?.Stop();
             _blinkTimer?.Stop();
             _eyeFrameTimer?.Stop();
             _gazeAnimating = _blinking = false;
             _gazeX = _gazeY = 0;
+            _gazeRightX = _gazeRightY = 0;
+            _gazeTargetX = _gazeTargetY = _gazeRightTargetX = _gazeRightTargetY = 0;
+            _lastCursorX = int.MinValue;
             _sleeping = false;
             EyesVisual.SetPose(0, 0, 0, false);
             return;
@@ -35,6 +41,9 @@ public partial class IslandWindow
         {
             _cursorTimer?.Stop();
             _gazeX = _gazeY = 0;
+            _gazeRightX = _gazeRightY = 0;
+            _gazeTargetX = _gazeTargetY = _gazeRightTargetX = _gazeRightTargetY = 0;
+            _lastCursorX = int.MinValue;
             EyesVisual.SetPose(0, 0, 0, false);
         }
         if (_settings.NaturalBlink)
@@ -87,12 +96,18 @@ public partial class IslandWindow
         }
     }
 
-    private void MoveGaze(double x, double y)
+    private void MoveGaze(double x, double y) => MoveGaze(x, y, x, y);
+
+    private void MoveGaze(double x, double y, double rightX, double rightY)
     {
         _gazeFromX = _gazeX;
         _gazeFromY = _gazeY;
         _gazeTargetX = Math.Clamp(x, -1, 1);
         _gazeTargetY = Math.Clamp(y, -1, 1);
+        _gazeRightFromX = _gazeRightX;
+        _gazeRightFromY = _gazeRightY;
+        _gazeRightTargetX = Math.Clamp(rightX, -1, 1);
+        _gazeRightTargetY = Math.Clamp(rightY, -1, 1);
         _gazeStart = Stopwatch.GetTimestamp();
         _sleeping = false;
         _gazeAnimating = true;
@@ -113,15 +128,17 @@ public partial class IslandWindow
             _lastCursorMovement = DateTime.UtcNow;
             _cursorTimer!.Interval = TimeSpan.FromMilliseconds(80);
             _sleeping = false;
-            double scale = Screens.Primary?.Scaling ?? 1;
-            double midX = Position.X + Width * scale * .5;
-            double midY = Position.Y + 14 * scale;
+            bool two = _settings.EyeCount == 2;
+            // Convertir cada centro real a píxeles de pantalla, incluidos DPI y transformaciones.
+            var leftCenter = EyesVisual.PointToScreen(new Point(EyesVisual.Bounds.Width * (two ? .25 : .5), EyesVisual.Bounds.Height * .53));
+            var rightCenter = EyesVisual.PointToScreen(new Point(EyesVisual.Bounds.Width * (two ? .75 : .5), EyesVisual.Bounds.Height * .53));
             double sensitivity = Math.Clamp(_settings.EyeSensitivity, 0, 1);
-            double desiredX = Math.Tanh((cursorX - midX) / 285) * (0.65 + sensitivity * .35);
-            double desiredY = Math.Tanh((cursorY - midY) / 245) * (0.65 + sensitivity * .35);
-            if (Math.Abs(desiredX - _gazeTargetX) > .03 || Math.Abs(desiredY - _gazeTargetY) > .03)
+            var left = BinocularGaze.Toward(cursorX, cursorY, leftCenter.X, leftCenter.Y, sensitivity);
+            var right = BinocularGaze.Toward(cursorX, cursorY, rightCenter.X, rightCenter.Y, sensitivity);
+            if (Math.Abs(left.X - _gazeTargetX) > .03 || Math.Abs(left.Y - _gazeTargetY) > .03 ||
+                Math.Abs(right.X - _gazeRightTargetX) > .03 || Math.Abs(right.Y - _gazeRightTargetY) > .03)
             {
-                MoveGaze(desiredX, desiredY);
+                MoveGaze(left.X, left.Y, right.X, right.Y);
             }
         }
         else if (_settings.SleepOnIdle && !_sleeping &&
@@ -131,7 +148,7 @@ public partial class IslandWindow
             _cursorTimer!.Interval = TimeSpan.FromMilliseconds(650);
             _eyeFrameTimer?.Stop();
             _gazeAnimating = _blinking = false;
-            EyesVisual.SetPose(_gazeX, _gazeY, 0, true);
+            EyesVisual.SetBinocularPose(_gazeX, _gazeY, _gazeRightX, _gazeRightY, 0, true);
         }
     }
 
@@ -167,6 +184,8 @@ public partial class IslandWindow
             double smooth = 1 - Math.Pow(1 - t, 3);
             _gazeX = _gazeFromX + (_gazeTargetX - _gazeFromX) * smooth;
             _gazeY = _gazeFromY + (_gazeTargetY - _gazeFromY) * smooth;
+            _gazeRightX = _gazeRightFromX + (_gazeRightTargetX - _gazeRightFromX) * smooth;
+            _gazeRightY = _gazeRightFromY + (_gazeRightTargetY - _gazeRightFromY) * smooth;
             if (t >= 1) _gazeAnimating = false;
         }
 
@@ -177,7 +196,7 @@ public partial class IslandWindow
             blink = t <= .45 ? t / .45 : (1 - t) / .55;
             if (t >= 1) _blinking = false;
         }
-        EyesVisual.SetPose(_gazeX, _gazeY, blink, _sleeping);
+        EyesVisual.SetBinocularPose(_gazeX, _gazeY, _gazeRightX, _gazeRightY, blink, _sleeping);
         if (!_gazeAnimating && !_blinking) _eyeFrameTimer?.Stop();
     }
 }

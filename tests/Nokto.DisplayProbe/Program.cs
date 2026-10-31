@@ -20,18 +20,19 @@ Console.WriteLine($"[PASS] Monitor en (0,0): {atOriginHz} Hz");
 Console.WriteLine("[PASS] Normalizacion nominal 239/240, 59/60 y fallback.");
 
 var styles = EyeStyleCatalog.All;
-Expect(styles.Count == 43, $"Se esperaban 42 estilos, hay {styles.Count}");
-Expect(styles.Select(s => s.Id).Distinct(StringComparer.OrdinalIgnoreCase).Count() == 43,
+Expect(styles.Count == 30, $"Se esperaban 30 opciones, hay {styles.Count}");
+Expect(styles.Select(s => s.Id).Distinct(StringComparer.OrdinalIgnoreCase).Count() == styles.Count,
     "El catalogo contiene ID duplicados");
-Expect(styles.Select(s => s.Pack).Distinct().Count() == 7, "Se esperaban siete familias");
+Expect(styles.Select(s => s.Pack).Distinct().Count() == 8, "Se esperaban ocho familias");
 foreach (var style in styles)
 {
     Expect(EyeStyleCatalog.Find(style.Id).Id == style.Id, "No se recupero " + style.Id);
     Expect(!string.IsNullOrWhiteSpace(style.Es) && !string.IsNullOrWhiteSpace(style.En),
         "Traduccion vacia en " + style.Id);
 }
-Expect(EyeStyleCatalog.IsMinimal("GreenDot"), "El punto verde debe ser minimalista");
+Expect(EyeStyleCatalog.Find("MagiSystem").Id == "Eyes" && EyeStyleCatalog.Find("IPhoneIsland").Id == "Eyes", "Los estilos retirados deben migrar a Clásico");
 Expect(EyeStyleCatalog.Find("None").Id == "None" && !EyeStyleCatalog.HasIndicator("None"), "El modo vacío debe estar disponible");
 Expect(!EyeStyleCatalog.IsMinimal("Feline"), "Felino no debe ser minimalista");
-Expect(EyeStyleCatalog.IndexOf("Eyes") == 6, "Compatibilidad del estilo Eyes");
-Console.WriteLine("[PASS] 42 estilos visuales + modo sin indicador, siete packs, identificadores unicos, traducciones ES/EN.");
+Expect(EyeStyleCatalog.Find("Eva01").Id == "Eyes", "Los EVA retirados deben migrar a Clásico");
+Expect(EyeStyleCatalog.IsSharingan("UchihaItachi") && EyeStyleCatalog.IsSharingan("CrimsonRing"), "Variantes Sharingan no detectadas");
+Console.WriteLine("[PASS] 29 estilos visuales + modo sin indicador, ocho packs, identificadores únicos, traducciones ES/EN y migración de estilos retirados.");

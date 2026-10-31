@@ -18,35 +18,31 @@ public partial class IslandWindow
     private void OnPagePrevious(object? sender, RoutedEventArgs e) => SwitchPage(-1);
     private void OnPageNext(object? sender, RoutedEventArgs e) => SwitchPage(1);
 
-    private bool WithinControl(object? origin, Control target)
-    {
-        if (origin is not Visual source) return false;
-        return source == target || source.GetVisualAncestors().Contains(target);
-    }
-
     private void OnWheelGuard(object? sender, PointerWheelEventArgs e)
     {
-        // Avalonia Slider maneja la rueda antes de burbujear al panel. Interceptar
-        // en tunneling evita cambiar accidentalmente el volumen.
-        if (_pageIndex == 1 && WithinControl(e.Source, AudioControls) &&
-            !WithinControl(e.Source, IslandPageNav)) e.Handled = true;
+        if (e.Delta.Y == 0 || e.Source is not Visual source ||
+            !_sections.TryGetValue("volume", out var volumeCard) ||
+            source != volumeCard && !source.GetVisualAncestors().Contains(volumeCard)) return;
+        // Consume the wheel for the entire volume card before page navigation or
+        // Slider can process it a second time. SetCurrentValue preserves binding.
+        RecordLocalAudioInteraction();
+        VolumeSlider.SetCurrentValue(Slider.ValueProperty,
+            Math.Clamp(VolumeSlider.Value + e.Delta.Y * 5, VolumeSlider.Minimum, VolumeSlider.Maximum));
+        e.Handled = true;
     }
 
     private void OnIslandWheel(object? sender, PointerWheelEventArgs e)
     {
+        if (_recognitionView is not null) { e.Handled = true; return; }
         if (_settings?.EnableWheelPages != true || e.Delta.Y == 0) return;
-        if (_pageIndex == 1 && !WithinControl(e.Source, IslandPageNav))
-        {
-            // La página Sonido no cambia con la rueda sobre faders o botones.
-            e.Handled = true;
-            return;
-        }
         if (e.Source is Visual visual && (visual is Slider or ListBox ||
             visual.GetVisualAncestors().Any(v => v is Slider or ListBox)))
         {
             e.Handled = true;
             return;
         }
+        if (e.Source is Visual source && (source == PageScrollViewer || source.GetVisualAncestors().Contains(PageScrollViewer)) &&
+            PageScrollViewer.Extent.Height > PageScrollViewer.Viewport.Height + 1) return;
         long now = Stopwatch.GetTimestamp();
         if (_lastWheelTimestamp != 0 && Stopwatch.GetElapsedTime(_lastWheelTimestamp, now).TotalMilliseconds < 350)
         {
@@ -54,7 +50,6 @@ public partial class IslandWindow
             return;
         }
         _lastWheelTimestamp = now;
-        _pinned = true;
         if (!_expanded) SetExpanded(true);
         else SwitchPage(e.Delta.Y < 0 ? 1 : -1);
         e.Handled = true;
@@ -63,11 +58,12 @@ public partial class IslandWindow
     private void SwitchPage(int delta)
     {
         if (_settings is null) return;
+        CloseRecognition();
         var pages = _settings.AvailablePages;
         int pos = pages.ToList().IndexOf(_pageIndex);
         int next = Math.Clamp((pos < 0 ? 0 : pos) + delta, 0, pages.Count - 1);
-        _pinned = true;
         _pageIndex = pages[next];
+        PageScrollViewer.Offset = default;
         if (!_expanded) SetExpanded(true);
         RefreshPages();
     }
@@ -88,15 +84,8 @@ public partial class IslandWindow
             _pageIndex = pages[0];
             position = 0;
         }
-        OverviewPage.IsVisible = _pageIndex == 0;
-        AudioPage.IsVisible = _pageIndex == 1;
-        QuickPage.IsVisible = _pageIndex == 2;
-        PageTitle.Text = (_pageIndex switch
-        {
-            0 => PageLabel("IslandPageOverview", "Resumen"),
-            1 => PageLabel("IslandPageAudio", "Sonido"),
-            _ => PageLabel("IslandPageShortcuts", "Accesos")
-        }) + $"   {position + 1}/{pages.Count}";
+        bool Has(string feature) => _settings.PageHasFeature(feature, _pageIndex);
+        PageTitle.Text = pages.Count > 1 ? $"{PageLabel("IslandModule", "Módulo")}  {position + 1:00}/{pages.Count:00}" : "";
         PreviousPageButton.IsEnabled = position > 0;
         NextPageButton.IsEnabled = position < pages.Count - 1;
         OpenDashboardButton.IsVisible = _settings.ShowMainButton;
@@ -105,31 +94,48 @@ public partial class IslandWindow
         TestEyesButton.IsVisible = false;
         IslandFooter.IsVisible = _settings.ShowMainButton || _settings.ShowHideButton;
 
-        AudioControls.IsVisible = true;
-        SoundMuteButtons.IsVisible = _settings.SoundShowMicrophone || _settings.SoundShowOutputMute;
-        MicMuteButton.IsVisible = _settings.SoundShowMicrophone;
-        OutputMuteButton.IsVisible = _settings.SoundShowOutputMute;
-        VolumeRow.IsVisible = _settings.SoundShowVolume;
-        VolumeValueText.IsVisible = _settings.SoundShowVolume;
-        ProductivityPanel.IsVisible = _settings.ShortcutsShowRoutines;
+        bool volume = _settings.SoundShowVolume && Has("volume");
+        bool mic = _settings.SoundShowMicrophone && Has("microphone");
+        bool output = _settings.SoundShowOutputMute && Has("output");
+        AudioControls.IsVisible = volume || mic || output;
+        AudioPage.IsVisible = AudioControls.IsVisible;
+        SoundMuteButtons.IsVisible = mic || output;
+        MicControl.IsVisible = mic;
+        OutputControl.IsVisible = output;
+        VolumeRow.IsVisible = volume;
+        VolumeValueText.IsVisible = volume;
+        ProductivityPanel.IsVisible = _settings.ShortcutsShowRoutines && Has("routines");
+        bool explorer = _settings.ShortcutsShowExplorer && Has("explorer");
+        bool folders = _settings.ShortcutsShowFolders && Has("folders");
         QuickActionsPanel.IsVisible = _settings.ShowQuickActions &&
-            (_settings.ShortcutsShowExplorer || _settings.ShortcutsShowFolders);
-        ExplorerButton.IsVisible = _settings.ShortcutsShowExplorer;
-        AddFolderButton.IsVisible = _settings.ShortcutsShowFolders;
-        FolderCountLabel.IsVisible = _settings.ShortcutsShowFolders && !_settings.PrivacyMode;
-        QuickFolderList.IsVisible = _settings.ShortcutsShowFolders && !_settings.PrivacyMode;
-        FolderActionRow.IsVisible = _settings.ShortcutsShowFolders && !_settings.PrivacyMode;
-        FileShelfPanel.IsVisible = _settings.ShowFileShelf && !_settings.PrivacyMode;
-        ClipboardPanel.IsVisible = _settings.ShowClipboardActions && !_settings.PrivacyMode;
+            (explorer || folders);
+        ExplorerButton.IsVisible = explorer;
+        AddFolderButton.IsVisible = folders;
+        FolderCountLabel.IsVisible = folders && !_settings.PrivacyMode;
+        QuickFolderList.IsVisible = folders && !_settings.PrivacyMode;
+        FileShelfPanel.IsVisible = _settings.ShowFileShelf && Has("files") && !_settings.PrivacyMode;
+        ShelfDetails.IsVisible = FileShelfPanel.IsVisible && _shelfOpen;
+        ClipboardPanel.IsVisible = _settings.ShowClipboardActions && Has("clipboard") && !_settings.PrivacyMode;
+        BatteryStatusText.IsVisible = _settings.ShowBatteryStatus && Has("battery");
+        NetworkStatusText.IsVisible = _settings.ShowNetworkStatus && Has("network");
         SystemStatus.IsVisible = !_settings.PrivacyMode &&
-            (_settings.ShowBatteryStatus || _settings.ShowNetworkStatus);
-        WeatherPanel.IsVisible = _settings.ShowWeather && !_settings.PrivacyMode;
-        if (!WeatherPanel.IsVisible) _weatherRequest?.Cancel();
-        if (_pageIndex != 2 || !ClipboardPanel.IsVisible) ClearClipboardPreview();
+            (BatteryStatusText.IsVisible || NetworkStatusText.IsVisible);
+        WeatherPanel.IsVisible = _settings.ShowWeather && Has("weather") && !_settings.PrivacyMode;
+        OverviewPage.IsVisible = (_settings.ShowMediaControls && Has("media")) || SystemStatus.IsVisible || WeatherPanel.IsVisible;
+        QuickPage.IsVisible = ProductivityPanel.IsVisible || FileShelfPanel.IsVisible || ClipboardPanel.IsVisible;
+        if (!WeatherPanel.IsVisible)
+        {
+            _weatherRequest?.Cancel();
+            _weatherCityLast = "";
+        }
+        if (!ClipboardPanel.IsVisible) ClearClipboardPreview();
+
+        RefreshMediaPresentation(false);
+        ArrangeContentSections();
 
         if (_islandReady && _expanded)
             AnimateTo(ExpandedWidth, ExpandedHeightForContent);
-        if (_pageIndex == 0) RefreshWeatherIfNeeded();
+        if (WeatherPanel.IsVisible) RefreshWeatherIfNeeded();
         SyncMediaProgressTimer();
     }
 
@@ -159,7 +165,6 @@ public partial class IslandWindow
             if (string.IsNullOrWhiteSpace(path)) return;
             if (_settings.AddQuickFolder(path))
             {
-                QuickFolderList.SelectedIndex = _settings.QuickFolders.Count - 1;
                 QuickFolderStatus.Text = "Acceso añadido. La carpeta no se ha modificado.";
             }
             else QuickFolderStatus.Text = "Carpeta duplicada, inaccesible o límite de ocho accesos.";
@@ -169,7 +174,7 @@ public partial class IslandWindow
 
     private void OnOpenFolder(object? sender, RoutedEventArgs e)
     {
-        if (QuickFolderList.SelectedItem is not IslandViewModel.QuickFolderOption folder) return;
+        if (sender is not Button { CommandParameter: IslandViewModel.QuickFolderOption folder }) return;
         if (!Directory.Exists(folder.Path))
         { QuickFolderStatus.Text = "La carpeta ya no existe."; return; }
         try
@@ -184,7 +189,7 @@ public partial class IslandWindow
 
     private void OnRemoveFolder(object? sender, RoutedEventArgs e)
     {
-        if (QuickFolderList.SelectedItem is not IslandViewModel.QuickFolderOption folder) return;
+        if (sender is not Button { CommandParameter: IslandViewModel.QuickFolderOption folder }) return;
         if (_settings?.RemoveQuickFolder(folder.Path) == true)
             QuickFolderStatus.Text = "Acceso quitado; la carpeta original no se ha tocado.";
     }

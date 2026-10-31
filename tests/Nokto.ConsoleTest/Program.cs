@@ -17,6 +17,11 @@ internal static class Program
     private static async Task<int> Main(string[] args)
     {
         Console.OutputEncoding = System.Text.Encoding.UTF8;
+        if (args.Contains("--update-safety-test")) { UpdateServiceTests.RunAll(); return 0; }
+        if (args.Contains("--release-qa")) return await ReleaseQaTests.RunAsync();
+        if (args.Contains("--power-safety-test")) return await PowerSafetyTests.RunAsync();
+        if (args.Contains("--persistence-safety-test")) return PersistenceSafetyTests.Run();
+        if (args.Contains("--lifecycle-safety-test")) return await WorkflowLifecycleSafetyTests.RunAsync();
         if (args.Contains("--installed-apps-test")) return await InstalledAppsTests.RunAsync();
         if (args.Contains("--linear-workflow-test")) return await LinearWorkflowTests.RunAsync();
         if (args.Contains("--ai-tools-test"))

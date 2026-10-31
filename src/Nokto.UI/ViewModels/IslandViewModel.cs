@@ -14,6 +14,8 @@ public partial class EyeStyleOption : ObservableObject
     public string DisplayName { get; }
     public EyeStyleOption(string id, string pack, string name) { Id = id; Pack = pack; DisplayName = name; }
     [ObservableProperty] private bool _isSelected;
+    [ObservableProperty] private int _eyeCount = 2;
+    [ObservableProperty] private string _staticDotColor = "#74E5A3";
     public IBrush SelectionStroke => IsSelected ? Brush.Parse("#7AF3CF") : Brush.Parse("#344A5D");
     public IBrush SelectionFill => IsSelected ? Brush.Parse("#193D47") : Brush.Parse("#0B1524");
     partial void OnIsSelectedChanged(bool value)
@@ -62,6 +64,8 @@ public partial class IslandViewModel : ObservableObject
         _loading = true;
         _enabled = config.Island.Enabled;
         _styleIndex = EyeStyleCatalog.IndexOf(config.Island.Style);
+        _staticDotColor = IsValidDotColor(config.Island.StaticDotColor) ? config.Island.StaticDotColor : "#74E5A3";
+        _eyeCountIndex = config.Island.EyeCount == 1 ? 0 : 1;
         _sizePercent = Math.Clamp(config.Island.SizePercent, 80, 140);
         _showFileShelf = config.Island.ShowFileShelf;
         InitializeShortcuts();
@@ -90,6 +94,14 @@ public partial class IslandViewModel : ObservableObject
         _naturalBlink = config.Island.NaturalBlink;
         _sleepOnIdle = config.Island.SleepOnIdle;
         _eyeSensitivity = Math.Clamp(config.Island.EyeSensitivity, 0, 1);
+        _showSystemOverlays = config.Island.ShowSystemOverlays;
+        _showKeyNotices = config.Island.ShowKeyNotices;
+        _showConnectionNotices = config.Island.ShowConnectionNotices;
+        _enableOnlineLyrics = config.Island.EnableOnlineLyrics;
+        _showLyricsButton = config.Island.ShowLyricsButton;
+        _showRecognitionButton = config.Island.ShowRecognitionButton;
+        InitializeNotices(config.Island);
+        InitializeHeaderPreferences();
         _animationRateIndex = config.Island.AnimationRateMode switch
         {
             "60" => 1, "120" => 2, "144" => 3, "165" => 4, "240" => 5, _ => 0
@@ -99,7 +111,39 @@ public partial class IslandViewModel : ObservableObject
     }
 
     [ObservableProperty] private bool _enabled;
+    [ObservableProperty] private bool _showSystemOverlays = true;
+    [ObservableProperty] private bool _showKeyNotices = true;
+    [ObservableProperty] private bool _showConnectionNotices = true;
+    [ObservableProperty] private bool _enableOnlineLyrics = true;
+    [ObservableProperty] private bool _showLyricsButton = true;
+    [ObservableProperty] private bool _showRecognitionButton = true;
+    partial void OnShowLyricsButtonChanged(bool value) => Save();
+    partial void OnShowRecognitionButtonChanged(bool value) => Save();
+    partial void OnShowSystemOverlaysChanged(bool value) => SetLegacyNoticeGroup("system", value);
+    partial void OnShowKeyNoticesChanged(bool value) => SetLegacyNoticeGroup("keys", value);
+    partial void OnShowConnectionNoticesChanged(bool value) => SetLegacyNoticeGroup("connection", value);
+    partial void OnEnableOnlineLyricsChanged(bool value) => Save();
     [ObservableProperty] private int _styleIndex;
+    [ObservableProperty] private string _staticDotColor = "#74E5A3";
+    public bool IsStaticDotSelected => SelectedStyle == "StaticDot";
+    public bool HasInvalidDotColor => !IsValidDotColor(StaticDotColor);
+    private static bool IsValidDotColor(string? color) => color is { Length: 7 } && color[0] == '#' &&
+        color.AsSpan(1).IndexOfAnyExcept("0123456789abcdefABCDEF") < 0;
+    partial void OnStaticDotColorChanged(string value)
+    {
+        OnPropertyChanged(nameof(HasInvalidDotColor));
+        if (!IsValidDotColor(value)) return;
+        foreach (var option in EyeStyleOptions) option.StaticDotColor = value;
+        Save();
+    }
+    [ObservableProperty] private int _eyeCountIndex = 1;
+    public int EyeCount => EyeCountIndex == 0 ? 1 : 2;
+    partial void OnEyeCountIndexChanged(int value)
+    {
+        OnPropertyChanged(nameof(EyeCount));
+        foreach (var option in EyeStyleOptions) option.EyeCount = EyeCount;
+        Save();
+    }
     [ObservableProperty] private int _sizePercent = 100;
     [ObservableProperty] private bool _showFileShelf;
     partial void OnShowFileShelfChanged(bool value) => Save();
@@ -108,7 +152,7 @@ public partial class IslandViewModel : ObservableObject
     public IReadOnlyList<EyeStyleOption> GalleryStyles => GalleryPackIndex == 0
         ? EyeStyleOptions
         : EyeStyleOptions.Where(s => s.Pack == EyePacks[Math.Clamp(GalleryPackIndex, 1, EyePacks.Length - 1)]).ToArray();
-    private static readonly string[] EyePacks = ["All", "Minimal", "Nokto", "Cyber", "Anime", "Creature", "Cute", "Dark"];
+    private static readonly string[] EyePacks = ["All", "Minimal", "Nokto", "Cyber", "Anime", "Creature", "Cute", "Dark", "Cinema"];
     public void SelectStyle(string id)
     {
         int index = EyeStyleCatalog.IndexOf(id);
@@ -117,7 +161,12 @@ public partial class IslandViewModel : ObservableObject
     }
     private void RefreshGallery()
     {
-        foreach (var option in EyeStyleOptions) option.IsSelected = option.Id == SelectedStyle;
+        foreach (var option in EyeStyleOptions)
+        {
+            option.IsSelected = option.Id == SelectedStyle;
+            option.EyeCount = EyeCount;
+            option.StaticDotColor = StaticDotColor;
+        }
         OnPropertyChanged(nameof(GalleryStyles));
     }
     partial void OnGalleryPackIndexChanged(int value) => OnPropertyChanged(nameof(GalleryStyles));
@@ -189,9 +238,14 @@ public partial class IslandViewModel : ObservableObject
     partial void OnStyleIndexChanged(int value)
     {
         OnPropertyChanged(nameof(SelectedStyle));
+        OnPropertyChanged(nameof(IsSharinganSelected));
+        OnPropertyChanged(nameof(IsEyeAnimatable));
+        OnPropertyChanged(nameof(IsStaticDotSelected));
         RefreshGallery();
         if (value >= 0) Save();
     }
+    public bool IsSharinganSelected => EyeStyleCatalog.IsSharingan(SelectedStyle);
+    public bool IsEyeAnimatable => !EyeStyleCatalog.IsMinimal(SelectedStyle);
     partial void OnStartupModeIndexChanged(int value)
     {
         if (!_loading) _config.Island.StartupModeConfigured = value != 0;
@@ -226,12 +280,22 @@ public partial class IslandViewModel : ObservableObject
     {
         if (_loading) return;
         _config.Island.Enabled = Enabled;
+        _config.Island.ShowSystemOverlays = ShowSystemOverlays;
+        _config.Island.ShowKeyNotices = ShowKeyNotices;
+        _config.Island.ShowConnectionNotices = ShowConnectionNotices;
+        _config.Island.NoticePreferences = NoticeOptions.Where(x => x.Available).ToDictionary(x => x.Id, x => x.IsEnabled);
+        _config.Island.EnableOnlineLyrics = EnableOnlineLyrics;
+        _config.Island.ShowLyricsButton = ShowLyricsButton;
+        _config.Island.ShowRecognitionButton = ShowRecognitionButton;
         _config.Island.Style = SelectedStyle;
+        if (IsValidDotColor(StaticDotColor)) _config.Island.StaticDotColor = StaticDotColor.ToUpperInvariant();
+        _config.Island.EyeCount = EyeCount;
         _config.Island.SizePercent = Math.Clamp(SizePercent, 80, 140);
         _config.Island.ShowFileShelf = ShowFileShelf;
         _config.Island.ShelfFiles = ShelfFiles.Select(f => f.Path).ToList();
         SaveShortcuts();
         SavePagePreferences();
+        SaveHeaderPreferences();
         _config.Island.StartupMode = SelectedStartupMode;
         _config.Island.ShowClock = ClockModeIndex != 2;
         _config.Island.ClockVisibility = ClockModeIndex switch { 1 => "Always", 2 => "Never", _ => "Expand" };
@@ -251,6 +315,8 @@ public partial class IslandViewModel : ObservableObject
             1 => "60", 2 => "120", 3 => "144", 4 => "165", 5 => "240", _ => "Auto"
         };
         _persistence.SaveConfig(_config);
+        if (!_changingFeature)
+            foreach (var feature in PageFeatures) feature.Refresh();
         Changed?.Invoke();
     }
 }

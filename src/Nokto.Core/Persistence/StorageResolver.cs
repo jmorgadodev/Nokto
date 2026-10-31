@@ -18,13 +18,31 @@ public sealed class StorageResolver
 
     public StorageResolver(string? customBaseDirectory = null)
     {
-        _baseDirectory = customBaseDirectory ?? AppDomain.CurrentDomain.BaseDirectory;
+        _baseDirectory = Path.GetFullPath(customBaseDirectory ?? AppDomain.CurrentDomain.BaseDirectory);
+
+        // An explicit location is an isolation boundary, including for tests. Never
+        // redirect a failed custom path to the user's installed application data.
+        if (customBaseDirectory is not null)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(customBaseDirectory);
+            Directory.CreateDirectory(_baseDirectory);
+            if (!IsDirectoryWritable(_baseDirectory))
+                throw new IOException($"No se puede escribir en el almacenamiento indicado: {_baseDirectory}");
+            _isPortableMode = true;
+            _dataDirectory = Path.Combine(_baseDirectory, "data");
+            EnsureDirectoriesExist();
+            return;
+        }
 
         // Detección nativa de modo portable:
         // 1. Archivo indicador explícito (portable.lock o config.json en el directorio base)
         // 2. O si el directorio base es escribible y no se encuentra en las rutas del sistema Program Files
         bool hasPortableLock = File.Exists(Path.Combine(_baseDirectory, "portable.lock"));
         bool hasConfigAdjacent = File.Exists(Path.Combine(_baseDirectory, "config.json"));
+        bool hasInstalledMarker = File.Exists(Path.Combine(_baseDirectory, "installed.lock")) ||
+            File.Exists(Path.Combine(_baseDirectory, "unins000.exe"));
+        bool hasLegacyData = File.Exists(Path.Combine(_baseDirectory, "data", "config.json")) ||
+            File.Exists(Path.Combine(_baseDirectory, "data", "presets.json"));
 
         bool isProgramFiles = false;
         try
@@ -40,7 +58,8 @@ public sealed class StorageResolver
 
         bool isWritable = !isProgramFiles && IsDirectoryWritable(_baseDirectory);
 
-        _isPortableMode = Nokto.Core.BuildIdentity.IsDevelopment || hasPortableLock || hasConfigAdjacent || isWritable;
+        _isPortableMode = ResolvePortableMode(Nokto.Core.BuildIdentity.IsDevelopment, hasPortableLock,
+            hasInstalledMarker, hasConfigAdjacent, hasLegacyData, isWritable);
 
         _dataDirectory = _isPortableMode
             ? Path.Combine(_baseDirectory, "data")
@@ -48,6 +67,13 @@ public sealed class StorageResolver
 
         EnsureDirectoriesExist();
     }
+
+    /// <summary>Pure storage policy, separate from distribution/update identity.</summary>
+    public static bool ResolvePortableMode(bool development, bool portableMarker, bool installedMarker,
+        bool adjacentConfiguration, bool legacyData, bool writableOutsideProgramFiles) =>
+        development || portableMarker || (installedMarker
+            ? legacyData // Older per-user installs kept data beside the executable.
+            : adjacentConfiguration || writableOutsideProgramFiles);
 
     private static bool IsDirectoryWritable(string dir)
     {

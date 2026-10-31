@@ -10,7 +10,7 @@ namespace Nokto.ConsoleTest;
 
 internal static class CabinRegressionTests
 {
-    public static int Run()
+    public static int Run(bool includeHardware = false)
     {
         string directory = Path.Combine(Path.GetTempPath(), $"nokto_cabin_{Guid.NewGuid():N}");
         Directory.CreateDirectory(directory);
@@ -67,6 +67,7 @@ internal static class CabinRegressionTests
                 visibility.ShowAiRadarCardInHome && visibility.ShowQuickActionsInHome && visibility.ShowAudioControlCardInHome && saves == 6,
                 "Restablecer ajustes debe actualizar las seis tarjetas sin sobrescribir la configuración durante la carga.");
             Console.WriteLine("[PASS] Cabina reactiva: notificación, guardado inmediato y restauración de valores por defecto.");
+            if (!includeHardware) return 0;
             using ISystemAdapter adapter = new WindowsSystemAdapter();
             var hardware = adapter.GetHardwareProfile();
             Require(ReferenceEquals(hardware, adapter.GetHardwareProfile()), "El perfil debe reutilizar el snapshot estático.");

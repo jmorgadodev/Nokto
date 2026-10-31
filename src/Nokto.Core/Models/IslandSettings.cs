@@ -3,7 +3,9 @@ namespace Nokto.Core.Models;
 public sealed class IslandSettings
 {
     public bool Enabled { get; set; } = false;
-    public string Style { get; set; } = "Eyes";
+    public string Style { get; set; } = "StaticDot";
+    public string StaticDotColor { get; set; } = "#74E5A3";
+    public int EyeCount { get; set; } = 2;
     // 80..140 %, 100 % corresponde al tamaño anterior.
     public int SizePercent { get; set; } = 100;
     public bool ShowFileShelf { get; set; } = false;
@@ -17,6 +19,11 @@ public sealed class IslandSettings
     public bool ShowOverviewPage { get; set; } = true;
     public bool ShowSoundPage { get; set; } = true;
     public bool ShowShortcutsPage { get; set; } = true;
+    public List<int> PageOrder { get; set; } = [0, 1, 2];
+    // Bit por página lógica: 1 = Resumen, 2 = Sonido, 4 = Accesos.
+    // Null conserva la distribución de configuraciones anteriores.
+    public Dictionary<string, int>? PageFeatures { get; set; }
+    public Dictionary<int, List<string>>? ContentOrder { get; set; }
     public bool ShowMainButton { get; set; } = true;
     public bool ShowHideButton { get; set; } = true;
     public bool SoundShowVolume { get; set; } = true;
@@ -26,9 +33,18 @@ public sealed class IslandSettings
     public bool ShortcutsShowExplorer { get; set; } = true;
     public bool ShortcutsShowFolders { get; set; } = true;
     public bool ShowWeather { get; set; } = false;
+    public bool WeatherUseLocation { get; set; } = false;
     public string WeatherCity { get; set; } = "";
     public bool ShowWindowsNotifications { get; set; } = false;
     public bool PrivacyMode { get; set; } = false;
+    public bool ShowSystemOverlays { get; set; } = true;
+    public bool ShowKeyNotices { get; set; } = true;
+    public bool ShowConnectionNotices { get; set; } = true;
+    // Null migra los tres grupos anteriores; los avisos nuevos son opt-in.
+    public Dictionary<string, bool>? NoticePreferences { get; set; }
+    public bool EnableOnlineLyrics { get; set; } = true;
+    public bool ShowLyricsButton { get; set; } = true;
+    public bool ShowRecognitionButton { get; set; } = true;
     // Dashboard (legacy default), Island, Both, Tray.
     public string StartupMode { get; set; } = "Dashboard";
     // Los usuarios anteriores conservan su ajuste de inicio hasta elegir un modo nuevo.
@@ -41,6 +57,9 @@ public sealed class IslandSettings
     public bool ShowNetworkStatus { get; set; } = false;
     public bool ShowMediaControls { get; set; } = true;
     public bool ShowMediaInCompact { get; set; } = false;
+    public bool ShowCodexUsage { get; set; } = false;
+    public string HeaderLeftMode { get; set; } = "Auto";
+    public string HeaderRightMode { get; set; } = "Auto";
     public bool ExpandOnHover { get; set; } = true;
     public bool ReducedMotion { get; set; } = false;
     // Auto usa la frecuencia actual del monitor; valores manuales: 60,120,144,165,240.

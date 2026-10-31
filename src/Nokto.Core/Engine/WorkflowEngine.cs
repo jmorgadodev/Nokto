@@ -148,7 +148,7 @@ public sealed class WorkflowEngine : IWorkflowEngine
         {
             var status = Volatile.Read(ref context.Status);
             bool countdown = status.GracePeriodActive ||
-                status.EngineState == EngineState.WaitingTrigger &&
+                status.EngineState is (EngineState.WaitingTrigger or EngineState.Paused) &&
                 context.Routine.Trigger.Type is TriggerType.Countdown or TriggerType.FixedTime or TriggerType.Schedule or TriggerType.ScheduledTime;
             return new RunningWorkflowInfo
             {

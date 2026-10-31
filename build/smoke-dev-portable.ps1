@@ -2,7 +2,12 @@
 param()
 $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
-$folder = Join-Path $root 'artifacts\Nokto-Dev-Portable-x64'
+$source = Join-Path $root 'artifacts\Nokto-Dev-Portable-miradas\Nokto.Dev.exe'
+if (-not (Test-Path -LiteralPath $source)) { throw 'No existe Nokto.Dev.exe.' }
+$folder = Join-Path ([IO.Path]::GetTempPath()) ('nokto-smoke-' + [guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory -Path $folder | Out-Null
+Copy-Item -LiteralPath $source -Destination (Join-Path $folder 'Nokto.Dev.exe')
+New-Item -ItemType File -Path (Join-Path $folder 'portable.lock') | Out-Null
 $exe = Join-Path $folder 'Nokto.Dev.exe'
 $config = Join-Path $folder 'data\config.json'
 if (-not (Test-Path -LiteralPath $exe)) { throw 'No existe Nokto.Dev.exe.' }

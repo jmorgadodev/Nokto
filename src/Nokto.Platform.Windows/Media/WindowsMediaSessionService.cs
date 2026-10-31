@@ -19,6 +19,8 @@ public sealed record MediaSessionSnapshot(
     TimeSpan Duration,
     byte[]? Artwork)
 {
+    public bool CanSeek { get; init; }
+    public double PlaybackRate { get; init; } = 1;
     public static MediaSessionSnapshot Empty { get; } =
         new(false, "", "", "", false, false, false, false, TimeSpan.Zero, TimeSpan.Zero, null);
 }
@@ -32,37 +34,49 @@ public sealed class WindowsMediaSessionService : IDisposable
     private GlobalSystemMediaTransportControlsSessionManager? _manager;
     private GlobalSystemMediaTransportControlsSession? _current;
     private CancellationTokenSource? _lifetime;
-    private int _refreshPending;
+    private readonly object _lifetimeLock = new();
+    private CoalescingMediaRefresh? _refresh;
     private string? _artworkKey;
     private byte[]? _artworkBytes;
     private bool _disposed;
+    private TimeSpan _timelineStart;
     public event Action<MediaSessionSnapshot>? Updated;
     public MediaSessionSnapshot Snapshot { get; private set; } = MediaSessionSnapshot.Empty;
 
     public async Task StartAsync()
     {
-        if (_disposed || _lifetime is not null) return;
-        var cancel = new CancellationTokenSource();
-        _lifetime = cancel;
+        CancellationTokenSource cancel;
+        CoalescingMediaRefresh refresh;
+        lock (_lifetimeLock)
+        {
+            if (_disposed || _lifetime is not null) return;
+            cancel = new CancellationTokenSource();
+            _lifetime = cancel;
+            refresh = new CoalescingMediaRefresh(version => ReadSnapshotAsync(version, cancel.Token));
+            _refresh = refresh;
+        }
         try
         {
-            _manager = await GlobalSystemMediaTransportControlsSessionManager.RequestAsync();
-            if (cancel.IsCancellationRequested) return;
-            _manager.CurrentSessionChanged += OnCurrentSessionChanged;
-            _manager.SessionsChanged += OnSessionsChanged;
-            await ReloadCurrentAsync(cancel.Token);
+            var manager = await GlobalSystemMediaTransportControlsSessionManager.RequestAsync();
+            lock (_lifetimeLock)
+            {
+                if (!ReferenceEquals(_lifetime, cancel) || cancel.IsCancellationRequested) return;
+                _manager = manager;
+                manager.CurrentSessionChanged += OnCurrentSessionChanged;
+                manager.SessionsChanged += OnSessionsChanged;
+                refresh.Request();
+            }
         }
         catch (Exception)
         {
-            SetSnapshot(MediaSessionSnapshot.Empty);
-            // Puede no estar disponible en esta edición de Windows o sesión remota.
+            refresh.Request(); // The guarded read publishes an empty state if no manager is available.
         }
     }
 
     private void OnCurrentSessionChanged(GlobalSystemMediaTransportControlsSessionManager sender,
-        CurrentSessionChangedEventArgs args) => _ = RefreshCurrentSafeAsync();
+        CurrentSessionChangedEventArgs args) => QueueRead();
     private void OnSessionsChanged(GlobalSystemMediaTransportControlsSessionManager sender,
-        SessionsChangedEventArgs args) => _ = RefreshCurrentSafeAsync();
+        SessionsChangedEventArgs args) => QueueRead();
     private void OnMediaPropertiesChanged(GlobalSystemMediaTransportControlsSession sender,
         MediaPropertiesChangedEventArgs args) => QueueRead();
     private void OnPlaybackChanged(GlobalSystemMediaTransportControlsSession sender,
@@ -70,89 +84,80 @@ public sealed class WindowsMediaSessionService : IDisposable
     private void OnTimelineChanged(GlobalSystemMediaTransportControlsSession sender,
         TimelinePropertiesChangedEventArgs args) => QueueRead();
 
-    private async Task RefreshCurrentSafeAsync()
+    private void QueueRead() => Volatile.Read(ref _refresh)?.Request();
+
+    private async Task ReadSnapshotAsync(long version, CancellationToken token)
     {
+        var refresh = Volatile.Read(ref _refresh);
+        if (refresh is null) return;
+        GlobalSystemMediaTransportControlsSession? current = null;
+        string? artworkKey = null;
+        byte[]? artwork = null;
         try
         {
-            var cancel = _lifetime;
-            if (cancel is not null) await ReloadCurrentAsync(cancel.Token);
+            if (!refresh.TryCommit(version, () =>
+            {
+                current = _manager?.GetCurrentSession();
+                if (!ReferenceEquals(current, _current))
+                {
+                    UnsubscribeSession();
+                    _current = current;
+                    _artworkKey = null;
+                    _artworkBytes = null;
+                    if (current is not null)
+                    {
+                        current.MediaPropertiesChanged += OnMediaPropertiesChanged;
+                        current.PlaybackInfoChanged += OnPlaybackChanged;
+                        current.TimelinePropertiesChanged += OnTimelineChanged;
+                    }
+                }
+                artworkKey = _artworkKey;
+                artwork = _artworkBytes;
+            })) return;
+            if (current is null)
+            {
+                refresh.TryCommit(version, () => SetSnapshot(MediaSessionSnapshot.Empty));
+                return;
+            }
+            var props = await current.TryGetMediaPropertiesAsync();
+            token.ThrowIfCancellationRequested();
+            string coverKey = $"{current.SourceAppUserModelId}|{props.Title}|{props.Artist}";
+            if (artworkKey != coverKey) artwork = await TryLoadArtworkAsync(props.Thumbnail, token);
+            token.ThrowIfCancellationRequested();
+            var playback = current.GetPlaybackInfo();
+            var timeline = current.GetTimelineProperties();
+            var controls = playback.Controls;
+            var duration = timeline.EndTime - timeline.StartTime;
+            double playbackRate = playback.PlaybackRate is double rate && double.IsFinite(rate) ? rate : 1;
+            var position = timeline.Position - timeline.StartTime;
+            var sinceUpdate = DateTimeOffset.UtcNow - timeline.LastUpdatedTime;
+            if (playback.PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing &&
+                sinceUpdate >= TimeSpan.Zero && sinceUpdate < TimeSpan.FromHours(1))
+                position += TimeSpan.FromSeconds(sinceUpdate.TotalSeconds * playbackRate);
+            var snapshot = new MediaSessionSnapshot(
+                true, string.IsNullOrWhiteSpace(props.Title) ? "Reproducción multimedia" : props.Title,
+                props.Artist ?? "", current.SourceAppUserModelId ?? "",
+                playback.PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing,
+                controls.IsPlayEnabled || controls.IsPauseEnabled || controls.IsPlayPauseToggleEnabled,
+                controls.IsPreviousEnabled, controls.IsNextEnabled,
+                TimeSpan.FromSeconds(Math.Clamp(position.TotalSeconds, 0, Math.Max(0, duration.TotalSeconds))),
+                duration > TimeSpan.Zero ? duration : TimeSpan.Zero, artwork)
+                { CanSeek = controls.IsPlaybackPositionEnabled, PlaybackRate = playbackRate };
+            refresh.TryCommit(version, () =>
+            {
+                // A session may change before Windows delivers CurrentSessionChanged.
+                if (!ReferenceEquals(current, _manager?.GetCurrentSession())) { refresh.Request(); return; }
+                _artworkKey = coverKey;
+                _artworkBytes = artwork;
+                _timelineStart = timeline.StartTime;
+                SetSnapshot(snapshot);
+            });
         }
-        catch (Exception) { SetSnapshot(MediaSessionSnapshot.Empty); }
-    }
-
-    private async Task ReloadCurrentAsync(CancellationToken token)
-    {
-        if (token.IsCancellationRequested || _manager is null) return;
-        var current = _manager.GetCurrentSession();
-        if (ReferenceEquals(current, _current))
+        catch (OperationCanceledException) when (token.IsCancellationRequested) { }
+        catch (Exception)
         {
-            QueueRead();
-            return;
+            refresh.TryCommit(version, () => SetSnapshot(MediaSessionSnapshot.Empty));
         }
-        UnsubscribeSession();
-        _current = current;
-        _artworkKey = null;
-        _artworkBytes = null;
-        if (current is not null)
-        {
-            current.MediaPropertiesChanged += OnMediaPropertiesChanged;
-            current.PlaybackInfoChanged += OnPlaybackChanged;
-            current.TimelinePropertiesChanged += OnTimelineChanged;
-        }
-        await ReadSnapshotAsync(token);
-    }
-
-    private void QueueRead()
-    {
-        if (_lifetime is null || _lifetime.IsCancellationRequested) return;
-        if (Interlocked.Exchange(ref _refreshPending, 1) == 1) return;
-        _ = ReadQueuedSafeAsync();
-    }
-
-    private async Task ReadQueuedSafeAsync()
-    {
-        try
-        {
-            var token = _lifetime?.Token;
-            if (token.HasValue) await ReadSnapshotAsync(token.Value);
-        }
-        catch (Exception) { SetSnapshot(MediaSessionSnapshot.Empty); }
-        finally { Interlocked.Exchange(ref _refreshPending, 0); }
-    }
-
-    private async Task ReadSnapshotAsync(CancellationToken token)
-    {
-        var current = _current;
-        if (token.IsCancellationRequested) return;
-        if (current is null)
-        {
-            SetSnapshot(MediaSessionSnapshot.Empty);
-            return;
-        }
-        var props = await current.TryGetMediaPropertiesAsync();
-        if (token.IsCancellationRequested || !ReferenceEquals(current, _current)) return;
-        string coverKey = $"{current.SourceAppUserModelId}|{props.Title}|{props.Artist}";
-        if (_artworkKey != coverKey)
-        {
-            _artworkKey = coverKey;
-            _artworkBytes = await TryLoadArtworkAsync(props.Thumbnail, token);
-        }
-        var playback = current.GetPlaybackInfo();
-        var timeline = current.GetTimelineProperties();
-        var controls = playback.Controls;
-        var duration = timeline.EndTime - timeline.StartTime;
-        SetSnapshot(new MediaSessionSnapshot(
-            true,
-            string.IsNullOrWhiteSpace(props.Title) ? "Reproducción multimedia" : props.Title,
-            props.Artist ?? "",
-            current.SourceAppUserModelId ?? "",
-            playback.PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing,
-            controls.IsPlayEnabled || controls.IsPauseEnabled || controls.IsPlayPauseToggleEnabled,
-            controls.IsPreviousEnabled,
-            controls.IsNextEnabled,
-            timeline.Position,
-            duration > TimeSpan.Zero ? duration : TimeSpan.Zero,
-            _artworkBytes));
     }
 
     private static async Task<byte[]?> TryLoadArtworkAsync(
@@ -195,6 +200,15 @@ public sealed class WindowsMediaSessionService : IDisposable
         catch (Exception) { return false; }
     }
 
+    public async Task<bool> SeekAsync(TimeSpan position)
+    {
+        var session = _current;
+        if (session is null || !Snapshot.CanSeek || Snapshot.Duration <= TimeSpan.Zero) return false;
+        position = TimeSpan.FromTicks(Math.Clamp(position.Ticks, 0, Snapshot.Duration.Ticks));
+        try { return await session.TryChangePlaybackPositionAsync((_timelineStart + position).Ticks); }
+        catch (Exception) { return false; }
+    }
+
     private void UnsubscribeSession()
     {
         if (_current is { } old)
@@ -208,24 +222,38 @@ public sealed class WindowsMediaSessionService : IDisposable
 
     public void Stop()
     {
-        var cancel = _lifetime;
-        _lifetime = null;
-        cancel?.Cancel();
-        if (_manager is { } manager)
+        lock (_lifetimeLock)
         {
-            manager.CurrentSessionChanged -= OnCurrentSessionChanged;
-            manager.SessionsChanged -= OnSessionsChanged;
+            var cancel = _lifetime;
+            _lifetime = null;
+            var refresh = _refresh;
+            _refresh = null;
+            cancel?.Cancel();
+            refresh?.Stop(() =>
+            {
+                if (_manager is { } manager)
+                {
+                    manager.CurrentSessionChanged -= OnCurrentSessionChanged;
+                    manager.SessionsChanged -= OnSessionsChanged;
+                }
+                UnsubscribeSession();
+                _manager = null;
+                _artworkKey = null;
+                _artworkBytes = null;
+                Snapshot = MediaSessionSnapshot.Empty;
+            });
+            cancel?.Dispose();
         }
-        UnsubscribeSession();
-        _manager = null;
-        Snapshot = MediaSessionSnapshot.Empty;
-        cancel?.Dispose();
     }
 
     public void Dispose()
     {
-        if (_disposed) return;
-        _disposed = true;
-        Stop();
+        lock (_lifetimeLock)
+        {
+            if (_disposed) return;
+            _disposed = true;
+            Stop();
+        }
     }
+
 }

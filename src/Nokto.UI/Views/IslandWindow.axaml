@@ -6,94 +6,23 @@
         CanResize="False" SystemDecorations="None" ShowInTaskbar="False"
         Topmost="True" Background="Transparent" TransparencyLevelHint="Transparent"
         WindowStartupLocation="Manual">
-  <Window.Styles>
-    <Style Selector="Button.premiumNav">
-      <Setter Property="Background" Value="#202B38"/>
-      <Setter Property="Foreground" Value="#D9E8F0"/>
-      <Setter Property="BorderBrush" Value="#324658"/>
-      <Setter Property="BorderThickness" Value="1"/>
-      <Setter Property="CornerRadius" Value="18"/>
-      <Setter Property="Width" Value="34"/>
-      <Setter Property="Height" Value="34"/>
-      <Setter Property="Padding" Value="0"/>
-      <Setter Property="FontSize" Value="20"/>
-      <Setter Property="HorizontalContentAlignment" Value="Center"/>
-      <Setter Property="VerticalContentAlignment" Value="Center"/>
-    </Style>
-    <Style Selector="Button.premiumNav:pointerover">
-      <Setter Property="Background" Value="#34475A"/>
-      <Setter Property="Foreground" Value="White"/>
-    </Style>
-    <Style Selector="Button.premiumTransport">
-      <Setter Property="Background" Value="#273542"/>
-      <Setter Property="Foreground" Value="#F3F6FA"/>
-      <Setter Property="BorderBrush" Value="#384B5B"/>
-      <Setter Property="BorderThickness" Value="1"/>
-      <Setter Property="CornerRadius" Value="22"/>
-      <Setter Property="Width" Value="44"/>
-      <Setter Property="Height" Value="44"/>
-      <Setter Property="Padding" Value="0"/>
-      <Setter Property="FontSize" Value="18"/>
-    </Style>
-    <Style Selector="Button.premiumTransport:pointerover">
-      <Setter Property="Background" Value="#405263"/>
-    </Style>
-    <Style Selector="Button.premiumPlay">
-      <Setter Property="Background" Value="#DDF8F4"/>
-      <Setter Property="Foreground" Value="#14212B"/>
-      <Setter Property="BorderBrush" Value="#C6E9E6"/>
-      <Setter Property="BorderThickness" Value="1"/>
-      <Setter Property="CornerRadius" Value="25"/>
-      <Setter Property="Width" Value="52"/>
-      <Setter Property="Height" Value="48"/>
-      <Setter Property="Padding" Value="0"/>
-      <Setter Property="FontSize" Value="21"/>
-    </Style>
-    <Style Selector="Button.premiumPlay:pointerover">
-      <Setter Property="Background" Value="#FFFFFF"/>
-    </Style>
-    <Style Selector="Button.premiumAction">
-      <Setter Property="Background" Value="#273444"/>
-      <Setter Property="Foreground" Value="#E9F3F9"/>
-      <Setter Property="BorderBrush" Value="#3A4A5B"/>
-      <Setter Property="BorderThickness" Value="1"/>
-      <Setter Property="CornerRadius" Value="12"/>
-      <Setter Property="Padding" Value="13,9"/>
-      <Setter Property="FontSize" Value="12"/>
-    </Style>
-    <Style Selector="Button.premiumAction:pointerover">
-      <Setter Property="Background" Value="#385061"/>
-      <Setter Property="Foreground" Value="White"/>
-    </Style>
-    <Style Selector="Button.premiumQuiet">
-      <Setter Property="Background" Value="Transparent"/>
-      <Setter Property="Foreground" Value="#A7BBCA"/>
-      <Setter Property="BorderBrush" Value="#344251"/>
-      <Setter Property="BorderThickness" Value="1"/>
-      <Setter Property="CornerRadius" Value="13"/>
-      <Setter Property="Padding" Value="12,7"/>
-      <Setter Property="FontSize" Value="11"/>
-    </Style>
-    <Style Selector="Button.premiumQuiet:pointerover">
-      <Setter Property="Background" Value="#253343"/>
-      <Setter Property="Foreground" Value="White"/>
-    </Style>
-  </Window.Styles>
   <Grid x:Name="IslandScaleHost" ClipToBounds="True">
     <Border x:Name="IslandSurface" HorizontalAlignment="Left" VerticalAlignment="Top"
-            Background="#10151E" BorderBrush="#3A4855" BorderThickness="1"
+            Background="Transparent" BorderBrush="Transparent" BorderThickness="1"
             CornerRadius="0,0,22,22" Padding="12,6" ClipToBounds="True"
             PointerPressed="OnSurfacePressed" PointerEntered="OnPointerEntered"
             PointerExited="OnPointerExited" PointerWheelChanged="OnIslandWheel">
       <StackPanel Spacing="7">
-        <Grid x:Name="IslandHeader" ColumnDefinitions="*,Auto" MinHeight="34">
+        <Grid x:Name="IslandHeader" MinHeight="34">
+          <TextBlock x:Name="HeaderLeftText" IsVisible="False" MaxWidth="92" FontSize="11" FontWeight="Medium" Foreground="#BCDCD5" TextTrimming="CharacterEllipsis" HorizontalAlignment="Left" VerticalAlignment="Center"/>
           <controls:NoktoEyesControl x:Name="EyesVisual" Width="74" Height="34"
-                                     HorizontalAlignment="Left" VerticalAlignment="Center"
+                                     HorizontalAlignment="Center" VerticalAlignment="Center"
                                      AutomationProperties.Name="Ojos de Nokto"/>
-          <StackPanel Grid.Column="1" Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+          <StackPanel HorizontalAlignment="Right" Orientation="Horizontal" Spacing="5" VerticalAlignment="Center">
+            <TextBlock x:Name="HeaderRightText" IsVisible="False" MaxWidth="92" FontSize="11" FontWeight="Medium" Foreground="#BCDCD5" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
             <TextBlock x:Name="ClockText" Text="--:--" IsVisible="False"
                        Foreground="#E6F0F8" FontFamily="Consolas" FontWeight="Medium"
-                       FontSize="16" VerticalAlignment="Center" Margin="8,0,1,0"/>
+                       FontSize="12" VerticalAlignment="Center" Margin="8,0,1,0"/>
             <TextBlock x:Name="CompactProductivityText" IsVisible="False" MaxWidth="100" FontSize="11"
                        Foreground="#FFD29B" FontFamily="Consolas" VerticalAlignment="Center"/>
             <TextBlock x:Name="CompactTrackText" IsVisible="False" MaxWidth="152"
@@ -102,71 +31,143 @@
           </StackPanel>
         </Grid>
 
+        <Border x:Name="HudPanel" IsVisible="False" Width="296" HorizontalAlignment="Center" CornerRadius="14" Padding="14" Background="#17212C">
+          <StackPanel Spacing="7">
+            <Grid ColumnDefinitions="24,*,Auto">
+              <Path x:Name="HudSymbolIcon" Width="18" Height="18" Stroke="#B9E4DA" StrokeThickness="1.5" Stretch="Uniform" VerticalAlignment="Center"/>
+              <TextBlock x:Name="HudTitle" Grid.Column="1" Foreground="#EDF8FB" FontSize="13" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+              <TextBlock x:Name="HudValue" Grid.Column="2" Foreground="#B8F4E5" FontFamily="Consolas" FontSize="12" VerticalAlignment="Center"/>
+            </Grid>
+            <TextBlock x:Name="HudDetail" Foreground="#A7BECC" FontSize="11" TextTrimming="CharacterEllipsis"/>
+            <ProgressBar x:Name="HudLevel" Minimum="0" Maximum="100" Height="4" Background="#2C4150" Foreground="#91DECA" IsVisible="False"/>
+          </StackPanel>
+        </Border>
         <StackPanel x:Name="ExpandedTools" IsVisible="False" Opacity="0" Spacing="8">
           <Border Height="1" Background="#354250"/>
           <Grid x:Name="IslandPageNav" ColumnDefinitions="36,*,36">
-            <Button x:Name="PreviousPageButton" Classes="premiumNav" Grid.Column="0" Content="‹" Click="OnPagePrevious"
+            <controls:IslandButton x:Name="PreviousPageButton" Appearance="Navigation" Width="32" Height="32" MinHeight="0" Grid.Column="0" Content="‹" Click="OnPagePrevious"
                     AutomationProperties.AutomationId="IslandPagePrevious"
-                    Background="#182635" Foreground="#A4D8E1" Padding="6,3" CornerRadius="8"/>
+                    Padding="0" CornerRadius="16" FontSize="20"/>
             <TextBlock x:Name="PageTitle" Grid.Column="1" AutomationProperties.AutomationId="IslandPageTitle" HorizontalAlignment="Center"
                        VerticalAlignment="Center" Foreground="#D2EFEB" FontSize="12" FontWeight="SemiBold"/>
-            <Button x:Name="NextPageButton" Classes="premiumNav" Grid.Column="2" Content="›" Click="OnPageNext"
+            <controls:IslandButton x:Name="NextPageButton" Appearance="Navigation" Width="32" Height="32" MinHeight="0" Grid.Column="2" Content="›" Click="OnPageNext"
                     AutomationProperties.AutomationId="IslandPageNext"
-                    Background="#182635" Foreground="#A4D8E1" Padding="6,3" CornerRadius="8"/>
+                    Padding="0" CornerRadius="16" FontSize="20"/>
           </Grid>
+
+          <ScrollViewer x:Name="PageScrollViewer" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Disabled">
+          <StackPanel Spacing="8">
+            <StackPanel x:Name="QuickActionsPanel" IsVisible="True" Spacing="6">
+              <StackPanel x:Name="ExplorerActionRow" Orientation="Horizontal" Spacing="8">
+                <controls:IslandButton x:Name="ExplorerButton" Appearance="Secondary" Content="▣  Explorador" Click="OnOpenExplorer"
+                        AutomationProperties.AutomationId="IslandOpenExplorer"
+                        Padding="9,5"/>
+                <controls:IslandButton x:Name="AddFolderButton" Appearance="Secondary" Content="＋  Carpeta" Click="OnAddFolder"
+                        AutomationProperties.AutomationId="IslandAddFolder"
+                        Padding="9,5"/>
+              </StackPanel>
+              <TextBlock x:Name="FolderCountLabel" Text="{Binding IslandVm.QuickFoldersLabel}" Foreground="#9BBED0" FontSize="11"/>
+              <ItemsControl x:Name="QuickFolderList" ItemsSource="{Binding IslandVm.QuickFolders}" AutomationProperties.AutomationId="IslandFolderList">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <Grid ColumnDefinitions="*,32" MinWidth="245" Margin="0,2">
+                      <controls:IslandButton Grid.Column="0" Appearance="Secondary" Background="#202F3C" BorderThickness="0" CornerRadius="8" Padding="10,9" HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                              CommandParameter="{Binding}" Click="OnOpenFolder" ToolTip.Tip="{Binding Path}" AutomationProperties.Name="{Binding DisplayName}">
+                        <TextBlock Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis" MaxWidth="210" FontSize="12" Foreground="#DDECF5"/>
+                      </controls:IslandButton>
+                      <controls:IslandButton Grid.Column="1" Appearance="Quiet" Content="×" BorderThickness="0" Background="Transparent" Margin="4,0,0,0" CommandParameter="{Binding}" Click="OnRemoveFolder"
+                              ToolTip.Tip="Quitar acceso a carpeta" AutomationProperties.Name="Quitar acceso a carpeta" Padding="9,5"/>
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <TextBlock x:Name="QuickFolderStatus" FontSize="10" Foreground="#BED5E0"
+                         TextWrapping="Wrap" MaxWidth="290"/>
+            </StackPanel>
 
           <StackPanel x:Name="OverviewPage" Spacing="8">
             <Border x:Name="MediaPanel" IsVisible="False" CornerRadius="15"
                     Background="#19212C" BorderBrush="#344557" BorderThickness="1"
                     Padding="12" AutomationProperties.AutomationId="IslandMediaPanel">
               <StackPanel Spacing="12">
-              <StackPanel Orientation="Horizontal" Spacing="9">
-                <Border x:Name="MediaCoverFrame" Width="68" Height="68" IsVisible="False"
-                        CornerRadius="12" ClipToBounds="True" Background="#243747">
-                  <Image x:Name="MediaCover" Stretch="UniformToFill" Width="68" Height="68"/>
+              <Grid ColumnDefinitions="Auto,*">
+                <Border x:Name="MediaCoverFrame" Width="56" Height="56" IsVisible="False"
+                        CornerRadius="12" ClipToBounds="True" Background="#243747" Margin="0,0,9,0">
+                  <Image x:Name="MediaCover" Stretch="UniformToFill" Width="56" Height="56"/>
                 </Border>
-                <StackPanel Spacing="3" VerticalAlignment="Center">
+                <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
+                  <TextBlock x:Name="MediaStateText" Text="EN PAUSA" FontSize="9" FontWeight="SemiBold" Foreground="#8ED8CD" TextAlignment="Center"/>
                   <TextBlock x:Name="MediaTitle" FontSize="14" FontWeight="SemiBold"
-                             Foreground="#F7FBFF" TextTrimming="CharacterEllipsis" MaxWidth="196"/>
+                             Foreground="#F7FBFF" TextTrimming="CharacterEllipsis" TextAlignment="Center"/>
                   <TextBlock x:Name="MediaArtist" FontSize="11" Foreground="#9EAFBE"
-                             TextTrimming="CharacterEllipsis" MaxWidth="196"/>
+                             TextTrimming="CharacterEllipsis" TextAlignment="Center"/>
                 </StackPanel>
+              </Grid>
+              <StackPanel Spacing="5">
+                <ProgressBar x:Name="MediaProgress" Minimum="0" Maximum="100" Value="0"
+                             Height="4" Background="#344353" Foreground="#E0F7F5"
+                             AutomationProperties.Name="Progreso de reproducción (solo lectura)"/>
+                <Grid ColumnDefinitions="*,Auto">
+                  <TextBlock x:Name="MediaTime" Text="--:--" Foreground="#9FB3C3" FontFamily="Consolas" FontSize="10"/>
+                  <TextBlock x:Name="MediaDuration" Grid.Column="1" Text="--:--" Foreground="#9FB3C3" FontFamily="Consolas" FontSize="10"/>
+                </Grid>
               </StackPanel>
-              <ProgressBar x:Name="MediaProgress" Minimum="0" Maximum="100" Value="0"
-                           Height="4" Background="#344353" Foreground="#E0F7F5"/>
-              <StackPanel Orientation="Horizontal" Spacing="14" HorizontalAlignment="Center">
-                <Button Classes="premiumTransport" x:Name="MediaPreviousButton" Content="⏮" Click="OnMediaPrevious"
-                        Background="#213747" Foreground="#E8FAFC" Padding="12,4"
-                        AutomationProperties.AutomationId="IslandMediaPrevious"/>
-                <Button Classes="premiumPlay" x:Name="MediaPlayPauseButton" Content="▶" Click="OnMediaToggle"
-                        ToolTip.Tip="Reproducir o pausar"
-                        AutomationProperties.AutomationId="IslandMediaPlayPause"/>
-                <Button Classes="premiumTransport" x:Name="MediaNextButton" Content="⏭" Click="OnMediaNext"
-                        ToolTip.Tip="Pista siguiente"
-                        AutomationProperties.AutomationId="IslandMediaNext"/>
-                <TextBlock x:Name="MediaTime" Foreground="#B8CBDA" FontFamily="Consolas"
-                           FontSize="10" VerticalAlignment="Center"/>
-              </StackPanel>
+              <Grid ColumnDefinitions="*,*,*" HorizontalAlignment="Stretch">
+                <StackPanel Grid.Column="0" HorizontalAlignment="Center" Spacing="4">
+                  <controls:IslandButton Appearance="Transport" Width="40" Height="40" MinHeight="0" CornerRadius="20" Padding="0" x:Name="MediaPreviousButton" Click="OnMediaPrevious"
+                          ToolTip.Tip="{DynamicResource IslandMediaPreviousLabel}" AutomationProperties.Name="{DynamicResource IslandMediaPreviousLabel}"
+                          AutomationProperties.AutomationId="IslandMediaPrevious">
+                    <Path Width="17" Height="16" Stretch="Uniform" Fill="#E8FAFC" Data="M 1,1 L 4,1 L 4,15 L 1,15 Z M 16,1 L 5,8 L 16,15 Z"/>
+                  </controls:IslandButton>
+                  <TextBlock Text="{DynamicResource IslandMediaPreviousLabel}" Foreground="#A4B6C5" FontSize="10" HorizontalAlignment="Center"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" HorizontalAlignment="Center" Spacing="4">
+                  <controls:IslandButton Appearance="Primary" Width="48" Height="48" MinHeight="0" CornerRadius="24" Padding="0" x:Name="MediaPlayPauseButton" Click="OnMediaToggle"
+                          AutomationProperties.AutomationId="IslandMediaPlayPause">
+                    <Grid Width="18" Height="20">
+                      <Path x:Name="MediaPlayIcon" Fill="#14212B" Stretch="Uniform" Data="M 2,1 L 17,10 L 2,19 Z"/>
+                      <Path x:Name="MediaPauseIcon" Fill="#14212B" Stretch="Uniform" IsVisible="False" Data="M 2,1 L 7,1 L 7,19 L 2,19 Z M 11,1 L 16,1 L 16,19 L 11,19 Z"/>
+                    </Grid>
+                  </controls:IslandButton>
+                  <TextBlock x:Name="MediaPlayLabel" Text="Reproducir" Foreground="#C9DED9" FontSize="10" HorizontalAlignment="Center"/>
+                </StackPanel>
+                <StackPanel Grid.Column="2" HorizontalAlignment="Center" Spacing="4">
+                  <controls:IslandButton Appearance="Transport" Width="40" Height="40" MinHeight="0" CornerRadius="20" Padding="0" x:Name="MediaNextButton" Click="OnMediaNext"
+                          ToolTip.Tip="{DynamicResource IslandMediaNextLabel}" AutomationProperties.Name="{DynamicResource IslandMediaNextLabel}"
+                          AutomationProperties.AutomationId="IslandMediaNext">
+                    <Path Width="17" Height="16" Stretch="Uniform" Fill="#E8FAFC" Data="M 13,1 L 16,1 L 16,15 L 13,15 Z M 1,1 L 12,8 L 1,15 Z"/>
+                  </controls:IslandButton>
+                  <TextBlock Text="{DynamicResource IslandMediaNextLabel}" Foreground="#A4B6C5" FontSize="10" HorizontalAlignment="Center"/>
+                </StackPanel>
+              </Grid>
               </StackPanel>
             </Border>
             <Border x:Name="MediaEmptyState" CornerRadius="14" Background="#19212C"
                     BorderBrush="#334251" BorderThickness="1" Padding="16" IsVisible="False">
               <StackPanel Orientation="Horizontal" Spacing="9" HorizontalAlignment="Center">
-                <TextBlock Text="♫" Foreground="#C9EBE5" FontSize="21"/>
+                <Path Width="20" Height="22" Stroke="#B9E4DA" StrokeThickness="1.6" Stretch="Uniform" Data="M 7,17 L 7,4 L 19,1 L 19,14 M 7,4 L 19,1 L 19,5 L 7,8 M 7,17 C 7,21 1,22 1,19 C 1,16 7,15 7,17 M 19,14 C 19,18 13,19 13,16 C 13,13 19,12 19,14"/>
                 <TextBlock Text="Sin reproducción activa" Foreground="#A7BBCB"
                            VerticalAlignment="Center" FontSize="12"/>
               </StackPanel>
             </Border>
+            <Grid x:Name="MediaToolsRow" ColumnDefinitions="*,*" Margin="0,8,0,0">
+              <controls:IslandButton x:Name="LyricsButton" Grid.Column="0" Appearance="Quiet" Content="Letras" Click="OnToggleLyrics"
+                      Margin="0,0,4,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                      ToolTip.Tip="Mostrar letra sincronizada · LRCLIB" AutomationProperties.Name="Mostrar letras sincronizadas"/>
+              <controls:IslandButton x:Name="RecognitionButton" Grid.Column="1" Appearance="Quiet" Content="Reconocer canción" Click="OnOpenRecognition"
+                      Margin="4,0,0,0" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                      ToolTip.Tip="Micrófono o audio del PC · sin clave · requiere Internet"/>
+            </Grid>
             <Border x:Name="WeatherPanel" IsVisible="False" Background="#1B2833"
                     CornerRadius="13" BorderBrush="#314757" BorderThickness="1" Padding="12,9">
               <Grid ColumnDefinitions="*,Auto">
                 <StackPanel Spacing="3">
                   <TextBlock x:Name="WeatherText" FontSize="12" FontWeight="SemiBold"
-                             Foreground="#EAF8F5" TextTrimming="CharacterEllipsis" MaxWidth="235"/>
+                             Foreground="#EAF8F5" TextWrapping="Wrap" MaxWidth="235"/>
                   <TextBlock x:Name="WeatherDetail" FontSize="10" Foreground="#96AAB7"
-                             TextTrimming="CharacterEllipsis" MaxWidth="235"/>
+                             TextWrapping="Wrap" MaxWidth="235"/>
                 </StackPanel>
-                <Button Grid.Column="1" Classes="premiumQuiet" Content="↻" FontSize="17"
+                <controls:IslandButton Grid.Column="1" Appearance="Quiet" Content="↻" FontSize="17"
                         Click="OnWeatherRefresh" Padding="5,2" ToolTip.Tip="Actualizar clima"
                         AutomationProperties.AutomationId="IslandWeatherRefresh"/>
               </Grid>
@@ -191,33 +192,59 @@
                              Foreground="#F3F9FF" FontFamily="Consolas" FontSize="14" FontWeight="Bold"/>
                 </Grid>
                 <Grid x:Name="VolumeRow" ColumnDefinitions="32,*,32">
-                  <Button Grid.Column="0" Classes="premiumQuiet" Content="−" Click="OnVolumeDown"
+                  <controls:IslandButton Grid.Column="0" Appearance="Quiet" Width="30" Height="30" MinHeight="0" CornerRadius="15" Content="−" Click="OnVolumeDown"
                           Padding="0" FontSize="17" ToolTip.Tip="Bajar volumen"/>
-                  <Slider Grid.Column="1" Margin="12,0" Minimum="0" Maximum="100"
+                  <Slider x:Name="VolumeSlider" Grid.Column="1" Margin="12,0" Minimum="0" Maximum="100"
                           TickFrequency="1" IsSnapToTickEnabled="True"
                           Foreground="#D8FAF5" Background="#3A4957"
                           Value="{Binding MasterVolumePercent, Mode=TwoWay}"
-                          AutomationProperties.AutomationId="IslandVolumeSlider"/>
-                  <Button Grid.Column="2" Classes="premiumQuiet" Content="+" Click="OnVolumeUp"
+                          AutomationProperties.Name="Volumen del sistema" AutomationProperties.AutomationId="IslandVolumeSlider">
+                    <Slider.Template>
+                      <ControlTemplate TargetType="Slider">
+                        <Grid Height="32">
+                          <Border Background="#344952" Height="3" CornerRadius="2" Margin="8,0" VerticalAlignment="Center"/>
+                          <Track x:Name="PART_Track" Orientation="Horizontal" Minimum="{TemplateBinding Minimum}" Maximum="{TemplateBinding Maximum}" Value="{TemplateBinding Value, Mode=TwoWay}">
+                            <Track.DecreaseButton>
+                              <RepeatButton x:Name="PART_DecreaseButton" Focusable="False">
+                                <RepeatButton.Template><ControlTemplate><Border Background="#B7E5D8" Height="3" CornerRadius="2" VerticalAlignment="Center"/></ControlTemplate></RepeatButton.Template>
+                              </RepeatButton>
+                            </Track.DecreaseButton>
+                            <Track.IncreaseButton>
+                              <RepeatButton x:Name="PART_IncreaseButton" Focusable="False">
+                                <RepeatButton.Template><ControlTemplate><Border Background="Transparent"/></ControlTemplate></RepeatButton.Template>
+                              </RepeatButton>
+                            </Track.IncreaseButton>
+                            <Track.Thumb>
+                              <Thumb x:Name="PART_Thumb" Width="20" Height="32">
+                                <Thumb.Template><ControlTemplate><Border Background="Transparent"><Ellipse Width="12" Height="12" Fill="#CDEEE4" Stroke="#E3FFF6" StrokeThickness="1" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border></ControlTemplate></Thumb.Template>
+                              </Thumb>
+                            </Track.Thumb>
+                          </Track>
+                        </Grid>
+                      </ControlTemplate>
+                    </Slider.Template>
+                  </Slider>
+                  <controls:IslandButton Grid.Column="2" Appearance="Quiet" Width="30" Height="30" MinHeight="0" CornerRadius="15" Content="+" Click="OnVolumeUp"
                           Padding="0" FontSize="17" ToolTip.Tip="Subir volumen"/>
                 </Grid>
                 <Border Height="1" Background="#2D3A49"/>
                 <StackPanel x:Name="SoundMuteButtons" Orientation="Horizontal"
                             HorizontalAlignment="Center" Spacing="20">
-                  <StackPanel Spacing="5" HorizontalAlignment="Center">
-                    <Button x:Name="MicMuteButton" Classes="premiumTransport" Content="🎙"
+                  <StackPanel x:Name="MicControl" Spacing="5" HorizontalAlignment="Center">
+                    <controls:IslandAudioButton x:Name="MicMuteButton" IsMicrophone="True" IsMuted="{Binding IsInputMuted}" ReducedMotion="{Binding IslandVm.ReducedMotion}"
                             Command="{Binding ToggleInputMuteCommand}"
-                            ToolTip.Tip="{Binding InputMuteButtonText}" FontSize="18" Width="50"
-                            AutomationProperties.AutomationId="IslandMicMute"/>
-                    <TextBlock Text="Micrófono" FontSize="10" HorizontalAlignment="Center" Foreground="#AFC1CC"/>
+                            ToolTip.Tip="{Binding InputMuteButtonText}"
+                            IsEnabled="{Binding HasInputAudio}" AutomationProperties.AutomationId="IslandMicMute"/>
+                    <TextBlock Text="Micrófono" FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Center" Foreground="#E4EFF4"/>
+                    <TextBlock Text="{Binding IslandInputState}" FontSize="11" HorizontalAlignment="Center" Foreground="#B1C7D0"/>
                   </StackPanel>
-                  <StackPanel Spacing="5" HorizontalAlignment="Center">
-                    <Button x:Name="OutputMuteButton" Classes="premiumTransport"
-                            Content="{Binding OutputMuteIcon}"
+                  <StackPanel x:Name="OutputControl" Spacing="5" HorizontalAlignment="Center">
+                    <controls:IslandAudioButton x:Name="OutputMuteButton" IsMuted="{Binding IsOutputMuted}" ReducedMotion="{Binding IslandVm.ReducedMotion}"
                             ToolTip.Tip="{Binding OutputMuteButtonText}"
-                            Command="{Binding ToggleOutputMuteCommand}" Width="50"
-                            AutomationProperties.AutomationId="IslandOutputMute"/>
-                    <TextBlock Text="Altavoces" FontSize="10" HorizontalAlignment="Center" Foreground="#AFC1CC"/>
+                            Command="{Binding ToggleOutputMuteCommand}"
+                            IsEnabled="{Binding HasOutputAudio}" AutomationProperties.AutomationId="IslandOutputMute"/>
+                    <TextBlock Text="Salida de audio" FontSize="12" FontWeight="SemiBold" HorizontalAlignment="Center" Foreground="#E4EFF4"/>
+                    <TextBlock Text="{Binding IslandOutputState}" FontSize="11" HorizontalAlignment="Center" Foreground="#B1C7D0"/>
                   </StackPanel>
                 </StackPanel>
               </StackPanel>
@@ -225,73 +252,56 @@
           </StackPanel>
 <StackPanel x:Name="QuickPage" IsVisible="False" Spacing="8">
             <StackPanel x:Name="ProductivityPanel" IsVisible="True" Spacing="5">
-              <Button x:Name="ProductivityToggleButton" Classes="premiumAction" Content="{DynamicResource IslandOpenRoutines}"
+              <controls:IslandButton x:Name="ProductivityToggleButton" Appearance="Secondary" Content="{DynamicResource IslandOpenRoutines}"
                       Click="OnOpenRoutinesIsland" AutomationProperties.AutomationId="IslandRoutinesButton"/>
               <Border x:Name="ProductivityAlertFrame" IsVisible="False" Background="#42321E"
                       CornerRadius="7" Padding="8">
                 <StackPanel Orientation="Horizontal" Spacing="8">
                   <TextBlock x:Name="ProductivityAlertText" Foreground="#FFE4AE"
                              FontWeight="SemiBold" Width="220" TextTrimming="CharacterEllipsis"/>
-                  <Button Content="✓" Click="OnDismissProductivityAlert" Padding="6,2"
+                  <controls:IslandButton Content="✓" Click="OnDismissProductivityAlert" Padding="6,2"
                           AutomationProperties.AutomationId="IslandDismissAlert"/>
                 </StackPanel>
               </Border>
             </StackPanel>
 
-            <StackPanel x:Name="QuickActionsPanel" IsVisible="True" Spacing="6">
-              <StackPanel x:Name="ExplorerActionRow" Orientation="Horizontal" Spacing="8">
-                <Button x:Name="ExplorerButton" Classes="premiumAction" Content="▣  Explorador" Click="OnOpenExplorer"
-                        AutomationProperties.AutomationId="IslandOpenExplorer"
-                        Padding="9,5"/>
-                <Button x:Name="AddFolderButton" Classes="premiumAction" Content="＋  Carpeta" Click="OnAddFolder"
-                        AutomationProperties.AutomationId="IslandAddFolder"
-                        Padding="9,5"/>
-              </StackPanel>
-              <TextBlock x:Name="FolderCountLabel" Text="{Binding IslandVm.QuickFoldersLabel}" Foreground="#9BBED0" FontSize="11"/>
-              <ListBox x:Name="QuickFolderList" MaxHeight="80" MinHeight="32"
-                       Background="#1A2834" BorderBrush="#364A5C" BorderThickness="1"
-                       ItemsSource="{Binding IslandVm.QuickFolders}"
-                       AutomationProperties.AutomationId="IslandFolderList">
-                <ListBox.ItemTemplate>
-                  <DataTemplate>
-                    <TextBlock Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis"
-                               MaxWidth="265" Foreground="#DDECF5"/>
-                  </DataTemplate>
-                </ListBox.ItemTemplate>
-              </ListBox>
-              <StackPanel x:Name="FolderActionRow" Orientation="Horizontal" Spacing="6">
-                <Button Classes="premiumQuiet" Content="{DynamicResource IslandOpenFolder}" Click="OnOpenFolder"
-                        AutomationProperties.AutomationId="IslandOpenFolder"
-                        FontSize="11" Padding="8,4"/>
-                <Button Classes="premiumQuiet" Content="{DynamicResource IslandRemoveFolder}" Click="OnRemoveFolder"
-                        AutomationProperties.AutomationId="IslandRemoveFolder"
-                        FontSize="11" Padding="8,4"/>
-              </StackPanel>
-              <TextBlock x:Name="QuickFolderStatus" FontSize="10" Foreground="#BED5E0"
-                         TextWrapping="Wrap" MaxWidth="290"/>
-            </StackPanel>
-
             <StackPanel x:Name="FileShelfPanel" IsVisible="False" Spacing="6">
-              <Button Classes="premiumAction" Content="{Binding IslandVm.ShelfLabel}" Click="OnToggleShelf"
+              <controls:IslandButton Appearance="Secondary" Content="{Binding IslandVm.ShelfLabel}" Click="OnToggleShelf"
                       AutomationProperties.AutomationId="IslandShelfToggle"
                       Background="#1C3445" Foreground="#A6E8E4" Padding="10,6"/>
               <StackPanel x:Name="ShelfDetails" Spacing="6" IsVisible="False">
-                <Button Classes="premiumAction" Content="＋ Elegir archivo local" Click="OnShelfPick"
+                <controls:IslandButton Appearance="Secondary" Content="Elegir archivo local" Click="OnShelfPick"
                         AutomationProperties.AutomationId="IslandShelfPick"
                         Background="#274958" Foreground="#F0F7FE" Padding="8,5"/>
-                <ListBox x:Name="ShelfList" Height="95" ItemsSource="{Binding IslandVm.ShelfFiles}"
+                <ListBox x:Name="ShelfList" SelectionChanged="OnShelfSelectionChanged" Background="Transparent" BorderThickness="0" Foreground="#D2E7E8" ScrollViewer.VerticalScrollBarVisibility="Disabled" ScrollViewer.HorizontalScrollBarVisibility="Disabled" ItemsSource="{Binding IslandVm.ShelfFiles}"
                          AutomationProperties.AutomationId="IslandShelfList">
+                  <ListBox.ItemsPanel><ItemsPanelTemplate><StackPanel Spacing="3"/></ItemsPanelTemplate></ListBox.ItemsPanel>
+                  <ListBox.ItemContainerTheme>
+                    <ControlTheme TargetType="ListBoxItem">
+                      <Setter Property="Padding" Value="8,6"/>
+                      <Setter Property="Background" Value="Transparent"/>
+                      <Setter Property="Template">
+                        <ControlTemplate>
+                          <Border Background="{TemplateBinding Background}" CornerRadius="8" Padding="{TemplateBinding Padding}">
+                            <ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}"/>
+                          </Border>
+                        </ControlTemplate>
+                      </Setter>
+                      <Style Selector="^:pointerover"><Setter Property="Background" Value="#22343F"/></Style>
+                      <Style Selector="^:selected"><Setter Property="Background" Value="#234247"/></Style>
+                    </ControlTheme>
+                  </ListBox.ItemContainerTheme>
                   <ListBox.ItemTemplate>
                     <DataTemplate>
-                      <TextBlock Text="{Binding DisplayName}" Foreground="#D8EDFA"
+                      <TextBlock Text="{Binding DisplayName}" Foreground="#D8EDFA" FontSize="12" Margin="4,5"
                                  TextTrimming="CharacterEllipsis" MaxWidth="275"/>
                     </DataTemplate>
                   </ListBox.ItemTemplate>
                 </ListBox>
                 <StackPanel Orientation="Horizontal" Spacing="6">
-                  <Button Content="Abrir seleccionado" Click="OnShelfOpen"
+                  <controls:IslandButton x:Name="ShelfOpenButton" IsEnabled="False" Content="Abrir seleccionado" Click="OnShelfOpen"
                           AutomationProperties.AutomationId="IslandShelfOpen" Padding="9,4"/>
-                  <Button Content="Quitar de la lista" Click="OnShelfRemove"
+                  <controls:IslandButton x:Name="ShelfRemoveButton" IsEnabled="False" Appearance="Quiet" Content="Quitar de la lista" Click="OnShelfRemove"
                           AutomationProperties.AutomationId="IslandShelfRemove" Padding="9,4"/>
                 </StackPanel>
                 <TextBlock x:Name="ShelfStatusText" FontSize="10" Foreground="#B8CDD9"
@@ -299,7 +309,7 @@
               </StackPanel>
             </StackPanel>
             <StackPanel x:Name="ClipboardPanel" IsVisible="False" Spacing="5">
-              <Button Classes="premiumAction" Content="{DynamicResource IslandClipboardRead}" Click="OnReadClipboard"
+              <controls:IslandButton Appearance="Secondary" Content="{DynamicResource IslandClipboardRead}" Click="OnReadClipboard"
                       AutomationProperties.AutomationId="IslandClipboardRead"
                       Padding="8,5" Background="#20303B" Foreground="#C3E7ED"/>
               <TextBlock x:Name="ClipboardPreview" FontSize="10" Foreground="#B4D5DB"
@@ -307,13 +317,15 @@
             </StackPanel>
           </StackPanel>
 
+          </StackPanel>
+          </ScrollViewer>
           <StackPanel x:Name="IslandFooter" Orientation="Horizontal" Spacing="7" HorizontalAlignment="Center">
-            <Button x:Name="TestEyesButton" Content="{DynamicResource IslandTestEyes}"
+            <controls:IslandButton x:Name="TestEyesButton" Content="{DynamicResource IslandTestEyes}"
                     Click="OnTestEyes" Background="#263B4C" Foreground="#9CF9F0"
                     Padding="9,5" CornerRadius="7"/>
-            <Button x:Name="OpenDashboardButton" Classes="premiumQuiet" Content="{DynamicResource IslandOpenDashboard}" Click="OnOpenDashboard"
+            <controls:IslandButton x:Name="OpenDashboardButton" Appearance="Quiet" Content="{DynamicResource IslandOpenDashboard}" Click="OnOpenDashboard"
                     Background="#243E51" Foreground="#F3FBFF" Padding="15,5" CornerRadius="7"/>
-            <Button x:Name="HideIslandButton" Classes="premiumQuiet" Content="{DynamicResource IslandHideIsland}" Click="OnHideIsland"
+            <controls:IslandButton x:Name="HideIslandButton" Appearance="Quiet" Content="{DynamicResource IslandHideIsland}" Click="OnHideIsland"
                     ToolTip.Tip="Ocultar la isla"/>
           </StackPanel>
         </StackPanel>

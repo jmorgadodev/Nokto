@@ -38,6 +38,11 @@ public partial class MainViewModel
     };
     public string OutputMuteIcon => AudioDevices.OutputMuted switch { true => "🔇", false => "🔊", null => "—" };
     public bool IsOutputMuted => AudioDevices.OutputMuted == true;
+    public bool IsInputMuted => AudioDevices.InputMuted == true;
+    public string IslandInputStatus => AudioDevices.InputMuted switch { true => "Micrófono · silenciado", false => "Micrófono · activo", _ => "Micrófono · no disponible" };
+    public string IslandOutputStatus => AudioDevices.OutputMuted switch { true => "Salida · silenciada", false => "Salida · activa", _ => "Salida · no disponible" };
+    public string IslandInputState => AudioDevices.InputMuted switch { true => "Silenciado", false => "Activo", _ => "No disponible" };
+    public string IslandOutputState => AudioDevices.OutputMuted switch { true => "Silenciada", false => "Activa", _ => "No disponible" };
     public string MasterVolumeText => $"{MasterVolumePercent:0}%";
     public string MicHotkeyDisplay => _config.Settings.MicMuteHotkey.Replace("+", " + ");
     public string AudioHotkeyDisplay => _config.Settings.AudioMuteHotkey.Replace("+", " + ");
@@ -54,6 +59,11 @@ public partial class MainViewModel
         OnPropertyChanged(nameof(OutputMuteButtonText));
         OnPropertyChanged(nameof(OutputMuteIcon));
         OnPropertyChanged(nameof(IsOutputMuted));
+        OnPropertyChanged(nameof(IsInputMuted));
+        OnPropertyChanged(nameof(IslandInputStatus));
+        OnPropertyChanged(nameof(IslandOutputStatus));
+        OnPropertyChanged(nameof(IslandInputState));
+        OnPropertyChanged(nameof(IslandOutputState));
     }
 
     private void InitializeAudioControls()

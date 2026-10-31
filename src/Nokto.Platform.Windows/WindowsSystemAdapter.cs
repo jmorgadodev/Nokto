@@ -13,7 +13,7 @@ namespace Nokto.Platform.Windows;
 
 /// <summary>
 /// Adaptador de sistema para Windows 10/11 utilizando llamadas nativas Win32 (P/Invoke) y WASAPI.
-/// Totalmente libre de dependencias pesadas y optimizado para consumo mínimo de memoria (<25 MB RAM).
+/// Las acciones mutables respetan el modo de simulación; la energía tiene un backend verificable por separado.
 /// </summary>
 public sealed class WindowsSystemAdapter : ISystemAdapter
 {
@@ -38,14 +38,15 @@ public sealed class WindowsSystemAdapter : ISystemAdapter
     public IReadOnlyList<AudioEndpointInfo> GetInputAudioDevices() => _audioController.GetInputAudioDevices();
     public bool? GetOutputMute() => _audioController.GetOutputMute();
     public bool? GetInputMute() => _audioController.GetInputMute();
-    public bool ToggleOutputMute() => _audioController.ToggleOutputMute();
-    public bool ToggleInputMute() => _audioController.ToggleInputMute();
-    public bool SetInputMute(bool mute) => AudioDeviceProfileService.SetMute(true, mute);
+    public bool ToggleOutputMute() => IsDryRunMode ? !_audioController.GetOutputMute().GetValueOrDefault() : _audioController.ToggleOutputMute();
+    public bool ToggleInputMute() => IsDryRunMode ? !_audioController.GetInputMute().GetValueOrDefault() : _audioController.ToggleInputMute();
+    public bool SetInputMute(bool mute) => IsDryRunMode || AudioDeviceProfileService.SetMute(true, mute);
     public bool IsAppRunning(string executablePath) => Applications.InstalledAppsService.IsAppRunning(executablePath);
 
     public Task LaunchAppAsync(LaunchAppOptions options, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        if (IsDryRunMode) return Task.CompletedTask;
         if (!File.Exists(options.ExecutablePath)) throw new FileNotFoundException("No se encuentra la aplicación seleccionada.", options.ExecutablePath);
         var start = new ProcessStartInfo(options.ExecutablePath, options.Arguments)
         {
@@ -68,6 +69,7 @@ public sealed class WindowsSystemAdapter : ISystemAdapter
     }
     public void CloseForegroundApplication()
     {
+        if (IsDryRunMode) return;
         IntPtr window = NativeMethods.GetForegroundWindow();
         NativeMethods.GetWindowThreadProcessId(window, out uint processId);
         if (window != IntPtr.Zero && processId != (uint)Environment.ProcessId)
@@ -77,182 +79,25 @@ public sealed class WindowsSystemAdapter : ISystemAdapter
     public Task CloseApplicationsAsync(IReadOnlyList<ApplicationCloseTarget> targets, bool foregroundAtExecution,
         CancellationToken cancellationToken = default) => IsDryRunMode ? Task.CompletedTask :
         Applications.ApplicationWindowService.CloseAsync(targets, foregroundAtExecution, cancellationToken);
-    public bool SetDefaultAudioDevice(string deviceId, bool input) => _audioController.SetDefaultAudioDevice(deviceId, input);
+    public bool SetDefaultAudioDevice(string deviceId, bool input) => IsDryRunMode || _audioController.SetDefaultAudioDevice(deviceId, input);
 
     /// <inheritdoc />
     public bool IsDryRunMode { get; set; }
 
     /// <inheritdoc />
+    private readonly Power.WindowsPowerController _power = new(new Power.WindowsPowerBackend());
+
     public Task SetPowerStateAsync(PowerAction action, bool force = false, CancellationToken cancellationToken = default)
-    {
-        if (IsDryRunMode)
-        {
-            switch (action)
-            {
-                case PowerAction.Shutdown:
-                case PowerAction.Restart:
-                case PowerAction.Sleep:
-                case PowerAction.Hibernate:
-                    Console.WriteLine($"[DRY-RUN] Acción de energía simulada con éxito: {action} (Forzado: {force})");
-                    return Task.CompletedTask;
-            }
-        }
+        => _power.ExecuteAsync(action, force, IsDryRunMode, cancellationToken);
 
-        switch (action)
-        {
-            case PowerAction.Shutdown:
-                ExecuteShutdown(force, reboot: false);
-                break;
-
-            case PowerAction.Restart:
-                ExecuteShutdown(force, reboot: true);
-                break;
-
-            case PowerAction.Sleep:
-                ExecuteSuspend(hibernate: false, force: force);
-                break;
-
-            case PowerAction.Hibernate:
-                ExecuteSuspend(hibernate: true, force: force);
-                break;
-
-            case PowerAction.LockStation:
-                ExecuteLockStation();
-                break;
-
-            case PowerAction.Logoff:
-                ExecuteLogoff(force);
-                break;
-
-            case PowerAction.TurnOffMonitors:
-                return SetDisplayPowerAsync(turnOn: false, cancellationToken);
-
-            default:
-                throw new ArgumentOutOfRangeException(nameof(action), action, "Acción de energía no soportada.");
-        }
-
-        return Task.CompletedTask;
-    }
-
-    private static void ExecuteShutdown(bool force, bool reboot)
-    {
-        EnableShutdownPrivilege();
-
-        var flags = (reboot ? NativeConstants.ExitWindowsFlags.EWX_REBOOT : NativeConstants.ExitWindowsFlags.EWX_SHUTDOWN | NativeConstants.ExitWindowsFlags.EWX_POWEROFF);
-        if (force)
-        {
-            flags |= NativeConstants.ExitWindowsFlags.EWX_FORCEIFHUNG;
-        }
-
-        bool result = NativeMethods.ExitWindowsEx(flags, NativeConstants.SHTDN_REASON_FLAG_PLANNED);
-        if (!result)
-        {
-            // Fallback con InitiateSystemShutdownEx
-            NativeMethods.InitiateSystemShutdownEx(
-                null,
-                null,
-                0,
-                force,
-                reboot,
-                NativeConstants.SHTDN_REASON_FLAG_PLANNED);
-        }
-    }
-
-    private static void ExecuteSuspend(bool hibernate, bool force)
-    {
-        EnableShutdownPrivilege();
-        bool success = NativeMethods.SetSuspendState(hibernate, force, false);
-        if (!success)
-        {
-            throw new Win32Exception(Marshal.GetLastWin32Error(), "Fallo al cambiar estado de suspensión de Windows.");
-        }
-    }
-
-    private static void ExecuteLockStation()
-    {
-        bool success = NativeMethods.LockWorkStation();
-        if (!success)
-        {
-            throw new Win32Exception(Marshal.GetLastWin32Error(), "Fallo al bloquear la estación de trabajo.");
-        }
-    }
-
-    private static void ExecuteLogoff(bool force)
-    {
-        var flags = NativeConstants.ExitWindowsFlags.EWX_LOGOFF;
-        if (force)
-        {
-            flags |= NativeConstants.ExitWindowsFlags.EWX_FORCE;
-        }
-        NativeMethods.ExitWindowsEx(flags, NativeConstants.SHTDN_REASON_FLAG_PLANNED);
-    }
-
-    private static bool EnableShutdownPrivilege()
-    {
-        if (!NativeMethods.OpenProcessToken(
-                NativeMethods.GetCurrentProcess(),
-                NativeConstants.TOKEN_ADJUST_PRIVILEGES | NativeConstants.TOKEN_QUERY,
-                out IntPtr hToken))
-        {
-            return false;
-        }
-
-        try
-        {
-            if (!NativeMethods.LookupPrivilegeValue(null, NativeConstants.SE_SHUTDOWN_NAME, out LUID luid))
-            {
-                return false;
-            }
-
-            var tp = new TOKEN_PRIVILEGES
-            {
-                PrivilegeCount = 1,
-                Privileges = new LUID_AND_ATTRIBUTES
-                {
-                    Luid = luid,
-                    Attributes = NativeConstants.SE_PRIVILEGE_ENABLED
-                }
-            };
-
-            return NativeMethods.AdjustTokenPrivileges(hToken, false, ref tp, 0, IntPtr.Zero, IntPtr.Zero);
-        }
-        finally
-        {
-            NativeMethods.CloseHandle(hToken);
-        }
-    }
-
-    /// <inheritdoc />
     public Task SetDisplayPowerAsync(bool turnOn, CancellationToken cancellationToken = default)
-    {
-        if (!turnOn)
-        {
-            // Envío de señal SC_MONITORPOWER para apagar monitores
-            NativeMethods.SendMessage(
-                NativeConstants.HWND_BROADCAST,
-                NativeConstants.WM_SYSCOMMAND,
-                (IntPtr)NativeConstants.SC_MONITORPOWER,
-                (IntPtr)NativeConstants.MONITOR_OFF);
-        }
-        else
-        {
-            // Reactivación de pantallas
-            NativeMethods.SendMessage(
-                NativeConstants.HWND_BROADCAST,
-                NativeConstants.WM_SYSCOMMAND,
-                (IntPtr)NativeConstants.SC_MONITORPOWER,
-                (IntPtr)NativeConstants.MONITOR_ON);
-
-            // Genera micro-movimiento de ratón para despertar paneles resistentes
-            KeepAliveEngine.SendMouseJitter(1);
-        }
-
-        return Task.CompletedTask;
-    }
+        => _power.SetDisplayAsync(turnOn, IsDryRunMode, cancellationToken);
 
     /// <inheritdoc />
     public Task SetMasterVolumeFadeAsync(float targetVolume, TimeSpan duration, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (IsDryRunMode) return Task.CompletedTask;
         return _audioController.FadeVolumeAsync(targetVolume, duration, cancellationToken);
     }
 
@@ -265,6 +110,8 @@ public sealed class WindowsSystemAdapter : ISystemAdapter
     /// <inheritdoc />
     public Task SetMasterVolumeAsync(float volume, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (IsDryRunMode) return Task.CompletedTask;
         _audioController.SetMasterVolume(volume);
         return Task.CompletedTask;
     }
@@ -272,6 +119,8 @@ public sealed class WindowsSystemAdapter : ISystemAdapter
     /// <inheritdoc />
     public Task SetMuteAsync(bool mute, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (IsDryRunMode) return Task.CompletedTask;
         _audioController.SetMute(mute);
         return Task.CompletedTask;
     }
@@ -285,6 +134,7 @@ public sealed class WindowsSystemAdapter : ISystemAdapter
     /// <inheritdoc />
     public void SimulateKeepAlivePulse(KeepAliveMode mode)
     {
+        if (IsDryRunMode) return;
         KeepAliveEngine.EmitPulse(mode);
     }
 
@@ -296,6 +146,8 @@ public sealed class WindowsSystemAdapter : ISystemAdapter
         Action<string>? onActivityLogged,
         CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (IsDryRunMode) return Task.Delay(Timeout.Infinite, cancellationToken);
         return _keepAliveEngine.RunLoopAsync(mode, jitterMinSeconds, jitterMaxSeconds, onActivityLogged, cancellationToken);
     }
 
@@ -352,6 +204,8 @@ public sealed class WindowsSystemAdapter : ISystemAdapter
     /// <inheritdoc />
     public Task<byte[]> CaptureScreenAsync(bool stampMetadata = false, string? label = null, CancellationToken cancellationToken = default)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (IsDryRunMode) return Task.FromResult(Array.Empty<byte>());
         int x = NativeMethods.GetSystemMetrics(NativeConstants.SM_XVIRTUALSCREEN);
         int y = NativeMethods.GetSystemMetrics(NativeConstants.SM_YVIRTUALSCREEN);
         int cx = NativeMethods.GetSystemMetrics(NativeConstants.SM_CXVIRTUALSCREEN);

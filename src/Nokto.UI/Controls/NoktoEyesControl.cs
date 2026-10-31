@@ -2,6 +2,8 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
 using Nokto.Core.Models;
+using Avalonia.Threading;
+using System.Diagnostics;
 
 namespace Nokto.UI.Controls;
 
@@ -13,10 +15,68 @@ public sealed partial class NoktoEyesControl : Control
 {
     public static readonly StyledProperty<string> StyleIdProperty =
         AvaloniaProperty.Register<NoktoEyesControl, string>(nameof(StyleId), "Eyes");
-    static NoktoEyesControl() => AffectsRender<NoktoEyesControl>(StyleIdProperty);
+    public static readonly StyledProperty<int> EyeCountProperty =
+        AvaloniaProperty.Register<NoktoEyesControl, int>(nameof(EyeCount), 2);
+    public static readonly StyledProperty<string> StaticDotColorProperty =
+        AvaloniaProperty.Register<NoktoEyesControl, string>(nameof(StaticDotColor), "#74E5A3");
+    public string StaticDotColor { get => GetValue(StaticDotColorProperty); set => SetValue(StaticDotColorProperty, value); }
+    static NoktoEyesControl() => AffectsRender<NoktoEyesControl>(StyleIdProperty, EyeCountProperty, StaticDotColorProperty);
+    public int EyeCount { get => GetValue(EyeCountProperty); set => SetValue(EyeCountProperty, value); }
 
-    private double _gazeX, _gazeY, _blink;
+    private double _gazeX, _gazeY, _rightGazeX, _rightGazeY, _blink;
     private bool _sleeping;
+    private DispatcherTimer? _activationTimer;
+    private long _activationStart;
+    private double _activationAngle;
+    private double _activationGlow;
+    private double _activationProgress = 1;
+
+    public void PlayActivation()
+    {
+        if (EyeStyleCatalog.IsMinimal(StyleId)) return;
+        _sleeping = false;
+        _activationStart = Stopwatch.GetTimestamp();
+        _activationProgress = 0;
+        _activationTimer ??= new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
+        _activationTimer.Tick -= OnActivationTick;
+        _activationTimer.Tick += OnActivationTick;
+        _activationTimer.Start();
+    }
+
+    public void StopActivation()
+    {
+        _activationTimer?.Stop();
+        _activationAngle = _activationGlow = 0;
+        _activationProgress = 1;
+        InvalidateVisual();
+    }
+
+    private void OnActivationTick(object? sender, EventArgs e)
+    {
+        bool sharingan = EyeStyleCatalog.IsSharingan(StyleId);
+        double duration = sharingan ? 3.2 : EyeStyleCatalog.IsSeriesEye(StyleId) ? 2.2 : 1.45;
+        double t = Math.Clamp(Stopwatch.GetElapsedTime(_activationStart).TotalSeconds / duration, 0, 1);
+        double spin = Math.Clamp((t - .44) / .42, 0, 1);
+        double eased = spin * spin * (3 - 2 * spin);
+        _activationProgress = t;
+        _activationAngle = Math.PI * 2 * eased - (t < .18 ? .18 * Math.Sin(Math.PI * t / .18) : 0);
+        _activationGlow = .45 * Math.Sin(Math.PI * Math.Clamp((t - .12) / .55, 0, 1)) +
+            .55 * Math.Sin(Math.PI * Math.Clamp((t - .62) / .35, 0, 1));
+        InvalidateVisual();
+        if (t >= 1) { _activationTimer?.Stop(); _activationAngle = _activationGlow = 0; _activationProgress = 1; }
+    }
+
+    protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e)
+    {
+        StopActivation();
+        base.OnDetachedFromVisualTree(e);
+    }
+
+    protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change)
+    {
+        base.OnPropertyChanged(change);
+        if (change.Property == StyleIdProperty && EyeStyleCatalog.IsMinimal(StyleId)) StopActivation();
+    }
 
     public string StyleId
     {
@@ -28,13 +88,19 @@ public sealed partial class NoktoEyesControl : Control
     public (double X, double Y, double Blink, bool Sleeping) Pose => (_gazeX, _gazeY, _blink, _sleeping);
 
     public void SetPose(double x, double y, double blink, bool sleeping)
+        => SetBinocularPose(x, y, x, y, blink, sleeping);
+
+    public void SetBinocularPose(double x, double y, double rightX, double rightY, double blink, bool sleeping)
     {
         x = Math.Clamp(x, -1, 1);
         y = Math.Clamp(y, -1, 1);
+        rightX = Math.Clamp(rightX, -1, 1);
+        rightY = Math.Clamp(rightY, -1, 1);
         blink = Math.Clamp(blink, 0, 1);
         if (Math.Abs(_gazeX-x) < .008 && Math.Abs(_gazeY-y) < .008 &&
+            Math.Abs(_rightGazeX-rightX) < .008 && Math.Abs(_rightGazeY-rightY) < .008 &&
             Math.Abs(_blink-blink) < .008 && _sleeping==sleeping) return;
-        _gazeX=x; _gazeY=y; _blink=blink; _sleeping=sleeping;
+        _gazeX=x; _gazeY=y; _rightGazeX=rightX; _rightGazeY=rightY; _blink=blink; _sleeping=sleeping;
         InvalidateVisual();
     }
 
@@ -45,6 +111,29 @@ public sealed partial class NoktoEyesControl : Control
         if (s.Id == "None") return;
         double w = Bounds.Width, h = Bounds.Height;
         if (w <= 0 || h <= 0) return;
+        if (s.Id == "StaticDot")
+        {
+            var color = Color.TryParse(StaticDotColor, out var selected) ? selected : Color.Parse("#74E5A3");
+            double radius = Math.Min(w, h) * .18;
+            c.DrawEllipse(new SolidColorBrush(color), null, new Point(w / 2, h / 2), radius, radius);
+            return;
+        }
+        if (s.Id.StartsWith("Cinema", StringComparison.Ordinal)) { DrawCinemaEye(c, w, h); return; }
+        if (EyeStyleCatalog.IsSharingan(s.Id))
+        {
+            DrawSharingan(c, w, h);
+            return;
+        }
+        if (EyeStyleCatalog.IsSeriesEye(s.Id))
+        {
+            DrawSeriesEye(c, w, h, s.Id);
+            return;
+        }
+        if (s.Id == "Feline")
+        {
+            DrawFeline(c, w, h);
+            return;
+        }
         var light = Solid(s.Color);
         var iris = Solid(s.Iris);
         var ink = Solid("#0A1020");
@@ -53,6 +142,17 @@ public sealed partial class NoktoEyesControl : Control
         var stroke = new Pen(light, Math.Max(.85, h*.055), lineCap:PenLineCap.Round);
         double cx=w/2, cy=h/2;
         int variant = Math.Max(0, EyeStyleCatalog.IndexOf(s.Id) % 6);
+        double reaction = Math.Sin(Math.PI * _activationProgress);
+        double gesture = s.Pack switch
+        {
+            "Cyber" => Math.Sin(_activationProgress * Math.PI * 2) * reaction,
+            "Cute" => Math.Sin(_activationProgress * Math.PI * 3) * reaction,
+            "Creature" => Math.Sin(_activationProgress * Math.PI * 1.5) * reaction,
+            "Dark" => -.45 * reaction,
+            _ => Math.Sin(_activationProgress * Math.PI * 2) * reaction * .65
+        };
+        gesture *= (variant % 2 == 0 ? 1 : -1) * (.75 + variant * .05);
+        using var pulseOpacity = c.PushOpacity(s.Pack == "Minimal" ? 1 - .38 * reaction : 1);
 
         if (s.Pack=="Minimal")
         {
@@ -65,8 +165,12 @@ public sealed partial class NoktoEyesControl : Control
             }
             else if (s.Id=="DualDot")
             {
-                c.DrawEllipse(light,null,RectAt(cx-unit*.55,cy,unit*.38,unit*.38));
-                c.DrawEllipse(iris,null,RectAt(cx+unit*.55,cy,unit*.38,unit*.38));
+                if (EyeCount == 1) c.DrawEllipse(light,null,RectAt(cx,cy,unit*.38,unit*.38));
+                else
+                {
+                    c.DrawEllipse(light,null,RectAt(cx-unit*.55,cy,unit*.38,unit*.38));
+                    c.DrawEllipse(iris,null,RectAt(cx+unit*.55,cy,unit*.38,unit*.38));
+                }
             }
             else if (s.Id=="FocusDot")
             {
@@ -89,17 +193,27 @@ public sealed partial class NoktoEyesControl : Control
             return;
         }
 
-        double step=w/2;
+        int eyes = EyeCount == 1 ? 1 : 2;
+        double step=w/eyes;
         double erx=Math.Min(step*.41,h*.49), ery=Math.Min(h*.39,step*.42);
         double gazeRange=Math.Min(erx*.48,h*.25);
-        for(int eye=0;eye<2;eye++)
+        for(int eye=0;eye<eyes;eye++)
         {
             double x=step*(eye+.5), y=cy;
-            double openness=_sleeping ? .10 : Math.Clamp(1-_blink*.96, .045, 1);
+            double expressionBlink = s.Pack switch
+            {
+                "Creature" => .65 * reaction,
+                "Cute" => (.25 + Math.Max(0, Math.Sin(_activationProgress * Math.PI * 4)) * .55) * reaction,
+                "Dark" => .35 * reaction,
+                _ => Math.Max(0, Math.Sin(_activationProgress * Math.PI * 3)) * reaction * .45
+            };
+            double openness=_sleeping ? .10 : Math.Clamp(1-Math.Max(_blink, expressionBlink)*.96, .045, 1);
             if (s.Shape=="sleepy") openness*=.56;
             if (s.Shape=="happy") openness*=.50;
             double hh=Math.Max(.9,ery*openness);
-            double px=x+_gazeX*gazeRange,py=y+_gazeY*gazeRange*.78*openness;
+            double gx = eye == 0 ? _gazeX : _rightGazeX;
+            double gy = eye == 0 ? _gazeY : _rightGazeY;
+            double px=x+Math.Clamp(gx + gesture * .45, -1, 1)*gazeRange,py=y+gy*gazeRange*.78*openness;
             var outer=RectAt(x,y,erx,hh);
             if(openness < .16)
             {

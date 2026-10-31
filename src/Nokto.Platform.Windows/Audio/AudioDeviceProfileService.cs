@@ -12,7 +12,7 @@ public static class AudioDeviceProfileService
         IMMDeviceEnumerator? enumerator = null;
         try
         {
-            enumerator = (IMMDeviceEnumerator)new MMDeviceEnumeratorComObject();
+            enumerator = AudioCom.CreateEnumerator();
             var output = ReadEndpoint(enumerator, EDataFlow.eRender);
             var input = ReadEndpoint(enumerator, EDataFlow.eCapture);
             return new AudioDeviceProfile
@@ -40,7 +40,7 @@ public static class AudioDeviceProfileService
         IntPtr collectionPointer = IntPtr.Zero;
         try
         {
-            enumerator = (IMMDeviceEnumerator)new MMDeviceEnumeratorComObject();
+            enumerator = AudioCom.CreateEnumerator();
             var direction = input ? EDataFlow.eCapture : EDataFlow.eRender;
             string? defaultId = null;
             int hr = enumerator.GetDefaultAudioEndpoint(direction, ERole.eMultimedia, out defaultDevice);
@@ -99,7 +99,7 @@ public static class AudioDeviceProfileService
         object? volumeObject = null;
         try
         {
-            enumerator = (IMMDeviceEnumerator)new MMDeviceEnumeratorComObject();
+            enumerator = AudioCom.CreateEnumerator();
             var direction = input ? EDataFlow.eCapture : EDataFlow.eRender;
             int hr = enumerator.GetDefaultAudioEndpoint(direction, ERole.eMultimedia, out device);
             if (hr < 0) hr = enumerator.GetDefaultAudioEndpoint(direction, ERole.eConsole, out device);

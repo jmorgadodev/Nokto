@@ -2,7 +2,7 @@ $ErrorActionPreference = 'Stop'
 $root = Split-Path -Parent $PSScriptRoot
 $folder = Join-Path $env:TEMP ('nokto-settings-qa-' + [guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Force -Path (Join-Path $folder 'data') | Out-Null
-Copy-Item -LiteralPath (Join-Path $root 'artifacts\Nokto-Dev-Portable-x64\Nokto.Dev.exe') -Destination (Join-Path $folder 'Nokto.Dev.exe')
+Copy-Item -LiteralPath (Join-Path $root 'artifacts\Nokto-Dev-Portable-miradas\Nokto.Dev.exe') -Destination (Join-Path $folder 'Nokto.Dev.exe')
 New-Item -ItemType File -Path (Join-Path $folder 'portable.lock') | Out-Null
 $config = @{island=@{enabled=$false;startupMode='Dashboard';startupModeConfigured=$true};settings=@{language='es';theme='Dark';checkUpdatesOnStartup=$false;startMinimizedToTray=$false;startInWorkMode=$false};lanServer=@{enabled=$false}}
 [IO.File]::WriteAllText((Join-Path $folder 'data\config.json'),($config | ConvertTo-Json -Depth 8),[Text.UTF8Encoding]::new($false))

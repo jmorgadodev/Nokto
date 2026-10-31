@@ -17,12 +17,6 @@ internal enum ERole
 }
 
 [ComImport]
-[Guid("BCDE0395-E52F-467C-8E3D-C4579291692E")]
-internal class MMDeviceEnumeratorComObject
-{
-}
-
-[ComImport]
 [Guid("A95664D2-9614-4F35-A746-DE8DB63617E6")]
 [InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
 internal interface IMMDeviceEnumerator
@@ -169,7 +163,7 @@ public sealed class WasapiAudioController : IDisposable
         IMMDevice? device = null;
         try
         {
-            enumerator = (IMMDeviceEnumerator)new MMDeviceEnumeratorComObject();
+            enumerator = AudioCom.CreateEnumerator();
             int hr = enumerator.GetDefaultAudioEndpoint(EDataFlow.eRender, ERole.eMultimedia, out device);
             if (hr != 0 || device == null)
             {
@@ -296,10 +290,10 @@ public sealed class WasapiAudioController : IDisposable
             await timer.WaitForNextTickAsync(cancellationToken).ConfigureAwait(false);
 
             double progress = Math.Clamp(stopwatch.Elapsed.TotalMilliseconds / duration.TotalMilliseconds, 0.0, 1.0);
-            
+
             // Interpolación en espacio perceptual
             float currentPerceptual = (float)(initialPerceptual + (targetPerceptual - initialPerceptual) * progress);
-            
+
             // Regreso a espacio de ganancia escalar cuadrático
             float currentScalar = Math.Clamp(currentPerceptual * currentPerceptual, 0f, 1f);
 
