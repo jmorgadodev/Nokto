@@ -69,7 +69,6 @@ internal static class RegressionTests
             AdvancedQuotaRegressionTests.Run();
             Require(CabinRegressionTests.Run() == 0, "Fallaron las verificaciones de cabina y hardware.");
             Require(StationRegressionTests.Run() == 0, "Fallaron las verificaciones de GPU híbrida, audio y alerta de disco.");
-            AudioControlRegressionTests.Run();
             UpdateServiceTests.RunAll();
             return 0;
         }

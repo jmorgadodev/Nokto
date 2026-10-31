@@ -21,13 +21,7 @@
   <!-- This suite is a console runner, so dotnet test must explicitly execute it. -->
   <Target Name="BuildConsoleVerification" BeforeTargets="RunConsoleVerification" DependsOnTargets="Build" Condition="'$(VSTestNoBuild)' != 'true'" />
   <Target Name="RunConsoleVerification" AfterTargets="VSTest">
-    <Exec Command="&quot;$(TargetDir)$(AssemblyName).exe&quot; --installed-apps-test" />
-    <Exec Command="&quot;$(TargetDir)$(AssemblyName).exe&quot; --linear-workflow-test" />
-    <Exec Command="&quot;$(TargetDir)$(AssemblyName).exe&quot; --concurrency-test" />
-    <Exec Command="&quot;$(TargetDir)$(AssemblyName).exe&quot; --remote-test" />
-    <Exec Command="&quot;$(TargetDir)$(AssemblyName).exe&quot; --ai-tools-test" />
-    <Exec Command="&quot;$(TargetDir)$(AssemblyName).exe&quot; --regression-test" />
-    <Exec Command="&quot;$(TargetDir)$(AssemblyName).exe&quot; --auto-test" />
+    <Exec Command="&quot;$(TargetDir)$(AssemblyName).exe&quot; --release-qa" />
   </Target>
 
 </Project>

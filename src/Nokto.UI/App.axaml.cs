@@ -21,7 +21,9 @@ public partial class App : Application
     private ISystemAdapter? _systemAdapter;
     private MainViewModel? _mainViewModel;
     private MainWindow? _mainWindow;
+    private IslandWindow? _islandWindow;
     private TrayIcon? _trayIcon;
+    private Nokto.UI.Services.WindowsBalloonNotifier? _notificationService;
     private bool _trayUpdateFailureLogged;
     private bool _isExiting;
     private DispatcherTimer? _scheduleThemeTimer;
@@ -43,6 +45,8 @@ public partial class App : Application
             _systemAdapter = new WindowsSystemAdapter();
             var engine = new WorkflowEngine(_systemAdapter, persistence);
             _mainViewModel = new MainViewModel(_systemAdapter, engine, persistence);
+            _mainViewModel.IslandVm.Changed += () => Dispatcher.UIThread.Post(SyncIslandVisibility);
+            _mainViewModel.IslandVm.Productivity.AlertRaised += HandleProductivityAlert;
 
             var config = persistence.LoadConfig();
 
@@ -54,16 +58,24 @@ public partial class App : Application
             {
                 _isExiting = true;
                 _scheduleThemeTimer?.Stop();
+                _islandWindow?.Close();
+                _islandWindow = null;
                 // Remove the shell icon before releasing services: it must not outlive its UI.
                 _trayIcon?.Dispose();
                 _trayIcon = null;
                 TrayIcon.SetIcons(this, new TrayIcons());
+                _mainViewModel.IslandVm.Productivity.AlertRaised -= HandleProductivityAlert;
+                _notificationService?.Dispose();
+                _notificationService = null;
+                _mainViewModel.IslandVm.Productivity.Dispose();
                 _mainViewModel.Dispose();
                 engine.Dispose();
                 _systemAdapter?.Dispose();
             };
 
             _mainWindow = new MainWindow();
+            if (Nokto.Core.BuildIdentity.IsDevelopment)
+                _mainWindow.Title = "Nokto 2.0 DEV — Consola local de pruebas";
             try
             {
                 _mainWindow.Icon = DynamicTrayIconRenderer.RenderAppWindowIcon();
@@ -74,22 +86,45 @@ public partial class App : Application
 
             ConfigureTrayIcon(desktop);
 
-            // Tarea 4: Soporte de argumentos de línea de comandos (Modo Sigiloso / Modo Trabajo)
-            bool isSilent = config.Settings.StartMinimizedToTray || desktop.Args?.Any(a =>
+            // La seleccion de inicio de Isla Dinamica es independiente de Iniciar con Windows.
+            // Los argumentos --tray / --silent prevalecen para permitir pruebas sin ventanas.
+            bool forcedTray = desktop.Args?.Any(a =>
                 a.Equals("--silent", StringComparison.OrdinalIgnoreCase) ||
                 a.Equals("--tray", StringComparison.OrdinalIgnoreCase) ||
                 a.Equals("-s", StringComparison.OrdinalIgnoreCase)) == true;
+            string launchMode = config.Island?.StartupModeConfigured == true
+                ? config.Island.StartupMode
+                : config.Settings.StartMinimizedToTray ? "Tray" : "Dashboard";
+            if (config.Island?.Enabled != true && (launchMode == "Island" || launchMode == "Both"))
+                launchMode = "Dashboard";
+            bool isSilent = forcedTray || launchMode is "Island" or "Tray";
 
             bool startWork = config.Settings.StartInWorkMode || desktop.Args?.Any(a =>
                 a.Equals("--work", StringComparison.OrdinalIgnoreCase) ||
                 a.Equals("-w", StringComparison.OrdinalIgnoreCase)) == true;
 
-            if (!isSilent)
+            if (isSilent)
+            {
+                // Avalonia puede abrir MainWindow automaticamente al iniciar el lifetime.
+                // Ocultarla en Opened evita que aparezca de forma persistente en Isla/Bandeja.
+                bool hideInitialOpen = true;
+                _mainWindow.Opened += (_, _) =>
+                {
+                    if (!hideInitialOpen) return;
+                    hideInitialOpen = false;
+                    _mainWindow.Hide();
+                };
+            }
+            else
             {
                 _mainWindow.Show();
                 _mainWindow.WindowState = WindowState.Maximized;
                 _mainWindow.Activate();
             }
+
+            if (!forcedTray && config.Island?.Enabled == true &&
+                (launchMode == "Island" || launchMode == "Both"))
+                ShowIslandWindow();
 
             if (startWork)
             {
@@ -111,6 +146,7 @@ public partial class App : Application
             var dict = (ResourceDictionary)AvaloniaXamlLoader.Load(new Uri(uri));
             Resources.MergedDictionaries.Clear();
             Resources.MergedDictionaries.Add(dict);
+            _mainViewModel?.IslandVm.UpdateLanguage(language);
         }
         catch (Exception ex)
         {
@@ -179,7 +215,7 @@ public partial class App : Application
     {
         var menu = new NativeMenu();
 
-        var itemOpen = new NativeMenuItem("Abrir Nokto");
+        var itemOpen = new NativeMenuItem(Nokto.Core.BuildIdentity.IsDevelopment ? "Abrir Nokto DEV" : "Abrir Nokto");
         itemOpen.Click += (s, e) => ShowMainWindow();
 
         var itemDisplays = new NativeMenuItem("🌙 Apagar Monitores Ahora");
@@ -197,7 +233,7 @@ public partial class App : Application
         var itemFinish = new NativeMenuItem("⏹ Finalizar todas las rutinas");
         itemFinish.Click += (s, e) => _mainViewModel?.FinishTask();
 
-        var itemExit = new NativeMenuItem("Salir de Nokto");
+        var itemExit = new NativeMenuItem(Nokto.Core.BuildIdentity.IsDevelopment ? "Salir de Nokto DEV" : "Salir de Nokto");
         itemExit.Click += (s, e) =>
         {
             _mainWindow?.ForceCloseApplication();
@@ -205,6 +241,13 @@ public partial class App : Application
         };
 
         menu.Items.Add(itemOpen);
+        var itemIsland = new NativeMenuItem("Mostrar / ocultar Isla Dinámica");
+        itemIsland.Click += (_, _) =>
+        {
+            if (_mainViewModel != null)
+                _mainViewModel.IslandVm.Enabled = !_mainViewModel.IslandVm.Enabled;
+        };
+        menu.Items.Add(itemIsland);
         menu.Items.Add(new NativeMenuItemSeparator());
         menu.Items.Add(itemDisplays);
         menu.Items.Add(itemPostpone);
@@ -214,7 +257,7 @@ public partial class App : Application
 
         _trayIcon = new TrayIcon
         {
-            ToolTipText = "Nokto — Sistema de Energía (Listo)",
+            ToolTipText = Nokto.Core.BuildIdentity.IsDevelopment ? "Nokto 2.0 DEV (local)" : "Nokto — Sistema de Energía (Listo)",
             Menu = menu,
             IsVisible = true,
             Icon = DynamicTrayIconRenderer.RenderTrayIcon(TrayIconVisualState.Idle)
@@ -236,12 +279,14 @@ public partial class App : Application
                         try
                         {
                             _trayIcon.Icon = DynamicTrayIconRenderer.RenderTrayIcon(state, progress, secondsRemaining, pulsePhase);
-                            _trayIcon.ToolTipText = state switch
-                            {
-                                TrayIconVisualState.InProgress => $"Nokto: {progress:F0}% ({secondsRemaining}s)",
-                                TrayIconVisualState.Completed => "Nokto: Tarea completada con éxito",
-                                _ => "Nokto — Sistema de Energía (Listo)"
-                            };
+                            _trayIcon.ToolTipText = Nokto.Core.BuildIdentity.IsDevelopment
+                                ? "Nokto 2.0 DEV — Entorno local"
+                                : state switch
+                                {
+                                    TrayIconVisualState.InProgress => $"Nokto: {progress:F0}% ({secondsRemaining}s)",
+                                    TrayIconVisualState.Completed => "Nokto: Tarea completada con éxito",
+                                    _ => "Nokto — Sistema de Energía (Listo)"
+                                };
                         }
                         catch (System.ComponentModel.Win32Exception ex)
                         {
@@ -261,6 +306,36 @@ public partial class App : Application
                 });
             };
         }
+    }
+
+    private void SyncIslandVisibility()
+    {
+        if (_isExiting || _mainViewModel == null) return;
+        if (_mainViewModel.IslandVm.Enabled)
+            ShowIslandWindow();
+        else
+        {
+            _islandWindow?.Close();
+            _islandWindow = null;
+        }
+    }
+
+    private void ShowIslandWindow()
+    {
+        if (_isExiting || _mainViewModel == null) return;
+        _islandWindow ??= new IslandWindow(_mainViewModel.IslandVm, _mainViewModel);
+        _islandWindow.ApplySettings();
+        if (!_islandWindow.IsVisible)
+            _islandWindow.Show();
+    }
+
+    private void HandleProductivityAlert(Nokto.Core.Models.IslandProductivityAlert alert)
+    {
+        if (_mainViewModel?.IslandVm.ShowWindowsNotifications != true || _isExiting) return;
+        _notificationService ??= new Nokto.UI.Services.WindowsBalloonNotifier();
+        string text = _mainViewModel.IslandVm.PrivacyMode
+            ? "Hay un aviso pendiente en Nokto." : alert.Message;
+        _notificationService.Show("Nokto · Recordatorio", text);
     }
 
     public void ShowMainWindow()

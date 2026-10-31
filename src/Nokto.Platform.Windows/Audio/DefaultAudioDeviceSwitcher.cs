@@ -12,7 +12,7 @@ internal static class DefaultAudioDeviceSwitcher
         IntPtr policy = IntPtr.Zero;
         try
         {
-            enumerator = (IMMDeviceEnumerator)new MMDeviceEnumeratorComObject();
+            enumerator = AudioCom.CreateEnumerator();
             var previous = new string?[3];
             var direction = input ? EDataFlow.eCapture : EDataFlow.eRender;
             for (int role = 0; role < 3; role++)

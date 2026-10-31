@@ -4,7 +4,7 @@
   <b>Español</b>
 </p>
 
-# Nokto 🌒
+# Nokto 2.0 🌒
 
 > **Consola de Operaciones, Telemetría y Automatización de Escritorio Local**
 
@@ -12,9 +12,21 @@
 [![Platform](https://img.shields.io/badge/Platform-Windows%2011%20%7C%2010%20(x64)-0078D6)](https://github.com/jmorgadodev/Nokto)
 [![Runtime](https://img.shields.io/badge/.NET-8.0-512BD4)](https://dotnet.microsoft.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Privacy](https://img.shields.io/badge/Telemetr%C3%ADa%20Externa-0%25%20(100%25%20Offline)-success)](https://github.com/jmorgadodev/Nokto)
+[![Local primero](https://img.shields.io/badge/Local-primero-success)](PRIVACY.md)
 
-**Nokto** es una consola de operaciones local para Windows diseñada para desarrolladores y estaciones de trabajo. Unifica en una sola cabina el monitoreo de telemetría de hardware en tiempo real, la gestión de audio y micrófonos de baja latencia (WASAPI), la orquestación de rutinas automatizadas concurrentes y el control remoto desde dispositivos móviles a través de tu red Wi-Fi local, con **cero dependencias en la nube y total respeto a la privacidad**.
+**Nokto 2.0** incorpora una isla dinámica personalizable a su consola de Windows. Reúne música, audio, carpetas, avisos diarios y cuotas opcionales de Codex, junto con telemetría, rutinas concurrentes y control LAN. La automatización funciona localmente; clima, letras, reconocimiento musical y búsqueda de actualizaciones utilizan servicios en línea. Consulta [privacidad y flujo de datos](PRIVACY.md).
+
+## Novedades de 2.0
+
+- Uno o dos ojos con seguimiento independiente del cursor, un punto estático de color elegible o ningún indicador. Movimiento reducido y animación ajustable al monitor.
+- Hasta tres módulos independientes: combina cualquier contenido, arrástralo para ordenar y elige qué mostrar a cada lado del indicador centrado.
+- Reproductor, letras sincronizadas cuando estén disponibles y reconocimiento al pulsar desde micrófono o audio del PC, sin introducir claves API.
+- Volumen con arrastre y rueda, silencio de entrada/salida, accesos a carpetas, bandeja local de archivos y lectura manual del portapapeles.
+- Avisos elegibles de volumen, brillo, Mayús, Bloq Num, idioma, red, cargador, dispositivos de audio, micrófono, batería, ahorro energético, Bluetooth emparejado y unidades de almacenamiento.
+- Temporizador, cronómetro, Pomodoro, alarmas, recordatorios y cuota Codex con horas de restablecimiento (requiere Codex instalado y sesión iniciada).
+- Recuperación de configuración, correcciones de pausa/cancelación y mejoras del actualizador. [Notas de versión](releases/v2.0.0.md).
+
+<p align="center"><img src="site/assets/screenshots/island-music.png" alt="Isla de Nokto con música y controles de audio de demostración" width="332"></p>
 
 <p align="center">
   <img src="assets/screenshots/01_cockpit_telemetria.png" alt="Cabina de Operaciones Nokto" width="100%">
@@ -44,7 +56,7 @@ $setup = "$env:TEMP\Nokto-Setup.exe"; irm https://github.com/jmorgadodev/Nokto/r
 
 | Formato | Enlace de Descarga | Descripción |
 | :--- | :--- | :--- |
-| **Portable (x64)** | [⬇ Nokto-Portable-x64.exe](https://github.com/jmorgadodev/Nokto/releases/latest/download/Nokto-Portable-x64.exe) | Ejecutable único (~65 MB). Cero instalación; ideal para pendrives o uso aislado. |
+| **Portable (x64)** | [⬇ Nokto-Portable-x64.exe](https://github.com/jmorgadodev/Nokto/releases/latest/download/Nokto-Portable-x64.exe) | Ejecutable autónomo; sin instalación. Conserva la carpeta `data/` junto al programa. |
 | **Instalador (x64)** | [⬇ Nokto-Setup-x64.exe](https://github.com/jmorgadodev/Nokto/releases/latest/download/Nokto-Setup-x64.exe) | Asistente de instalación estándar con accesos directos y desinstalador limpio. |
 
 ---
@@ -54,7 +66,7 @@ $setup = "$env:TEMP\Nokto-Setup.exe"; irm https://github.com/jmorgadodev/Nokto/r
 ### 1. Cabina de Operaciones y Telemetría de Hardware
 - **Métricas en tiempo real:** Supervisión pasiva de CPU (usuario/kernel), memoria RAM, GPU híbrida (NVIDIA + Intel Iris Xe) y tasa de transferencia de red sin impacto en rendimiento.
 - **Control WASAPI de Audio y Micrófonos:** Conmutación instantánea de dispositivos predeterminados, control maestro de volumen y silenciamiento de micrófono con atajos globales (`Ctrl+Shift+M` / `Ctrl+Shift+S`).
-- **Radar de Herramientas IA:** Detección de entornos locales de desarrollo (Codex Desktop, Antigravity IDE, Claude, OpenCode) y monitoreo de cuotas locales en disco.
+- **Radar de Herramientas IA:** Detección de herramientas locales compatibles. La isla consulta los límites de Codex mediante su app-server local, sin leer archivos de credenciales.
 
 <p align="center">
   <img src="assets/screenshots/01_cockpit_telemetria.png" alt="Cabina de Operaciones y Telemetría" width="100%">
@@ -110,7 +122,8 @@ $setup = "$env:TEMP\Nokto-Setup.exe"; irm https://github.com/jmorgadodev/Nokto/r
 ## 🔒 Privacidad y Arquitectura
 - **0% Telemetría Externa:** Nokto no realiza llamadas a servicios de analítica de terceros ni almacena datos en servidores externos.
 - **Conexión Local Exclusiva:** El servidor móvil solo responde a peticiones originadas dentro de la red LAN (`192.168.x.x`, `10.x.x.x`, `127.0.0.1`).
-- **Persistencia Aislada:** Las configuraciones se guardan localmente en formato JSON dentro del directorio de la aplicación (`data/`).
+- **Persistencia local:** el portable guarda `data/` junto al ejecutable; una instalación nueva usa normalmente `%APPDATA%\Nokto`. Las instalaciones antiguas que ya tenían datos junto al programa conservan esa ubicación.
+- **Servicios opcionales en línea:** clima, letras, reconocimiento y búsqueda de actualizaciones tienen flujos separados, descritos en [PRIVACY.md](PRIVACY.md).
 
 ---
 

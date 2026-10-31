@@ -1,0 +1,164 @@
+# Nokto 2.0 — Desarrollo local y criterios de la isla dinámica
+
+## Iteración de páginas y controles — 26 octubre 2026
+- Implementado en DEV: orden intercambiable de páginas, rueda en Sonido protegida sobre el deslizador, contracción al abandonar la isla, iconos de sonido y revisión del iris CrimsonRing.
+- Build Release y pruebas existentes de clima manual y catálogo aprobados; quedan pendientes prueba visual y de interacción real, persistencia del orden, DPI y aprobación estética.
+- Clima automático por ubicación autorizado el 27 de octubre de 2026 e implementado como opción voluntaria con permiso de Windows y envío de coordenadas a Open-Meteo. Prueba simulada aprobada; falta verificación real del permiso y la consulta. Ciudad manual sin cambios.
+- Sharingan rediseñado con ojos completos y tres tomoe vectoriales, activación giratoria al expandir y vista de prueba en Ajustes. Capturas estáticas verificadas en galería y tamaño compacto; animación en ventana real y aprobación visual pendientes.
+- Variantes Uchiha añadidas con patrones vectoriales y activación por clic; catálogo de 53 diseños más modo vacío. Render de 12 variantes y giro con dispatcher activo probados; quedan revisión de fidelidad, prueba en ventana real y aceptación del usuario. La lista no se declara exhaustiva.
+- Ajuste posterior: iris sin formas laterales, activación con transición de tomoe a Mangekyō y clic directo sobre los ojos; prueba con dispatcher verifica movimiento y regreso a reposo, pendiente QA interactiva.
+- Nueva revisión: despertar con anticipación, progresión de tomoe y transformación al Mangekyō, basado en investigación de referencias de animación. Cuatro fases capturadas y retorno a reposo verificados; fidelidad artística y uso real pendientes de aprobación.
+- Selector persistente de uno o dos ojos, Rinnegan de Madara, felino y reacciones por familia; pruebas de render y respuesta con ambas cantidades para los 54 estilos. Calidad artística y validación interactiva continúan pendientes.
+- Seguimiento binocular independiente hacia el puntero y cuatro apariencias adicionales inspiradas en anime; falta validar movimiento en ventana real, DPI y fidelidad artística.
+- Ojos centrados; matriz de elementos para combinar funciones en cada página, con scroll para contenido largo; carpetas abren desde su nombre y se quitan con X. Persistencia y render probados localmente con datos temporales; falta QA interactiva de Explorador, rueda y DPI.
+- Tras revisión del usuario, la galería refleja uno/dos ojos y el selector está junto a ella. Módulos 01–03 disponen de activación y acción rápida para mover audio completo; sus casillas siguen admitiendo combinaciones libres. Controles de Ajustes probados fuera de pantalla; pendiente aceptación interactiva.
+- Reproductor redibujado con controles vectoriales y etiquetas, estado y tiempo transcurrido/total. Estados simulados, matriz y centrado con reloj verificados fuera de pantalla; faltan sesión real y aprobación visual. Las capturas del usuario mostraban la interfaz anterior.
+
+Estado: desarrollo en la rama local `feature/nokto-2-dev`. Sin publicación pública hasta validación y autorización.
+
+## Fase 0 — Portable Dev (hecha)
+Entorno aislado de `master`, configuración local, identidad `Nokto.Dev.exe`, compilación portable y primeras pruebas.
+
+## Fase 1 — Inicio, núcleo y rendimiento (en progreso)
+Inicio configurable: dashboard, isla, ambos o bandeja. No cargar servicios de UI innecesarios al usar la isla. Telemetría compartida y sin actualizaciones automáticas DEV.
+
+## Fase 2 — Motor visual y de interacciones de Isla Dinámica (en progreso)
+Referencias oficiales: Apple HIG Live Activities (https://developer.apple.com/design/human-interface-guidelines/live-activities) y ActivityKit (https://developer.apple.com/documentation/ActivityKit/displaying-live-data-with-live-activities).
+
+- Presentaciones propias adaptadas a Windows: mínima, compacta y expandida; no copiar recursos gráficos de Apple.
+- Transiciones continuas al expandir/contraer; conservar posición de elementos y evitar saltos.
+- Expandir por hover opcional y/o clic; acceso por teclado; controles interactivos en la vista expandida.
+- Permitir invertir una animación a medio recorrido desde su geometría actual.
+- Movimiento reducido configurable y estado en reposo totalmente estático.
+- Motor de animación activado solamente durante transiciones/eventos; sin bucle de renderizado permanente.
+- Frecuencia adaptable de actualización de animaciones: detección automática del modo ACTIVO del monitor que contiene la isla, mediante MonitorFromPoint/GetMonitorInfo/EnumDisplaySettings de Windows.
+- Ajuste propio de la pestaña Isla Dinámica > Rendimiento y animaciones: Automático (predeterminado), 60, 120, 144, 165 y 240 FPS objetivos. Normalizar modos reportados de 239/240 y 59/60 Hz.
+- El temporizador de animación se activa solo durante la transición; al contraerse y entrar en reposo se detiene. Jamás mantener 240 actualizaciones por segundo en reposo.
+- Objetivo: transición fluida ~200–350 ms a la frecuencia detectada; el objetivo de ticks en la UI no garantiza FPS renderizados, ya que Avalonia/Windows pueden imponer límites de compositor. Medir FPS reales/latencia antes de dar por aprobada la fase.
+- Soportar pantallas múltiples, escalado DPI, cambios de monitor, ocultación en pantalla completa, accesibilidad y prioridad de eventos.
+- Pruebas: 100 alternancias hover/leave/clic, múltiples resoluciones, pantalla completa, latencia y medición CPU/GPU/RAM en reposo.
+
+## Fase 3 — Ojos y personalidad (iteración gráfica ampliada; revisión visual pendiente)
+- La galería es un selector clicable en cuadrícula: 42 tarjetas con contorno del estilo activo, filtro por siete familias y selección guardada inmediatamente. La lista anterior se conserva como alternativa.
+- Segunda pasada vectorial: firma específica por cada uno de los 36 estilos de ojos (ornamentos, visores, órbitas, rasgos, luces y geometrías), más seis indicadores minimalistas.
+- Tamaño de isla configurable del 80 al 140 % en la pestaña Isla Dinámica, escalando ventana y contenido junto con la posición anclada.
+- Catálogo de 42 variantes vectoriales originales en 7 packs: Minimal, Nokto Classic, Cyber, Anime Inspired (sin copiar iconografía de franquicias), Creature, Cute y Dark.
+- Selector con traducciones ES/EN y vista previa dentro de la pestaña independiente Isla Dinámica.
+- Motor local de dibujo sin recursos externos: solo se renderiza el estilo seleccionado.
+- Movimiento de pupilas vinculado a la posición del cursor, con suavizado corto, sensibilidad configurable, seguimiento opcional. Lectura con GetCursorPos, sin hooks ni almacenamiento de coordenadas.
+- Parpadeo aleatorio breve, opcional, con ritmo no constante; sueño al pasar 60 s sin mover el cursor, si está habilitado.
+- Movimiento reducido y estilos Minimal no generan bucles de interpolación ni sondeos de cursor. Los ojos normales sondean a baja frecuencia (180 ms activos/650 ms dormidos), y renderizan a alta frecuencia solo durante eventos.
+- Pendientes para aprobación visual: asegurar que las 42 variantes realmente resulten suficientemente distintas en 26 px; pruebas de DPI/multimonitor, recuperación de suspensión, FPS reales, perfiles GPU, animaciones contextualizadas con música/alarmas (dependerán de fases 5/6).
+- Pruebas de catálogo y de persistencia, cuatro modos de arranque y no regresión básica antes del siguiente avance.
+
+## Fase 4 — Sistema Windows y controles rápidos (primera integración)
+- Integrado en la expansión: mute de micrófono y salida, subir/bajar volumen en pasos de 5 %, información de batería y estado de conexión; reutiliza el mismo MainViewModel y WindowsSystemAdapter de la consola (sin controlador WASAPI duplicado).
+- Opciones independientes para mostrar u ocultar controles de audio, batería y red desde Isla Dinámica.
+- Pendiente: iconos refinados y estado real de cada control, brillo compatible, accesos rápidos, integración con modo trabajo y validación en varios dispositivos.
+
+## Correcciones visuales tras revisión del usuario (Fases 2 y 3)
+- Reloj configurado por defecto para mostrarse solo en expansión; opciones Siempre / Expandir / Nunca, con migración automática del bool antiguo.
+- Catálogo de 42 estilos con nueva geometría vectorial por familia: adornos, cejas, anillos, sensores, párpados y pupilas de mayor recorrido.
+- Corrección de arranque de animación: la captura de ratón se activa al abrir la ventana, sin depender de IsVisible prematuro.
+- Seguimiento más sensible y reacción animada de miradas; botón Probar animación dentro del panel expandido. Nada de animaciones continuas en estilos mínimos o con movimiento reducido.
+- Galería de 42 diseños accesible desde la pestaña, con previsualización grande para revisión.
+- Requiere todavía aprobación visual en equipo real; pruebas de fluidez/FPS, contraste en ambos modos y consumo son pendientes y no se deben presentar como aprobadas.
+
+## Fase 5 — Multimedia (integración funcional en prueba)
+- Servicio Windows Media Control (GSMTC) sin dependencias externas ni captura de audio. Se conecta solo si la isla está abierta y Multimedia habilitado; se desconecta al cerrar/deshabilitar.
+- Observador por eventos para sesiones actuales, metadatos, reproducción y línea de tiempo, sin sondeo permanente de Windows.
+- Cuando el reproductor informa datos: título, artista, carátula en memoria limitada a 1,5 MB, progreso y estado, anterior/reproducir-pausar/siguiente según permisos del reproductor.
+- Al expandir, altura adaptativa: solo muestra el panel si existe sesión. Progreso local cada segundo solamente si se reproduce y la isla está expandida; cero temporizadores de progreso en reposo.
+- Selector independiente Isla Dinámica > Multimedia: mostrar controles al expandir; título en compacto solo cuando está reproduciendo (opt-in, apagado por defecto).
+- Validación preliminar: API de Windows detectó una sesión real, cargó carátula y se desconectó correctamente sin cambiar reproducción ni volumen.
+- Pendiente: aprobar diseño en pantalla, estados ante cambios de reproductor, multimedia con varios reproductores a la vez, barra de búsqueda interactiva, letras (fuentes, permisos y derechos), sincronización de eventos complejos, consumo e interacción teclado; no presentar pendiente como completado.
+
+## Fase 6 — Productividad (núcleo implementado; pruebas visuales pendientes)
+- Estado de productividad local aislado en `IslandProductivityState`, serializado en el archivo de configuración del portable.
+- Cuenta atrás de 5/15/25 min, pausar, continuar y reiniciar; cronómetro con acumulación en pausas.
+- Pomodoro con minutos de enfoque (1–180) y descanso (1–60) configurables. Al vencer se cambia a la siguiente fase **detenida**; el usuario decide si la inicia.
+- Alarmas de una sola vez o diarias en hora local HH:mm (máx. 12); reprogramación diaria al completar sin duplicar alertas.
+- Tareas locales (máx. 30) con avisos opcionales a 15/60 min, completar primera pendiente y límite de 120 caracteres.
+- Avisos visuales en isla activa y aviso sonoro de Windows configurable; no capturan pantallas, ubicación ni red.
+- Reloj de servicio independiente del tamaño de la isla, activo al haber un temporizador/cronómetro/Pomodoro o alarmas/recordatorios futuros; parado sin trabajo.
+- En reposo la isla permanece compacta; el panel de productividad se despliega bajo demanda. Mostrar cuenta atrás en compacto es opt-in.
+- **Limitaciones honestas:** no puede despertar Windows suspendido ni avisar si la aplicación está cerrada; una alarma sin isla visible puede sonar, pero no aparece una notificación del sistema. Falta notificación nativa de Windows, notas persistentes, hidratación, agenda/calendario, gestión de múltiples tareas y alarmas desde UI, accesibilidad y pruebas con suspensión/horarios de verano.
+- Pruebas: motor con reloj simulado para pausas, reinicios, vencimientos, alarmas diarias, tareas, serialización JSON; UI automatizada en copia DEV temporal; pendiente QA final de ventanas y regresión.
+
+
+## Fase 7 — Archivos, clima y notificaciones (inicio)
+- Bandeja de archivos locales opt-in en la expansión de la isla: botón para elegir archivo del equipo con selector nativo, máximo seis referencias, abrir solo al pulsar y quitar sin borrar el archivo.
+- Persistir exclusivamente rutas de archivos seleccionadas; sin copiar contenidos, sincronización remota, escaneo de carpetas ni vigilancia de archivos.
+- Portapapeles manual con opt-in implementado sin lectura en segundo plano ni almacenamiento de contenido; vista previa se borra al cambiar página o contraer.
+- Pendiente: arrastrar y soltar si el usuario lo desea, clima consultado con ciudad/caché y frecuencia controlada, notificaciones nativas de Windows y modos de privacidad (pantalla compartida).
+- QA inicial: galería por clic y persistencia verificados desde UIA; ajuste 130 % guardado; escalado 80 % (compacta 88×39), 100 % (110×48) y 140 % (154×67) capturados, hover a 140 % reparado con verificación física del cursor. El 140 % expande a 464×464 con reproductor activo.
+- QA shelf: archivo sintético en copia temporal; bandeja oculta al no habilitar, expandida con selección de archivo, abierta sin recorte. No se abrió ningún archivo real durante pruebas.
+- Pendiente antes de cerrar: picker con teclado real, archivos inexistentes, rutas protegidas, DPI/multimonitor, privacidad al compartir pantalla, clima y notificaciones nativas, medición de recursos y aceptación visual del usuario.
+
+## Iteración de navegación y gestor — revisión 26 octubre 2026
+- Modo Sin indicador agregado como 43.ª opción: píldora vacía sin ojos ni LED, interacción preservada y tamaño compacto más discreto. La galería conserva 42 diseños visibles.
+- Pestaña Isla Dinámica distribuida en dos columnas, con galería a ancho completo, controles distribuidos y sin formularios de productividad.
+- Sección Productividad del gestor principal en Rutinas: temporizador, cronómetro, Pomodoro, alarmas y tareas (datos existentes migran sin eliminación). La isla abre este gestor y muestra avisos, no configura cada herramienta.
+- La isla expandida dispone de tres páginas navegables con flechas y rueda configurable: Resumen (multimedia/estado), Sonido (mute y slider del volumen maestro existente) y Accesos (rutinas, Explorador, hasta ocho carpetas elegidas manualmente, archivos locales y clipboard voluntario).
+- Fase 7: lectura opcional del texto del portapapeles exclusivamente al pulsar, vista previa efímera sin histórico ni lectura de fondo. Permanece desactivada por defecto.
+- QA de esta iteración: selección por galería, Sin indicador y tamaño 130 % persistidos; rueda real y flechas pasan por tres secciones sin cerrar; volumen visible sin tocar el audio real; capturas de Ajustes a dos columnas y del gestor de Rutinas.
+- El gestor de Productividad se probó en copia aislada: inicia temporizador y crea tarea, ambos persistidos en el config temporal. Alarmas/Pomodoro/cronómetro conservan su motor de pruebas anterior.
+- QA final: páginas y rueda probadas a 80 % (cápsula 51×39), 100 % (64×39) y 140 % (89×44) usando Sin indicador. Capturas visuales de Sonido y Accesos sin recortes; slider presente sin cambios forzados al volumen del equipo.
+- Los cuatro modos de arranque se comprobaron de nuevo (Island, Dashboard, Both, Tray). Suite de productividad y catálogo de 43 opciones pasaron; gestor inicia temporizador y guarda tarea desde su pestaña.
+- Pendientes: contraste y adaptación de tipografía a nuevos tamaños extremos, localización EN de textos pendientes, DPI/multimonitor, accesibilidad y reducción de memoria en reposo.
+- Pendientes: clima por ciudad con caché, notificaciones nativas, accesibilidad y medir consumo en reposo/animación.
+
+## Fase 8 — Ajustes y localización
+Pestaña autónoma Isla Dinámica junto a Ajustes, ES/EN, persistencia, accesibilidad y preferencias de módulos.
+
+## Fase 9 — Optimización y QA
+Pruebas de regresión de Nokto actual, memoria, CPU, GPU, despertar, monitor adicional y seguridad.
+
+## Fase 10 — Empaquetado y actualización
+Portable e instalador, verificaciones de integridad, rollback, conservación de datos y publicación v2.0 autorizada.
+
+**Nota:** La primera iteración del motor ya cuenta con transición de geometría bajo demanda; no equivale a las pruebas de rendimiento ni a la experiencia final de Apple. Pendientes: seguimiento de ojos, opciones de animación avanzadas, pantalla completa, DPI/multimonitor, selección de actividades y acceso completo por teclado.
+
+## Fase 7 — Estado de entrega funcional 26-10-2026
+- Bandeja de archivos locales, carpetas y portapapeles opt-in integrados, sin subir ni copiar contenido.
+- Clima por ciudad introducida manualmente (Open-Meteo), geocodificación por nombre y país opcional, caché de 30 minutos, recarga manual y cancelación al desactivar/ocultar. La suite de clima con HttpClient simulado pasa, pero depende de conectividad/servicio externo en uso real.
+- Notificaciones opcionales por icono de bandeja de Windows para avisos de productividad, sin instalador adicional; falta validar un aviso visible de principio a fin en el sistema del usuario (Windows puede suprimirlo).
+- Modo privacidad para ocultar portapapeles, rutas, detalles multimedia, clima y estado de red.
+- Configuración granular por página: Resumen, Sonido y Accesos; cada una con controles seleccionables; pie Nokto/Ocultar opcional. Si no se elige ninguna página, Sonido es el fallback de navegación.
+- Diseño premium propio inspirado en jerarquía visual de Apple Music, con botones circulares, contraste y controles diferenciados; la aprobación estética final corresponde al usuario.
+- Corrección de rueda: se consume sobre Sonido y controles de lista/deslizador, con limitación de repetición y navegación con flechas; QA de 100 % confirmó que no salta de página ni cambia volumen.
+- QA: build Release, pruebas de clima con caché, productividad, galería y configuración; captura de Resumen/Sonido/Accesos. Pendiente prueba real de notificaciones, regresión final de inicio de 4 modos con esta compilación, alta DPI/multimonitor, accesibilidad y perfilado de RAM.
+
+## Extensión de música y avisos — 30-10-2026
+- Implementado en DEV: letras LRCLIB por botón, panel compañero animado, línea sincronizada y salto con soporte del reproductor. Caché y cancelación; sin letra/instrumental/error explícitos.
+- Reconocimiento preparado para micrófono y audio del PC mediante AudD; inactivo sin clave por elección del usuario. Confirmación por captura de 8 s, cancelación y credencial en la bóveda Windows.
+- HUD transitorio para volumen/brillo WMI, Bloq Mayús/idioma, cargador, Internet y dispositivos de salida. Preferencias por categoría y privacidad; retorno automático al ojo.
+- Verificación sintética de servicios y UI, más regresión de módulos y transición. Pendientes pruebas voluntarias de captura con clave propia, proveedores reales, compatibilidad de reproductores, hardware, DPI y fluidez del panel dividido. No equiparar con fidelidad 1:1 a Nusa ni a iOS.
+
+### Reconocimiento sin clave — revisión 30-10-2026
+El modo predeterminado ya no depende de una clave AudD: huella acústica C# local y consulta no oficial a Shazam por Internet. Micrófono y audio del PC bajo botón explícito de 8 s; AudD avanzado opcional. Licencia ISC de la adaptación incluida. Verificado con servicios simulados, normalización PCM/float y reconocimiento real de una muestra pública de 8 s sin grabar el equipo. Pendientes pruebas voluntarias de micrófono/loopback, ruido, compatibilidad de dispositivos y estabilidad del endpoint no oficial.
+
+### Estabilidad de audio — 30-10-2026
+Corregida caída InvalidCastException del perfil de audio al coexistir con NAudio. Reproducida antes y verificada después con prueba nativa de solo lectura en STA/MTA y ambos órdenes de activación. Se conserva el registro original; pendiente confirmar estabilidad durante uso habitual del portable.
+
+### Audio pulido sin reorganizar el menú — 30-10-2026
+Botones con plantilla circular propia, estados vectoriales de silencio, etiquetas separadas y feedback de color acotado. Los avisos no empujan el menú abierto; protección contra eventos propios o tardíos evita reabrir la isla tras salir. Vistazos externos conservados en compacto. Pruebas de estados y geometría, captura inspeccionada y regresiones UI aprobadas; validación de uso real pendiente.
+
+### Diseño integral y visibilidad de música — 30-10-2026
+Familia visual común para todas las acciones y secciones de la isla, reproductor con utilidades integradas, deslizador coherente, bandeja completa sin virtualización y paneles musicales con el mismo material. Letras y Reconocer tienen ajustes de visibilidad independientes y persistentes; se libera el espacio al ocultarlos. Criterios en DESIGN.md. Escenas de los tres módulos inspeccionadas y regresiones UI aprobadas; aprobación visual del usuario pendiente. Eliminado únicamente el crash.log con los dos errores de audio corregidos, a petición del usuario.
+
+### Reconocimiento dentro de la isla y columnas equilibradas — 30-10-2026
+Corregidas regresiones reportadas en capturas: Reconocer sustituye el módulo dentro de la cápsula, permite volver y se cancela al contraer; ya no abre una ventana aparte. Distribución por altura útil y partición equilibrada que conserva el orden elegido; mensajes vacíos de carpetas no reservan espacio. Prueba reproduce ambos fallos antes de corregir; escenas sintéticas de menú combinado, escala alta y reconocimiento integrado. Pendientes aceptación visual y captura voluntaria con hardware real.
+
+### Letras: recuperación ante fallo de consulta directa — 30-10-2026
+Caso PXNDX reproducido: LRCLIB /get da 503 mientras /search sí entrega coincidencia sincronizada. Búsqueda alternativa única, selección por título/artista/duración compatible, caché de éxitos y respeto de Retry-After sin evadir 429. Mensajes distinguen servicio/red/cobertura y permiten Reintentar. Servicio compilado verificado en vivo: 42 líneas para la pista de la captura; pruebas sintéticas de selección, límites, cancelación y estados. La cobertura sigue dependiendo del catálogo de LRCLIB, no del de Spotify.
+
+### Reconocimiento, avisos y cabecera útil — 30-10-2026
+- Reconocimiento sin selector de proveedor/claves; onda del audio real ya capturado, barrido, cancelación y respeto de movimiento reducido. Cliente AudD y acceso a credenciales retirados.
+- Trece avisos configurables, observadores por selección, migración de grupos previos y nuevos apagados. Añadidos micrófono, Num, batería, ahorro, Bluetooth y unidades externas. Validación sintética de estados y UI; compatibilidad física de dispositivos pendiente.
+- Notificaciones de aplicaciones y correos enumerados como pendientes de integración/permiso de Windows, no activos en el portable actual.
+- Cuota Codex asignable a módulos/cabecera: sesión local, porcentaje restante, ventana real y fechas de restablecimiento. Lector compilado probado contra cuenta real por protocolo oficial de solo lectura; sin chats ni resets. Caché cinco minutos y datos desconocidos explícitos.
+- Orden por arrastre con marcador y alternativa de teclado, persistencia y validación de origen. Un módulo elimina navegación/contador; varios usan total real. Cabecera configurable con información contextual y ojo centrado. Capturas revisadas y regresiones aprobadas; aceptación de interacción cotidiana pendiente.
+
+### Ajustes listos para el usuario — 30-10-2026
+Retirada la sección de integraciones pendientes y sus entradas de la vista/catálogo; se muestran solo los trece avisos implementados. El trabajo futuro permanece en documentación de desarrollo. Build y prueba de avisos aprobados, captura revisada y portable canónico actualizado conservando data.

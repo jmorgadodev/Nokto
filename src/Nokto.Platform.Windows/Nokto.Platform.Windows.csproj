@@ -11,6 +11,8 @@
 
   <ItemGroup>
     <ProjectReference Include="..\Nokto.Core\Nokto.Core.csproj" />
+    <PackageReference Include="NAudio.Wasapi" Version="2.2.1" />
+    <PackageReference Include="System.Management" Version="8.0.0" />
   </ItemGroup>
 
 </Project>

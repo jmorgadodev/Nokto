@@ -15,6 +15,18 @@ internal static class Program
     {
         try
         {
+            if (args.Contains("--media-refresh-probe")) { MediaRefreshConcurrencyProbe.RunAsync().GetAwaiter().GetResult(); return 0; }
+            if (args.Contains("--codex-quota-smoke")) { IslandCodexProbe.Smoke(); return 0; }
+            if (args.Contains("--audio-interop-probe"))
+            {
+                AudioInteropProbe.Run();
+                return 0;
+            }
+            if (args.Length >= 2 && args[0] == "--recognition-reference-probe")
+            {
+                RecognitionAudioProbe.ReferenceAsync(args[1], args.Contains("--online")).GetAwaiter().GetResult();
+                return 0;
+            }
             if (args.Length >= 2 && args[0] == "--manual-window-probe")
             {
                 ManualWindowProbeApp.Token = args[1];
@@ -22,6 +34,44 @@ internal static class Program
                 return AppBuilder.Configure<ManualWindowProbeApp>().UsePlatformDetect().StartWithClassicDesktopLifetime(args);
             }
             AppBuilder.Configure<App>().UsePlatformDetect().SetupWithoutStarting();
+            if (args.Contains("--island-interaction-safety-probe")) { IslandInteractionSafetyProbe.Run(); return 0; }
+            if (args.Contains("--island-codex-probe")) { IslandCodexProbe.Run(); return 0; }
+            if (args.Contains("--island-notices-probe"))
+            {
+                RecognitionMotionProbe.Run(); IslandNoticesProbe.Run();
+                return 0;
+            }
+            if (args.Contains("--island-composition-probe"))
+            {
+                IslandCompositionProbe.Run();
+                return 0;
+            }
+            if (args.Contains("--island-harmony-probe"))
+            {
+                IslandHarmonyProbe.Run();
+                return 0;
+            }
+            if (args.Contains("--island-audio-presentation-probe"))
+            {
+                IslandAudioPresentationProbe.Run();
+                return 0;
+            }
+            if (args.Contains("--island-music-probe"))
+            {
+                RecognitionAudioProbe.Run();
+                IslandMusicProbe.Run();
+                return 0;
+            }
+            if (args.Contains("--eye-preview"))
+            {
+                EyePreviewProbe.Run();
+                return 0;
+            }
+            if (args.Contains("--island-layout-probe"))
+            {
+                IslandLayoutProbe.Run();
+                return 0;
+            }
             if (args.Contains("--generate-screenshots"))
             {
                 ScreenshotGenerator.Run();

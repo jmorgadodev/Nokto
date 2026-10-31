@@ -29,11 +29,22 @@ internal sealed class WorkflowRunner : IDisposable
     private Stopwatch? _executionStopwatch;
     private bool _isDisposed;
     private DateOnly? _lastScheduledDate;
+    private TaskCompletionSource? _resumeSignal;
+    private TaskCompletionSource<long> _pauseSignal = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private EngineState _stateBeforePause;
 
     public EngineState CurrentState
     {
         get { lock (_stateLock) return _currentState; }
-        private set { lock (_stateLock) _currentState = value; }
+        private set
+        {
+            lock (_stateLock)
+            {
+                if (_resumeSignal is not null && value is not (EngineState.Idle or EngineState.Completed or EngineState.Failed))
+                    _stateBeforePause = value;
+                else _currentState = value;
+            }
+        }
     }
 
     public bool IsDryRunMode
@@ -104,13 +115,16 @@ internal sealed class WorkflowRunner : IDisposable
             bool recurring = preset.Trigger.Type == TriggerType.ScheduledTime && GetBoolParam(preset.Trigger.Parameters, "repeat", true);
             do
             {
+            // A pause can arrive after WorkflowEngine registers the execution
+            // but before its Task.Run starts this runner.
+            await WaitWhilePausedAsync(ct);
             // 1. FASE DE EVALUACIÓN DE DISPARADOR
             CurrentState = EngineState.WaitingTrigger;
             _currentPhase = "TriggerEvaluation";
             NotifyStateChanged();
 
             await EvaluateTriggerAsync(preset.Trigger, ct);
-            ct.ThrowIfCancellationRequested();
+            await WaitWhilePausedAsync(ct);
 
             // A manual multi-action plan can show its grace notice before any selected action.
             int graceSeconds = ExtractGraceSeconds(preset.TerminalAction);
@@ -125,7 +139,7 @@ internal sealed class WorkflowRunner : IDisposable
 
             await ExecutePipelineAsync(preset.Actions is null ? preset.Pipeline : preset.Actions.Cast<PipelineStepDefinition>().ToList(), ct,
                 preserveOrder: preset.Actions is not null);
-            ct.ThrowIfCancellationRequested();
+            await WaitWhilePausedAsync(ct);
 
             // 3. FASE DE PERIODO DE GRACIA (SI APLICA)
             if (preset.Actions is null && !graceBeforeActions && graceSeconds > 0 && preset.TerminalAction.Type != TerminalActionType.None)
@@ -134,8 +148,9 @@ internal sealed class WorkflowRunner : IDisposable
             // 4. ACCIÓN TERMINAL
             _currentPhase = "TerminalAction";
             NotifyStateChanged();
-            ct.ThrowIfCancellationRequested();
+            await WaitWhilePausedAsync(ct);
             if (preset.Actions is null) await ExecuteTerminalActionAsync(preset.TerminalAction, ct);
+            await WaitWhilePausedAsync(ct);
 
             CurrentState = EngineState.Completed;
             _currentPhase = "Completed";
@@ -151,7 +166,7 @@ internal sealed class WorkflowRunner : IDisposable
             ct.ThrowIfCancellationRequested();
             _executionStopwatch.Stop();
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {
             CurrentState = EngineState.Idle;
             _currentPhase = "Finalized";
@@ -181,6 +196,11 @@ internal sealed class WorkflowRunner : IDisposable
             _gracePeriodActive = false;
             _gracePeriodRemainingSeconds = 0;
             _monitoredProcess = null;
+            lock (_stateLock)
+            {
+                _resumeSignal?.TrySetResult();
+                _resumeSignal = null;
+            }
         }
     }
 
@@ -280,13 +300,12 @@ internal sealed class WorkflowRunner : IDisposable
     private async Task WaitForScheduledTimeAsync(TriggerDefinition trigger, CancellationToken ct)
     {
         DateTimeOffset target = RoutineSchedule.NextOccurrence(trigger, DateTimeOffset.Now, TimeZoneInfo.Local, _lastScheduledDate);
-        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
         while (DateTimeOffset.Now < target)
         {
             _timeRemainingSeconds = (int)Math.Ceiling((target - DateTimeOffset.Now).TotalSeconds);
             _progressPercentage = 0;
             NotifyStateChanged();
-            await timer.WaitForNextTickAsync(ct);
+            await DelayWhileRunningAsync(TimeSpan.FromSeconds(1), ct);
         }
         ct.ThrowIfCancellationRequested();
         _lastScheduledDate = DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(target, TimeZoneInfo.Local).DateTime);
@@ -295,7 +314,6 @@ internal sealed class WorkflowRunner : IDisposable
     private async Task RunCountdownAsync(int seconds, CancellationToken ct)
     {
         _timeRemainingSeconds = seconds;
-        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
 
         int total = seconds;
         while (_timeRemainingSeconds > 0)
@@ -304,7 +322,7 @@ internal sealed class WorkflowRunner : IDisposable
             _progressPercentage = Math.Clamp(((double)(total - _timeRemainingSeconds) / total) * 100.0, 0, 100);
             NotifyStateChanged();
 
-            await timer.WaitForNextTickAsync(ct);
+            await DelayWhileRunningAsync(TimeSpan.FromSeconds(1), ct);
             Interlocked.Decrement(ref _timeRemainingSeconds);
         }
 
@@ -336,7 +354,7 @@ internal sealed class WorkflowRunner : IDisposable
                         UseShellExecute = true
                     });
                     Log($"Archivo lanzado con éxito: '{launchFilePath}'");
-                    await Task.Delay(2000, ct); // Dar tiempo al proceso para arrancar
+                    await DelayWhileRunningAsync(TimeSpan.FromSeconds(2), ct); // Dar tiempo al proceso para arrancar
                 }
             }
             catch (Exception ex)
@@ -345,7 +363,6 @@ internal sealed class WorkflowRunner : IDisposable
             }
         }
 
-        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(2));
 
         bool observedRunning = false;
         int absenceCounter = 0;
@@ -361,7 +378,7 @@ internal sealed class WorkflowRunner : IDisposable
 
         while (!ct.IsCancellationRequested)
         {
-            await timer.WaitForNextTickAsync(ct);
+            await DelayWhileRunningAsync(TimeSpan.FromSeconds(2), ct);
 
             bool isRunning = IsProcessRunning(cleanName);
 
@@ -409,14 +426,13 @@ internal sealed class WorkflowRunner : IDisposable
 
     private async Task WaitForSustainedLoadAsync(double thresholdPercentage, int durationSeconds, CancellationToken ct)
     {
-        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(2));
         int sustainedSeconds = 0;
 
         Log($"Supervisando carga sostenida < {thresholdPercentage}% durante {durationSeconds}s...");
 
         while (!ct.IsCancellationRequested)
         {
-            await timer.WaitForNextTickAsync(ct);
+            await DelayWhileRunningAsync(TimeSpan.FromSeconds(2), ct);
 
             var metrics = _systemAdapter.GetCurrentMetrics();
             if (metrics.CpuUsagePercentage <= thresholdPercentage)
@@ -441,12 +457,11 @@ internal sealed class WorkflowRunner : IDisposable
 
     private async Task WaitForNetworkThroughputAsync(double thresholdKBs, int durationSeconds, CancellationToken ct)
     {
-        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(2));
         int sustainedSeconds = 0;
 
         while (!ct.IsCancellationRequested)
         {
-            await timer.WaitForNextTickAsync(ct);
+            await DelayWhileRunningAsync(TimeSpan.FromSeconds(2), ct);
 
             var metrics = _systemAdapter.GetCurrentMetrics();
             double combinedSpeed = metrics.NetworkDownKBs + metrics.NetworkUpKBs;
@@ -474,11 +489,10 @@ internal sealed class WorkflowRunner : IDisposable
     private async Task WaitForUserIdleAsync(int idleMinutes, CancellationToken ct)
     {
         int targetSeconds = idleMinutes * 60;
-        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(2));
 
         while (!ct.IsCancellationRequested)
         {
-            await timer.WaitForNextTickAsync(ct);
+            await DelayWhileRunningAsync(TimeSpan.FromSeconds(2), ct);
 
             var metrics = _systemAdapter.GetCurrentMetrics();
             if (metrics.UserIdleSeconds >= targetSeconds)
@@ -495,12 +509,11 @@ internal sealed class WorkflowRunner : IDisposable
     private async Task WaitForAudioSilenceAsync(int silenceThresholdSeconds, float thresholdPeak, CancellationToken ct)
     {
         int continuousSilenceSeconds = 0;
-        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
         _timeRemainingSeconds = silenceThresholdSeconds;
 
         while (!ct.IsCancellationRequested)
         {
-            await timer.WaitForNextTickAsync(ct);
+            await DelayWhileRunningAsync(TimeSpan.FromSeconds(1), ct);
 
             float peak = _systemAdapter.GetMasterPeakValue();
 
@@ -532,11 +545,10 @@ internal sealed class WorkflowRunner : IDisposable
 
     private async Task WaitForBatteryStateAsync(bool onAcDisconnect, int batteryLevelThreshold, CancellationToken ct)
     {
-        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(2));
 
         while (!ct.IsCancellationRequested)
         {
-            await timer.WaitForNextTickAsync(ct);
+            await DelayWhileRunningAsync(TimeSpan.FromSeconds(2), ct);
 
             var status = _systemAdapter.GetBatteryStatus();
 
@@ -584,7 +596,7 @@ internal sealed class WorkflowRunner : IDisposable
 
         for (int i = 0; i < sortedSteps.Count; i++)
         {
-            ct.ThrowIfCancellationRequested();
+            await WaitWhilePausedAsync(ct);
             var step = sortedSteps[i];
 
             Log($"Ejecutando paso {step.StepOrder}: {step.ActionType}");
@@ -611,7 +623,9 @@ internal sealed class WorkflowRunner : IDisposable
                         int volume = GetIntParam(step.Parameters, "volumePercent", 50);
                         if (volume is < 0 or > 100) throw new InvalidOperationException("El volumen debe estar entre 0 y 100.");
                         await _systemAdapter.SetMasterVolumeAsync(volume / 100f, ct);
+                        await WaitWhilePausedAsync(ct);
                         await _systemAdapter.SetMuteAsync(GetBoolParam(step.Parameters, "muteOutput", false), ct);
+                        await WaitWhilePausedAsync(ct);
                         if (!_systemAdapter.SetInputMute(GetBoolParam(step.Parameters, "muteMicrophone", false)))
                             throw new InvalidOperationException("Micrófono no disponible para configurar el silencio.");
                         break;
@@ -620,7 +634,7 @@ internal sealed class WorkflowRunner : IDisposable
                             throw new InvalidOperationException("Acción de energía no válida.");
                         int powerGrace = Math.Clamp(GetIntParam(step.Parameters, "gracePeriodSeconds", 30), 0, 300);
                         if (powerGrace > 0) await RunGracePeriodAsync(powerGrace, ct);
-                        ct.ThrowIfCancellationRequested();
+                        await WaitWhilePausedAsync(ct);
                         await _systemAdapter.SetPowerStateAsync(power, GetBoolParam(step.Parameters, "forced", false), ct);
                         CurrentState = EngineState.ExecutingActions;
                         _currentPhase = "PipelineExecution";
@@ -681,14 +695,7 @@ internal sealed class WorkflowRunner : IDisposable
                             var remaining = TimeSpan.FromHours(hours) - (_activePreset?.Actions is null ? _executionStopwatch?.Elapsed ?? TimeSpan.Zero : TimeSpan.Zero);
                             if (remaining > TimeSpan.Zero)
                             {
-                                using var durationCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-                                durationCts.CancelAfter(remaining);
-                                try
-                                {
-                                    await _systemAdapter.RunKeepAliveLoopAsync(KeepAliveMode.Mixed, 30, 60, Log, durationCts.Token);
-                                }
-                                catch (OperationCanceledException) when (!ct.IsCancellationRequested) { }
-                                ct.ThrowIfCancellationRequested();
+                                await RunKeepAliveWhileRunningAsync(remaining, ct);
                             }
                         }
                         else _systemAdapter.SimulateKeepAlivePulse(KeepAliveMode.Mixed);
@@ -698,7 +705,7 @@ internal sealed class WorkflowRunner : IDisposable
                         int waitSeconds = GetIntParam(step.Parameters, "delaySeconds", GetIntParam(step.Parameters, "durationSeconds", 10));
                         if (waitSeconds is < 0 or > 86400) throw new InvalidOperationException("La espera debe estar entre 0 y 86400 segundos.");
                         Log($"Paso {step.StepOrder}: Esperando {waitSeconds} segundos...");
-                        await Task.Delay(TimeSpan.FromSeconds(waitSeconds), ct);
+                        await DelayWhileRunningAsync(TimeSpan.FromSeconds(waitSeconds), ct);
                         break;
                     default:
                         throw new NotSupportedException($"Acción no disponible: {step.ActionType}.");
@@ -714,6 +721,77 @@ internal sealed class WorkflowRunner : IDisposable
                 }
             }
         }
+    }
+
+    private async Task WaitWhilePausedAsync(CancellationToken ct)
+    {
+        while (true)
+        {
+            ct.ThrowIfCancellationRequested();
+            Task? resumed;
+            lock (_stateLock) resumed = _resumeSignal?.Task;
+            if (resumed is null) return;
+            await resumed.WaitAsync(ct);
+        }
+    }
+
+    // Count active time only. Pausing interrupts the current interval instead of letting
+    // a timer tick accumulate while the workflow waits for Resume.
+    private async Task DelayWhileRunningAsync(TimeSpan duration, CancellationToken ct)
+    {
+        var remaining = duration;
+        while (remaining > TimeSpan.Zero)
+        {
+            await WaitWhilePausedAsync(ct);
+            Task<long> paused;
+            lock (_stateLock) paused = _pauseSignal.Task;
+            using var intervalCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            long started = Stopwatch.GetTimestamp();
+            var delay = Task.Delay(remaining, intervalCts.Token);
+            if (await Task.WhenAny(delay, paused) == delay)
+            {
+                await delay;
+                remaining = TimeSpan.Zero;
+            }
+            else
+            {
+                long pausedAt = await paused;
+                remaining -= pausedAt > started ? Stopwatch.GetElapsedTime(started, pausedAt) : TimeSpan.Zero;
+                intervalCts.Cancel();
+                try { await delay; }
+                catch (OperationCanceledException) when (intervalCts.IsCancellationRequested) { }
+            }
+        }
+        await WaitWhilePausedAsync(ct);
+    }
+
+    private async Task RunKeepAliveWhileRunningAsync(TimeSpan duration, CancellationToken ct)
+    {
+        var remaining = duration;
+        while (remaining > TimeSpan.Zero)
+        {
+            await WaitWhilePausedAsync(ct);
+            Task<long> paused;
+            lock (_stateLock) paused = _pauseSignal.Task;
+            using var segmentCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            long started = Stopwatch.GetTimestamp();
+            var activity = _systemAdapter.RunKeepAliveLoopAsync(KeepAliveMode.Mixed, 30, 60, Log, segmentCts.Token);
+            var durationElapsed = Task.Delay(remaining, segmentCts.Token);
+            var finished = await Task.WhenAny(activity, durationElapsed, paused);
+            if (finished == activity)
+            {
+                segmentCts.Cancel();
+                await activity; // Propagate adapter errors, including unexpected cancellation.
+                return;
+            }
+            long stopped = finished == paused ? await paused : Stopwatch.GetTimestamp();
+            segmentCts.Cancel();
+            try { await activity; }
+            catch (OperationCanceledException) when (segmentCts.IsCancellationRequested) { }
+            ct.ThrowIfCancellationRequested();
+            remaining -= stopped > started ? Stopwatch.GetElapsedTime(started, stopped) : TimeSpan.Zero;
+        }
+        await WaitWhilePausedAsync(ct);
     }
 
     private async Task RunGracePeriodAsync(int graceSeconds, CancellationToken ct)
@@ -779,6 +857,12 @@ internal sealed class WorkflowRunner : IDisposable
         string arguments = GetStringParam(step.Parameters, "arguments", "");
         int timeoutSeconds = GetIntParam(step.Parameters, "timeoutSeconds", 30);
         int expectedExitCode = GetIntParam(step.Parameters, "expectedExitCode", 0);
+        if (timeoutSeconds is < 1 or > 86400)
+            throw new InvalidOperationException("El timeout del comando debe estar entre 1 y 86400 segundos.");
+        ct.ThrowIfCancellationRequested();
+
+        using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds));
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
 
         var startInfo = new ProcessStartInfo
         {
@@ -793,10 +877,25 @@ internal sealed class WorkflowRunner : IDisposable
         using var process = new Process { StartInfo = startInfo };
         process.Start();
 
-        using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(timeoutSeconds));
-        using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct, timeoutCts.Token);
-
-        await process.WaitForExitAsync(linked.Token);
+        // Drain both pipes concurrently without retaining arbitrary command output in memory.
+        var output = process.StandardOutput.BaseStream.CopyToAsync(Stream.Null, linked.Token);
+        var errors = process.StandardError.BaseStream.CopyToAsync(Stream.Null, linked.Token);
+        try
+        {
+            await Task.WhenAll(process.WaitForExitAsync(linked.Token), output, errors);
+        }
+        catch (OperationCanceledException) when (linked.IsCancellationRequested)
+        {
+            // Dispose only releases the handle; terminate the process tree created by this step.
+            if (!process.HasExited)
+            {
+                try { process.Kill(entireProcessTree: true); }
+                catch (InvalidOperationException) when (process.HasExited) { }
+            }
+            await process.WaitForExitAsync(CancellationToken.None);
+            if (ct.IsCancellationRequested) throw new OperationCanceledException(ct);
+            throw new TimeoutException($"El comando '{executable}' excedió el timeout de {timeoutSeconds} segundos.");
+        }
 
         if (process.ExitCode != expectedExitCode)
         {
@@ -806,7 +905,6 @@ internal sealed class WorkflowRunner : IDisposable
 
     private async Task RunGracePeriodCountdownAsync(int seconds, CancellationToken ct)
     {
-        using var timer = new PeriodicTimer(TimeSpan.FromSeconds(1));
         Log($"Periodo de gracia iniciado ({seconds}s). Presione Esc para cancelar.");
 
         _gracePeriodRemainingSeconds = seconds;
@@ -819,7 +917,7 @@ internal sealed class WorkflowRunner : IDisposable
             GracePeriodTick?.Invoke(_gracePeriodRemainingSeconds);
             NotifyStateChanged();
 
-            await timer.WaitForNextTickAsync(ct);
+            await DelayWhileRunningAsync(TimeSpan.FromSeconds(1), ct);
             Interlocked.Decrement(ref _gracePeriodRemainingSeconds);
         }
 
@@ -833,22 +931,7 @@ internal sealed class WorkflowRunner : IDisposable
         bool force = GetBoolParam(terminalAction.Parameters, "forced", false);
         Log($"Ejecutando acción terminal: {terminalAction.Type} (Force: {force})");
 
-        if (IsDryRunMode)
-        {
-            switch (terminalAction.Type)
-            {
-                case TerminalActionType.Shutdown:
-                case TerminalActionType.Sleep:
-                case TerminalActionType.Hibernate:
-                case TerminalActionType.Restart:
-                    string dryRunMsg = $"[DRY-RUN] Acción de energía simulada con éxito: {terminalAction.Type} (Forzado: {force})";
-                    Console.WriteLine(dryRunMsg);
-                    Log(dryRunMsg);
-                    await _systemAdapter.SetPowerStateAsync(PowerAction.Shutdown, force, ct);
-                    return;
-            }
-        }
-
+        // The adapter owns dry-run safety; pass the requested action through unchanged.
         switch (terminalAction.Type)
         {
             case TerminalActionType.Shutdown:
@@ -949,20 +1032,31 @@ internal sealed class WorkflowRunner : IDisposable
 
     public void Pause()
     {
-        if (CurrentState != EngineState.Idle && CurrentState != EngineState.Completed && CurrentState != EngineState.Failed)
+        lock (_stateLock)
         {
-            CurrentState = EngineState.Paused;
-            NotifyStateChanged();
+            if (_resumeSignal is not null || _currentState is EngineState.Completed or EngineState.Failed) return;
+            _stateBeforePause = _currentState;
+            _resumeSignal = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            _currentState = EngineState.Paused;
+            _executionStopwatch?.Stop();
+            _pauseSignal.TrySetResult(Stopwatch.GetTimestamp());
         }
+        NotifyStateChanged();
     }
 
     public void Resume()
     {
-        if (CurrentState == EngineState.Paused)
+        lock (_stateLock)
         {
-            CurrentState = EngineState.WaitingTrigger;
-            NotifyStateChanged();
+            if (_resumeSignal is null || _currentState != EngineState.Paused) return;
+            var resumed = _resumeSignal;
+            _resumeSignal = null;
+            _pauseSignal = new(TaskCreationOptions.RunContinuationsAsynchronously);
+            _currentState = _stateBeforePause;
+            _executionStopwatch?.Start();
+            resumed.TrySetResult();
         }
+        NotifyStateChanged();
     }
 
     private static int GetIntParam(Dictionary<string, JsonElement>? dict, string key, int defaultValue)

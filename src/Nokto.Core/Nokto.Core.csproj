@@ -10,6 +10,7 @@
     <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.12" />
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <EmbeddedResource Include="Remote\RemoteDashboard.html" />
+    <EmbeddedResource Include="..\..\ThirdPartyNotices\shazam-for-real.txt" Link="ThirdPartyNotices\shazam-for-real.txt" />
   </ItemGroup>
 
 </Project>

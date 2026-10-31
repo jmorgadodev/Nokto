@@ -52,10 +52,10 @@ public partial class SettingsViewModel : ObservableObject
 
     public bool CheckUpdatesOnStartup
     {
-        get => _config.Settings.CheckUpdatesOnStartup;
+        get => !Nokto.Core.BuildIdentity.IsDevelopment && _config.Settings.CheckUpdatesOnStartup;
         set
         {
-            if (_config.Settings.CheckUpdatesOnStartup == value) return;
+            if (Nokto.Core.BuildIdentity.IsDevelopment || _config.Settings.CheckUpdatesOnStartup == value) return;
             _config.Settings.CheckUpdatesOnStartup = value;
             _persistence.SaveConfig(_config);
             OnPropertyChanged();
@@ -71,9 +71,11 @@ public partial class SettingsViewModel : ObservableObject
         _config = config ?? _persistence.LoadConfig();
         _updateService = updateService ?? new UpdateService(_persistence.Storage);
 
-        _currentVersionText = $"v{_updateService.CurrentVersion.ToString(3)}";
-        _updateStatusBadgeText = "Al día";
-        _updateStatusBadgeColor = "#4EBA6F";
+        _currentVersionText = Nokto.Core.BuildIdentity.IsDevelopment
+            ? "v2.0.0 DEV" : $"v{_updateService.CurrentVersion.ToString(3)}";
+        _updateStatusBadgeText = Nokto.Core.BuildIdentity.IsDevelopment
+            ? "Canal DEV: actualizaciones publicas deshabilitadas" : "Al día";
+        _updateStatusBadgeColor = Nokto.Core.BuildIdentity.IsDevelopment ? "#E5A93C" : "#4EBA6F";
 
         if (CheckUpdatesOnStartup)
         {
@@ -84,6 +86,7 @@ public partial class SettingsViewModel : ObservableObject
     [RelayCommand]
     public async Task CheckForUpdatesAsync()
     {
+        if (Nokto.Core.BuildIdentity.IsDevelopment) return;
         if (IsCheckingUpdates || IsDownloadingUpdate) return;
 
         IsCheckingUpdates = true;
@@ -146,6 +149,7 @@ public partial class SettingsViewModel : ObservableObject
     [RelayCommand]
     public async Task DownloadAndInstallUpdateAsync()
     {
+        if (Nokto.Core.BuildIdentity.IsDevelopment) return;
         if (LatestRelease == null || IsDownloadingUpdate) return;
 
         IsDownloadingUpdate = true;

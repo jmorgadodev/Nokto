@@ -1,54 +1,71 @@
-name: Nokto Build & Release Pipeline
+name: Nokto 2.0 — QA y paquetes Windows
 
 on:
   push:
-    tags:
-      - 'v*.*.*'
+    tags: ['v*.*.*']
+  pull_request:
+    branches: [master]
   workflow_dispatch:
 
-jobs:
-  build-windows:
-    runs-on: windows-latest
-    steps:
-      - name: Checkout del repositorio
-        uses: actions/checkout@v4
+permissions:
+  contents: read
 
-      - name: Instalar .NET SDK
-        uses: actions/setup-dotnet@v4
+jobs:
+  qa-and-package:
+    runs-on: windows-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
-
-      - name: Compilar Binario Único Portable (Self-Contained)
-        run: >
-          dotnet publish src/Nokto.UI/Nokto.UI.csproj
-          -c Release
-          -r win-x64
-          --self-contained true
-          -p:PublishSingleFile=true
-          -p:IncludeNativeLibrariesForSelfExtract=true
-          -o ./publish/win-x64
-
-      - name: Crear archivo marcador para versión portable
-        run: New-Item -Path ./publish/win-x64/portable.lock -ItemType File
-
-      - name: Crear directorio de artefactos
-        run: New-Item -ItemType Directory -Force -Path ./artifacts
-
-      - name: Comprimir versión Portable (.zip)
-        run: Compress-Archive -Path ./publish/win-x64/* -DestinationPath ./artifacts/Nokto-v${{ github.ref_name }}-Portable-x64.zip
-
-      - name: Compilar Instalador con Inno Setup
-        uses: Minionguyjpro/Inno-Setup-Action@v1.2.2
-        with:
-          path: build/inno-setup/nokto-setup.iss
-
-      - name: Publicar Release en GitHub con Artefactos
-        uses: softprops/action-gh-release@v2
+      - name: Verificar version del tag
         if: startsWith(github.ref, 'refs/tags/')
+        shell: pwsh
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          [xml]$props = Get-Content Directory.Build.props -Raw
+          $version = [string]($props.Project.PropertyGroup | Where-Object Version | Select-Object -First 1).Version
+          if ($env:RELEASE_TAG -ne "v$version") { throw 'El tag no coincide con el ensamblado.' }
+      - name: QA sin acciones sobre hardware ni datos personales
+        shell: pwsh
+        run: ./build/test-release.ps1
+      - name: Portable e instalador desde el mismo binario
+        shell: pwsh
+        run: ./build/build-release.ps1
+      - name: Conservar informe QA
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          files: |
-            ./artifacts/*.zip
-            ./artifacts/installer/*.exe
-          draft: false
+          name: nokto-qa
+          path: artifacts/qa-release/
+      - name: Conservar paquetes y checksums
+        uses: actions/upload-artifact@v4
+        with:
+          name: nokto-windows-release
+          path: |
+            artifacts/release-*/*.exe
+            artifacts/release-*/*.zip
+            artifacts/release-*/SHA256SUMS
+          if-no-files-found: error
+
+  draft-release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: qa-and-package
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: nokto-windows-release
+          path: release
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: release/**
+          draft: true
           prerelease: false
-          generate_release_notes: true
+          body_path: releases/v2.0.0.md
+          fail_on_unmatched_files: true

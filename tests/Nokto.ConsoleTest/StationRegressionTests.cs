@@ -13,15 +13,18 @@ namespace Nokto.ConsoleTest;
 
 internal static class StationRegressionTests
 {
-    public static int Run()
+    public static int Run(bool includeHardware = false)
     {
         try
         {
             VerifyGraphicsNames();
             VerifyDiskAlerts();
             VerifyDiskConfiguration();
-            VerifyInstalledPhysicalGraphics();
-            VerifyDefaultAudioDevices();
+            if (includeHardware)
+            {
+                VerifyInstalledPhysicalGraphics();
+                VerifyDefaultAudioDevices();
+            }
             VerifyAudioPresentation();
             return 0;
         }
