@@ -1,6 +1,8 @@
+using Avalonia;
 using Avalonia.Interactivity;
 using Avalonia.Automation;
 using Avalonia.Controls;
+using Avalonia.Media;
 using Avalonia.Media.Imaging;
 using Avalonia.Threading;
 using Nokto.Platform.Windows.Media;
@@ -15,6 +17,12 @@ public partial class IslandWindow
     private DateTimeOffset _mediaUpdatedAt;
     private byte[]? _mediaArtworkSource;
     private Bitmap? _mediaArtwork;
+    private DispatcherTimer? _mediaMarqueeTimer;
+    private readonly TranslateTransform _mediaTitleTransform = new();
+    private readonly TranslateTransform _mediaArtistTransform = new();
+    private readonly TranslateTransform _compactTrackTransform = new();
+    private double _mediaTitleOffset, _mediaArtistOffset, _compactTrackOffset;
+    private int _mediaTitleHold, _mediaArtistHold, _compactTrackHold;
 
     private bool HasCompactMedia => _settings?.ShowMediaInCompact == true &&
         _mediaSnapshot.Available && _mediaSnapshot.IsPlaying;
@@ -72,9 +80,17 @@ public partial class IslandWindow
         MediaPanel.IsVisible = show;
         MediaEmptyState.IsVisible = enabledHere && !show && _settings?.PrivacyMode != true;
         CompactTrackText.IsVisible = HasCompactMedia && !_expanded && !HasCustomCompactHeader;
-        CompactTrackText.Text = _settings?.PrivacyMode == true ? "" : _mediaSnapshot.Title;
-        MediaTitle.Text = _settings?.PrivacyMode == true ? "Reproducción activa" : _mediaSnapshot.Title;
-        MediaArtist.Text = _settings?.PrivacyMode == true ? "" : _mediaSnapshot.Artist;
+        CompactTrackViewport.IsVisible = HasCompactMedia && !_expanded && !HasCustomCompactHeader;
+        string compactTitle = _settings?.PrivacyMode == true ? "" : _mediaSnapshot.Title;
+        string mediaTitle = _settings?.PrivacyMode == true ? "Reproducción activa" : _mediaSnapshot.Title;
+        string mediaArtist = _settings?.PrivacyMode == true ? "" : _mediaSnapshot.Artist;
+        if (CompactTrackText.Text != compactTitle) { _compactTrackOffset = 0; _compactTrackHold = 18; }
+        if (MediaTitle.Text != mediaTitle) { _mediaTitleOffset = 0; _mediaTitleHold = 18; }
+        if (MediaArtist.Text != mediaArtist) { _mediaArtistOffset = 0; _mediaArtistHold = 18; }
+        CompactTrackText.Text = compactTitle;
+        MediaTitle.Text = mediaTitle;
+        MediaArtist.Text = mediaArtist;
+        Dispatcher.UIThread.Post(SyncMediaMarquees);
         if (!ReferenceEquals(_mediaArtworkSource, _mediaSnapshot.Artwork))
         {
             MediaCover.Source = null;
@@ -121,6 +137,78 @@ public partial class IslandWindow
         if (animate && _animationTimer is not null)
             AnimateTo(_expanded ? ExpandedWidth : CompactWidth,
                       _expanded ? ExpandedHeightForContent : CompactHeight);
+    }
+
+    private void SyncMediaMarquees()
+    {
+        bool active = PrepareMarquee(MediaTitle, MediaTitleViewport, _mediaTitleTransform, ref _mediaTitleOffset, ref _mediaTitleHold, false) |
+                      PrepareMarquee(MediaArtist, MediaArtistViewport, _mediaArtistTransform, ref _mediaArtistOffset, ref _mediaArtistHold, false) |
+                      PrepareMarquee(CompactTrackText, CompactTrackViewport, _compactTrackTransform, ref _compactTrackOffset, ref _compactTrackHold, false);
+        if (active)
+        {
+            if (_mediaMarqueeTimer is null)
+            {
+                _mediaMarqueeTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(50) };
+                _mediaMarqueeTimer.Tick += OnMediaMarqueeTick;
+            }
+            _mediaMarqueeTimer.Start();
+        }
+        else _mediaMarqueeTimer?.Stop();
+    }
+
+    private static bool PrepareMarquee(TextBlock text, Border viewport, TranslateTransform transform,
+        ref double offset, ref int hold, bool advance)
+    {
+        if (!text.IsVisible || !viewport.IsVisible || viewport.Bounds.Width <= 0)
+        {
+            text.Width = double.NaN;
+            transform.X = 0;
+            offset = 0;
+            return false;
+        }
+
+        text.Width = double.NaN;
+        text.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        double fullWidth = text.DesiredSize.Width;
+        double viewportWidth = viewport.Bounds.Width;
+        if (fullWidth <= viewportWidth + 2)
+        {
+            text.Width = viewportWidth;
+            text.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Center;
+            transform.X = 0;
+            offset = 0;
+            hold = 18;
+            return false;
+        }
+
+        text.Width = fullWidth;
+        text.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left;
+        if (advance)
+        {
+            if (hold > 0) hold--;
+            else if (hold < 0)
+            {
+                hold++;
+                if (hold == 0) { offset = 0; hold = 18; }
+            }
+            else if (offset + viewportWidth < fullWidth)
+            {
+                offset = Math.Min(offset + 1.4, fullWidth - viewportWidth);
+                if (offset >= fullWidth - viewportWidth) hold = -24;
+            }
+            else { offset = 0; hold = 18; }
+        }
+        else if (hold == 0) hold = 18;
+        transform.X = -offset;
+        return true;
+    }
+
+    private void OnMediaMarqueeTick(object? sender, EventArgs e)
+    {
+        bool active = PrepareMarquee(MediaTitle, MediaTitleViewport, _mediaTitleTransform, ref _mediaTitleOffset, ref _mediaTitleHold, true) |
+                      PrepareMarquee(MediaArtist, MediaArtistViewport, _mediaArtistTransform, ref _mediaArtistOffset, ref _mediaArtistHold, true) |
+                      PrepareMarquee(CompactTrackText, CompactTrackViewport, _compactTrackTransform, ref _compactTrackOffset, ref _compactTrackHold, true);
+        if (!active) _mediaMarqueeTimer?.Stop();
     }
 
     private void RefreshMediaProgress()
@@ -175,10 +263,13 @@ public partial class IslandWindow
         CloseRecognition();
         _mediaProgressTimer?.Stop();
         _mediaProgressTimer = null;
+        _mediaMarqueeTimer?.Stop();
+        _mediaMarqueeTimer = null;
         MediaCover.Source = null;
         _mediaArtwork?.Dispose();
         _mediaArtwork = null;
         _mediaArtworkSource = null;
+        _mediaTitleTransform.X = _mediaArtistTransform.X = _compactTrackTransform.X = 0;
         if (_mediaService is { } service)
         {
             service.Updated -= OnMediaUpdated;

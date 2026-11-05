@@ -25,9 +25,12 @@
                        FontSize="12" VerticalAlignment="Center" Margin="8,0,1,0"/>
             <TextBlock x:Name="CompactProductivityText" IsVisible="False" MaxWidth="100" FontSize="11"
                        Foreground="#FFD29B" FontFamily="Consolas" VerticalAlignment="Center"/>
-            <TextBlock x:Name="CompactTrackText" IsVisible="False" MaxWidth="152"
-                       FontSize="11" TextTrimming="CharacterEllipsis" VerticalAlignment="Center"
-                       Foreground="#8AF1E2" Margin="5,0,0,0"/>
+            <Border x:Name="CompactTrackViewport" IsVisible="False" Width="152" Height="18"
+                    ClipToBounds="True" VerticalAlignment="Center" Margin="5,0,0,0">
+              <TextBlock x:Name="CompactTrackText" FontSize="11" TextWrapping="NoWrap"
+                         TextTrimming="None" VerticalAlignment="Center"
+                         Foreground="#8AF1E2" TextAlignment="Center"/>
+            </Border>
           </StackPanel>
         </Grid>
 
@@ -97,10 +100,16 @@
                 </Border>
                 <StackPanel Grid.Column="1" Spacing="3" VerticalAlignment="Center">
                   <TextBlock x:Name="MediaStateText" Text="EN PAUSA" FontSize="9" FontWeight="SemiBold" Foreground="#8ED8CD" TextAlignment="Center"/>
-                  <TextBlock x:Name="MediaTitle" FontSize="14" FontWeight="SemiBold"
-                             Foreground="#F7FBFF" TextTrimming="CharacterEllipsis" TextAlignment="Center"/>
-                  <TextBlock x:Name="MediaArtist" FontSize="11" Foreground="#9EAFBE"
-                             TextTrimming="CharacterEllipsis" TextAlignment="Center"/>
+                  <Border x:Name="MediaTitleViewport" ClipToBounds="True" Height="20">
+                    <TextBlock x:Name="MediaTitle" FontSize="14" FontWeight="SemiBold"
+                               Foreground="#F7FBFF" TextWrapping="NoWrap" TextTrimming="None"
+                               TextAlignment="Center" VerticalAlignment="Center"/>
+                  </Border>
+                  <Border x:Name="MediaArtistViewport" ClipToBounds="True" Height="17">
+                    <TextBlock x:Name="MediaArtist" FontSize="11" Foreground="#9EAFBE"
+                               TextWrapping="NoWrap" TextTrimming="None"
+                               TextAlignment="Center" VerticalAlignment="Center"/>
+                  </Border>
                 </StackPanel>
               </Grid>
               <StackPanel Spacing="5">

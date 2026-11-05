@@ -7,10 +7,10 @@ internal static class MediaRefreshConcurrencyProbe
         var playing = new MediaSessionSnapshot(true, "Tema A", "Artista", "Spotify", true,
             true, true, true, TimeSpan.Zero, TimeSpan.FromMinutes(3), null);
         var transitionPause = playing with { Title = "Tema B", IsPlaying = false };
-        if (MediaSnapshotTransitionPolicy.GracePeriod(playing, transitionPause) != TimeSpan.FromMilliseconds(500) ||
+        if (MediaSnapshotTransitionPolicy.GracePeriod(playing, transitionPause) != TimeSpan.Zero ||
             MediaSnapshotTransitionPolicy.GracePeriod(playing, playing with { IsPlaying = false }) != TimeSpan.Zero ||
             MediaSnapshotTransitionPolicy.GracePeriod(playing, MediaSessionSnapshot.Empty) != TimeSpan.FromMilliseconds(700))
-            throw new Exception("La política de estabilidad no distingue el cambio de pista de una pausa real.");
+            throw new Exception("La política no debe retrasar la pista nueva ni omitir una pausa real.");
 
         var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);

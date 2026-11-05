@@ -1,5 +1,11 @@
 # Cambios
 
+## 2.0.3 — respuesta inmediata al cambiar de pista
+
+- El título y los controles de Spotify se actualizan antes de cargar la carátula; los títulos y artistas largos se desplazan para poder leerlos completos.
+- La isla conserva la pista visible y reintenta lecturas brevemente cuando Windows interrumpe una sesión al cambiar de tema.
+
+
 ## 2.0.2 — corrección de visibilidad en reposo
 
 - La isla conserva el ojo visible al pausar sus animaciones tras 60 segundos sin movimiento.
