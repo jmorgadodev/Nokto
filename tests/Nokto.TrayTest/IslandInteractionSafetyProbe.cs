@@ -92,6 +92,14 @@ internal static class IslandInteractionSafetyProbe
             Check(smoothFirst is > 0 and < .8 && smoothReverse > smoothFirst && smoothReverse - smoothFirst < .08,
                 "El seguimiento ocular amortigua pequeños cambios de objetivo en lugar de dar saltos.");
 
+            var idleEyes = window.FindControl<NoktoEyesControl>("EyesVisual")!;
+            idleEyes.StyleId = "UchihaMadara";
+            idleEyes.SetBinocularPose(.2, -.1, -.2, .1, .7, true);
+            Call(window, "PauseEyeMotionForIdle");
+            Check(!idleEyes.Pose.Sleeping && idleEyes.Pose.Blink == 0 &&
+                ((DispatcherTimer)typeof(IslandWindow).GetField("_cursorTimer", Private)!.GetValue(window)!).Interval == TimeSpan.FromMilliseconds(650),
+                "El reposo reduce el seguimiento pero mantiene el ojo visible en la isla compacta.");
+
             var settingsView = new IslandSettingsView { DataContext = scene };
             settingsHost = new Window { Content = settingsView, Width = 1100, Height = 2000 };
             settingsHost.Measure(new Size(1100, 2000)); settingsHost.Arrange(new Rect(0, 0, 1100, 2000)); Pump();

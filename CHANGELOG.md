@@ -1,5 +1,9 @@
 # Cambios
 
+## 2.0.2 — corrección de visibilidad en reposo
+
+- La isla conserva el ojo visible al pausar sus animaciones tras 60 segundos sin movimiento.
+
 ## 2.0.1 — corrección de errores
 
 - La isla inicia según la preferencia elegida y no pierde el foco de las aplicaciones a pantalla completa.
