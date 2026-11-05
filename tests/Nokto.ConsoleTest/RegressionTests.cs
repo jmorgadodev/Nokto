@@ -59,6 +59,12 @@ internal static class RegressionTests
             var dashboard = card.Parent;
             Require((string?)dashboard?.Attribute("ColumnDefinitions") == "*,*,*" && (string?)dashboard?.Attribute("RowDefinitions") == "Auto,Auto,*",
                 "Inicio debe usar tres columnas y reservar el espacio restante para tareas, sin scroll de toda la cabina.");
+            var updateButton = xaml.Descendants(ns + "Button").Single(e => (string?)e.Attribute("Content") == "🔍 Comprobar actualizaciones");
+            var updatePreference = xaml.Descendants(ns + "CheckBox").Single(e => (string?)e.Attribute("Content") == "Buscar actualizaciones automáticamente al iniciar");
+            Require((string?)updateButton.Attribute("IsEnabled") == "{Binding CanCheckUpdates}" &&
+                (string?)updateButton.Attribute("ToolTip.Tip") == "{Binding UpdateStatusBadgeText}" &&
+                (string?)updatePreference.Attribute("IsEnabled") == "{Binding CanCheckUpdates}",
+                "El canal DEV debe comunicar que no consulta actualizaciones públicas y no permitir activar controles sin efecto.");
             Console.WriteLine("[PASS] Layout Inicio: tarjeta de energía en columna de contenido.");
             System.Xml.Linq.XNamespace views = "using:Nokto.UI.Views";
             var audioPanel = xaml.Descendants(views + "HomeAudioView").Single();

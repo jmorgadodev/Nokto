@@ -28,6 +28,7 @@ public partial class MainViewModel
     public string ReleaseNotesText => SettingsVm.ReleaseNotesText;
     public double DownloadProgress => SettingsVm.DownloadProgress;
     public string DownloadProgressText => SettingsVm.DownloadProgressText;
+    public bool CanCheckUpdates => SettingsVm.CanCheckUpdates;
 
     public bool CheckUpdatesOnStartup
     {

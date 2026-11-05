@@ -32,26 +32,28 @@ public static class UpdateServiceTests
         stream.Position = 148; writer.Write((ushort)112); writer.Write((ushort)2); writer.Write((ushort)(x64 ? 0x20b : 0x10b));
         return bytes;
     }
-    private const string Root = "https://github.com/jmorgadodev/Nokto/releases/download/v2.0.0/";
+    private const string Root = "https://github.com/jmorgadodev/Nokto/releases/download/v2.0.1/";
     private static UpdateReleaseInfo Release(string name, long size, bool installed = false, bool checksums = true) => new()
     {
-        TagName = "v2.0.0", PortableDownloadUrl = installed ? null : Root + name, PortableSize = size,
+        TagName = "v2.0.1", PortableDownloadUrl = installed ? null : Root + name, PortableSize = size,
         InstallerDownloadUrl = installed ? Root + name : null, InstallerSize = installed ? size : 0,
         ChecksumsDownloadUrl = checksums ? Root + "SHA256SUMS" : null
     };
     public static void RunAll()
     {
         var json = """
-        { "tag_name":"v2.0.0", "assets":[
-          {"name":"Nokto-v1.0.1-Portable-x64.zip","browser_download_url":"https://github.com/jmorgadodev/Nokto/releases/download/v2.0.0/Nokto-v1.0.1-Portable-x64.zip","size":4},
-          {"name":"Nokto.exe","browser_download_url":"https://github.com/jmorgadodev/Nokto/releases/download/v2.0.0/Nokto.exe","size":5},
-          {"name":"Nokto-Portable-x64.exe","browser_download_url":"https://github.com/jmorgadodev/Nokto/releases/download/v2.0.0/Nokto-Portable-x64.exe","size":6},
-          {"name":"Nokto-Setup-x64.exe","browser_download_url":"https://github.com/jmorgadodev/Nokto/releases/download/v2.0.0/Nokto-Setup-x64.exe","size":7},
-          {"name":"SHA256SUMS","browser_download_url":"https://github.com/jmorgadodev/Nokto/releases/download/v2.0.0/SHA256SUMS","size":8}] }
+        { "tag_name":"v2.0.1", "assets":[
+          {"name":"Nokto-v1.0.1-Portable-x64.zip","browser_download_url":"https://github.com/jmorgadodev/Nokto/releases/download/v2.0.1/Nokto-v1.0.1-Portable-x64.zip","size":4},
+          {"name":"Nokto.exe","browser_download_url":"https://github.com/jmorgadodev/Nokto/releases/download/v2.0.1/Nokto.exe","size":5},
+          {"name":"Nokto-Portable-x64.exe","browser_download_url":"https://github.com/jmorgadodev/Nokto/releases/download/v2.0.1/Nokto-Portable-x64.exe","size":6},
+          {"name":"Nokto-Setup-x64.exe","browser_download_url":"https://github.com/jmorgadodev/Nokto/releases/download/v2.0.1/Nokto-Setup-x64.exe","size":7},
+          {"name":"SHA256SUMS","browser_download_url":"https://github.com/jmorgadodev/Nokto/releases/download/v2.0.1/SHA256SUMS","size":8}] }
         """;
         var parsed = UpdateService.ParseReleaseJson(json, new Version(1, 0, 1));
         Check(parsed.IsUpdateAvailable && parsed.PortableSize == 6 && parsed.InstallerSize == 7 && parsed.ChecksumsDownloadUrl != null, "Selección o comparación de release incorrecta.");
-        Check(!UpdateService.ParseReleaseJson(json, new Version(2, 0, 0)).IsUpdateAvailable, "Misma versión no es actualización.");
+        Check(UpdateService.ParseReleaseJson(json, new Version(2, 0, 0)).IsUpdateAvailable &&
+            !UpdateService.ParseReleaseJson(json, new Version(2, 0, 1)).IsUpdateAvailable,
+            "La corrección 2.0.1 se ofrece desde 2.0.0, pero no se repite en 2.0.1.");
         string script = UpdateService.GenerateUpdateScriptContent(@"C:\Mi carpeta\Nokto's.exe", @"C:\Mi carpeta\staged.exe", 321);
         Check(script.Contains("Nokto''s.exe") && script.Contains("Wait-Process") && script.Contains("321") && script.Contains("Move-Item -LiteralPath $backup -Destination $exe") && script.Contains("$PSCommandPath"), "Script no conserva ruta, espera o rollback.");
         string dir = Path.Combine(Path.GetTempPath(), "nokto-update-tests-" + Guid.NewGuid().ToString("N"));
