@@ -247,10 +247,10 @@
                                         </StackPanel>
                                         <TextBlock Text="{Binding ExecutableLocationText}" Foreground="{DynamicResource ThemeTextSecondary}" FontSize="10" TextTrimming="CharacterEllipsis"/>
                                     </StackPanel>
-                                    <Button Grid.Column="1" Content="🔍 Comprobar actualizaciones" Command="{Binding CheckForUpdatesCommand}" IsEnabled="{Binding !IsCheckingUpdates}" Background="{DynamicResource ThemeInputBackground}" Foreground="{DynamicResource ThemeAccent}" FontWeight="SemiBold" FontSize="11" Padding="12,6"/>
+                                    <Button Grid.Column="1" Content="🔍 Comprobar actualizaciones" Command="{Binding CheckForUpdatesCommand}" IsEnabled="{Binding CanCheckUpdates}" ToolTip.Tip="{Binding UpdateStatusBadgeText}" Background="{DynamicResource ThemeInputBackground}" Foreground="{DynamicResource ThemeAccent}" FontWeight="SemiBold" FontSize="11" Padding="12,6"/>
                                 </Grid>
 
-                                <CheckBox IsChecked="{Binding CheckUpdatesOnStartup, Mode=TwoWay}" Content="Buscar actualizaciones automáticamente al iniciar" Foreground="{DynamicResource ThemeTextPrimary}" FontSize="11"/>
+                                <CheckBox IsChecked="{Binding CheckUpdatesOnStartup, Mode=TwoWay}" IsEnabled="{Binding CanCheckUpdates}" Content="Buscar actualizaciones automáticamente al iniciar" Foreground="{DynamicResource ThemeTextPrimary}" FontSize="11"/>
 
                                 <!-- Panel desplegable si hay actualización disponible -->
                                 <Border IsVisible="{Binding HasUpdateAvailable}" Background="{DynamicResource ThemeInputBackground}" BorderBrush="{DynamicResource ThemeAccent}" BorderThickness="1" CornerRadius="6" Padding="14">

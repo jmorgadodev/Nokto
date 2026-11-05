@@ -67,5 +67,5 @@ jobs:
           files: release/**
           draft: true
           prerelease: false
-          body_path: releases/v2.0.0.md
+          body_path: releases/${{ github.ref_name }}.md
           fail_on_unmatched_files: true

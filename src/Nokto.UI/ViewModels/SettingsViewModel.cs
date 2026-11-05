@@ -50,6 +50,8 @@ public partial class SettingsViewModel : ObservableObject
     [ObservableProperty]
     private UpdateReleaseInfo? _latestRelease;
 
+    public bool CanCheckUpdates => !Nokto.Core.BuildIdentity.IsDevelopment;
+
     public bool CheckUpdatesOnStartup
     {
         get => !Nokto.Core.BuildIdentity.IsDevelopment && _config.Settings.CheckUpdatesOnStartup;
@@ -72,7 +74,7 @@ public partial class SettingsViewModel : ObservableObject
         _updateService = updateService ?? new UpdateService(_persistence.Storage);
 
         _currentVersionText = Nokto.Core.BuildIdentity.IsDevelopment
-            ? "v2.0.0 DEV" : $"v{_updateService.CurrentVersion.ToString(3)}";
+            ? $"v{_updateService.CurrentVersion.ToString(3)} DEV" : $"v{_updateService.CurrentVersion.ToString(3)}";
         _updateStatusBadgeText = Nokto.Core.BuildIdentity.IsDevelopment
             ? "Canal DEV: actualizaciones publicas deshabilitadas" : "Al día";
         _updateStatusBadgeColor = Nokto.Core.BuildIdentity.IsDevelopment ? "#E5A93C" : "#4EBA6F";

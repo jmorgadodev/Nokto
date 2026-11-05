@@ -135,7 +135,13 @@ public sealed class PersistenceService
                         File.Copy(path, path + ".corrupt." + Guid.NewGuid().ToString("N"));
                         backup = null;
                     }
-                    File.Replace(temporary, path, backup);
+                    if (backup is not null)
+                    {
+                        // ReplaceFile can fail on Windows when a previous backup already exists.
+                        // Copy the validated current file first, then atomically swap the payload.
+                        File.Copy(path, backup, overwrite: true);
+                    }
+                    File.Move(temporary, path, overwrite: true);
                 }
             }
             finally
