@@ -8,10 +8,7 @@ public static class MediaSnapshotTransitionPolicy
         if (previous.Available && !next.Available)
             return TimeSpan.FromMilliseconds(700);
 
-        bool changedTrack = !string.Equals(previous.Title, next.Title, StringComparison.Ordinal) ||
-            !string.Equals(previous.Artist, next.Artist, StringComparison.Ordinal);
-        if (previous.IsPlaying && next.Available && !next.IsPlaying && changedTrack)
-            return TimeSpan.FromMilliseconds(500);
+        // Do not delay a newly reported track; the renderer now loads album art separately.
 
         return TimeSpan.Zero;
     }

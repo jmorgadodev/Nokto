@@ -63,6 +63,12 @@ public partial class IslandWindow : Window
     public IslandWindow()
     {
         InitializeComponent();
+        MediaTitle.RenderTransform = _mediaTitleTransform;
+        MediaArtist.RenderTransform = _mediaArtistTransform;
+        CompactTrackText.RenderTransform = _compactTrackTransform;
+        MediaTitleViewport.SizeChanged += (_, _) => Dispatcher.UIThread.Post(SyncMediaMarquees);
+        MediaArtistViewport.SizeChanged += (_, _) => Dispatcher.UIThread.Post(SyncMediaMarquees);
+        CompactTrackViewport.SizeChanged += (_, _) => Dispatcher.UIThread.Post(SyncMediaMarquees);
         InitializeContentSections();
         IslandSurface.Background = _surfaceFill;
         IslandSurface.BorderBrush = _surfaceStroke;

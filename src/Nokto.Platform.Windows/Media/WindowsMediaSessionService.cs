@@ -40,6 +40,8 @@ public sealed class WindowsMediaSessionService : IDisposable
     private byte[]? _artworkBytes;
     private bool _disposed;
     private TimeSpan _timelineStart;
+    private int _transientRetries;
+    private const int TransientRetryLimit = 20;
     public event Action<MediaSessionSnapshot>? Updated;
     public MediaSessionSnapshot Snapshot { get; private set; } = MediaSessionSnapshot.Empty;
 
@@ -95,6 +97,43 @@ public sealed class WindowsMediaSessionService : IDisposable
         return refresh.TryCommit(version, static () => { });
     }
 
+    private async Task<bool> RetryTransientReadAsync(CoalescingMediaRefresh refresh, CancellationToken token)
+    {
+        if (Interlocked.Increment(ref _transientRetries) > TransientRetryLimit)
+        {
+            Interlocked.Exchange(ref _transientRetries, 0);
+            return false;
+        }
+
+        // Spotify can briefly drop its GSMTC session or fail a metadata read while changing tracks.
+        // Keep the last visible track and retry instead of publishing an empty card.
+        await Task.Delay(TimeSpan.FromMilliseconds(250), token);
+        token.ThrowIfCancellationRequested();
+        refresh.Request();
+        return true;
+    }
+
+    private async Task LoadArtworkAndPublishAsync(GlobalSystemMediaTransportControlsSession session,
+        string coverKey, global::Windows.Storage.Streams.IRandomAccessStreamReference? reference,
+        CancellationToken token)
+    {
+        try
+        {
+            var bytes = await TryLoadArtworkAsync(reference, token);
+            token.ThrowIfCancellationRequested();
+            if (_disposed || !ReferenceEquals(session, _current) ||
+                !ReferenceEquals(session, _manager?.GetCurrentSession()) || _artworkKey != coverKey)
+                return;
+
+            _artworkBytes = bytes;
+            var snapshot = Snapshot;
+            if (snapshot.Available && $"{snapshot.AppId}|{snapshot.Title}|{snapshot.Artist}" == coverKey)
+                SetSnapshot(snapshot with { Artwork = bytes });
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested) { }
+        catch (Exception) { }
+    }
+
     private async Task ReadSnapshotAsync(long version, CancellationToken token)
     {
         var refresh = Volatile.Read(ref _refresh);
@@ -125,10 +164,14 @@ public sealed class WindowsMediaSessionService : IDisposable
             })) return;
             if (current is null)
             {
-                if (!await WaitForTransitionAsync(refresh, version, Snapshot, MediaSessionSnapshot.Empty, token)) return;
+                if (Snapshot.Available && await RetryTransientReadAsync(refresh, token)) return;
                 refresh.TryCommit(version, () =>
                 {
-                    if (_manager?.GetCurrentSession() is null) SetSnapshot(MediaSessionSnapshot.Empty);
+                    if (_manager?.GetCurrentSession() is null)
+                    {
+                        Interlocked.Exchange(ref _transientRetries, 0);
+                        SetSnapshot(MediaSessionSnapshot.Empty);
+                    }
                     else refresh.Request();
                 });
                 return;
@@ -136,8 +179,8 @@ public sealed class WindowsMediaSessionService : IDisposable
             var props = await current.TryGetMediaPropertiesAsync();
             token.ThrowIfCancellationRequested();
             string coverKey = $"{current.SourceAppUserModelId}|{props.Title}|{props.Artist}";
-            if (artworkKey != coverKey) artwork = await TryLoadArtworkAsync(props.Thumbnail, token);
-            token.ThrowIfCancellationRequested();
+            bool loadNewArtwork = artworkKey != coverKey;
+            if (loadNewArtwork) artwork = null;
             var playback = current.GetPlaybackInfo();
             var timeline = current.GetTimelineProperties();
             var controls = playback.Controls;
@@ -148,6 +191,7 @@ public sealed class WindowsMediaSessionService : IDisposable
             if (playback.PlaybackStatus == GlobalSystemMediaTransportControlsSessionPlaybackStatus.Playing &&
                 sinceUpdate >= TimeSpan.Zero && sinceUpdate < TimeSpan.FromHours(1))
                 position += TimeSpan.FromSeconds(sinceUpdate.TotalSeconds * playbackRate);
+            Interlocked.Exchange(ref _transientRetries, 0);
             var snapshot = new MediaSessionSnapshot(
                 true, string.IsNullOrWhiteSpace(props.Title) ? "Reproducción multimedia" : props.Title,
                 props.Artist ?? "", current.SourceAppUserModelId ?? "",
@@ -158,7 +202,7 @@ public sealed class WindowsMediaSessionService : IDisposable
                 duration > TimeSpan.Zero ? duration : TimeSpan.Zero, artwork)
                 { CanSeek = controls.IsPlaybackPositionEnabled, PlaybackRate = playbackRate };
             if (!await WaitForTransitionAsync(refresh, version, Snapshot, snapshot, token)) return;
-            refresh.TryCommit(version, () =>
+            bool committed = refresh.TryCommit(version, () =>
             {
                 // A session may change before Windows delivers CurrentSessionChanged.
                 if (!ReferenceEquals(current, _manager?.GetCurrentSession())) { refresh.Request(); return; }
@@ -167,10 +211,13 @@ public sealed class WindowsMediaSessionService : IDisposable
                 _timelineStart = timeline.StartTime;
                 SetSnapshot(snapshot);
             });
+            if (committed && loadNewArtwork && props.Thumbnail is not null)
+                _ = LoadArtworkAndPublishAsync(current, coverKey, props.Thumbnail, token);
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested) { }
         catch (Exception)
         {
+            if (Snapshot.Available && await RetryTransientReadAsync(refresh, token)) return;
             if (await WaitForTransitionAsync(refresh, version, Snapshot, MediaSessionSnapshot.Empty, token))
                 refresh.TryCommit(version, () => SetSnapshot(MediaSessionSnapshot.Empty));
         }
