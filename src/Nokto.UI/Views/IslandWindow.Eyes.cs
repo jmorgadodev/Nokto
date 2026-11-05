@@ -140,12 +140,19 @@ public partial class IslandWindow
         else if (_settings.SleepOnIdle && !_sleeping &&
                  (DateTime.UtcNow - _lastCursorMovement).TotalSeconds >= 60)
         {
-            _sleeping = true;
-            _cursorTimer!.Interval = TimeSpan.FromMilliseconds(650);
-            _eyeFrameTimer?.Stop();
-            _gazeAnimating = _blinking = false;
-            EyesVisual.SetBinocularPose(_gazeX, _gazeY, _gazeRightX, _gazeRightY, 0, true);
+            PauseEyeMotionForIdle();
         }
+    }
+
+    private void PauseEyeMotionForIdle()
+    {
+        _sleeping = true;
+        _cursorTimer!.Interval = TimeSpan.FromMilliseconds(650);
+        _eyeFrameTimer?.Stop();
+        _gazeAnimating = _blinking = false;
+        // The compact surface is intentionally transparent. Keep the eye open
+        // while suspending motion so idle never makes the whole island vanish.
+        EyesVisual.SetBinocularPose(_gazeX, _gazeY, _gazeRightX, _gazeRightY, 0, false);
     }
 
     private void StartBlink()
