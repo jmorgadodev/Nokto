@@ -248,7 +248,16 @@ public partial class IslandViewModel : ObservableObject
     public bool IsEyeAnimatable => !EyeStyleCatalog.IsMinimal(SelectedStyle);
     partial void OnStartupModeIndexChanged(int value)
     {
-        if (!_loading) _config.Island.StartupModeConfigured = value != 0;
+        if (!_loading)
+        {
+            _config.Island.StartupModeConfigured = value != 0;
+            // Selecting an island startup mode must not silently leave the island disabled.
+            if (value is 2 or 3 && !Enabled)
+            {
+                Enabled = true;
+                return;
+            }
+        }
         Save();
     }
     partial void OnShowClockChanged(bool value) => Save();

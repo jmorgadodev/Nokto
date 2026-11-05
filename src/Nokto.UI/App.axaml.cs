@@ -87,23 +87,14 @@ public partial class App : Application
             ConfigureTrayIcon(desktop);
 
             // La seleccion de inicio de Isla Dinamica es independiente de Iniciar con Windows.
-            // Los argumentos --tray / --silent prevalecen para permitir pruebas sin ventanas.
-            bool forcedTray = desktop.Args?.Any(a =>
-                a.Equals("--silent", StringComparison.OrdinalIgnoreCase) ||
-                a.Equals("--tray", StringComparison.OrdinalIgnoreCase) ||
-                a.Equals("-s", StringComparison.OrdinalIgnoreCase)) == true;
-            string launchMode = config.Island?.StartupModeConfigured == true
-                ? config.Island.StartupMode
-                : config.Settings.StartMinimizedToTray ? "Tray" : "Dashboard";
-            if (config.Island?.Enabled != true && (launchMode == "Island" || launchMode == "Both"))
-                launchMode = "Dashboard";
-            bool isSilent = forcedTray || launchMode is "Island" or "Tray";
+            // --tray fuerza la bandeja; --silent conserva el modo de isla que eligio el usuario.
+            var startup = Nokto.Core.Models.IslandStartupPolicy.Resolve(config, desktop.Args);
 
             bool startWork = config.Settings.StartInWorkMode || desktop.Args?.Any(a =>
                 a.Equals("--work", StringComparison.OrdinalIgnoreCase) ||
                 a.Equals("-w", StringComparison.OrdinalIgnoreCase)) == true;
 
-            if (isSilent)
+            if (startup.HideDashboard)
             {
                 // Avalonia puede abrir MainWindow automaticamente al iniciar el lifetime.
                 // Ocultarla en Opened evita que aparezca de forma persistente en Isla/Bandeja.
@@ -122,14 +113,17 @@ public partial class App : Application
                 _mainWindow.Activate();
             }
 
-            if (!forcedTray && config.Island?.Enabled == true &&
-                (launchMode == "Island" || launchMode == "Both"))
-                ShowIslandWindow();
-
             if (startWork)
             {
                 _mainViewModel.ToggleKeepAliveCommand.Execute(null);
             }
+
+            base.OnFrameworkInitializationCompleted();
+
+            // Open the island after Avalonia has completed lifetime/window setup.
+            if (startup.ShowIsland)
+                Dispatcher.UIThread.Post(ShowIslandWindow, DispatcherPriority.Background);
+            return;
         }
 
         base.OnFrameworkInitializationCompleted();

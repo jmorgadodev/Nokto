@@ -86,6 +86,15 @@ public sealed class WindowsMediaSessionService : IDisposable
 
     private void QueueRead() => Volatile.Read(ref _refresh)?.Request();
 
+    private static async Task<bool> WaitForTransitionAsync(CoalescingMediaRefresh refresh, long version,
+        MediaSessionSnapshot previous, MediaSessionSnapshot next, CancellationToken token)
+    {
+        TimeSpan grace = MediaSnapshotTransitionPolicy.GracePeriod(previous, next);
+        if (grace > TimeSpan.Zero) await Task.Delay(grace, token);
+        token.ThrowIfCancellationRequested();
+        return refresh.TryCommit(version, static () => { });
+    }
+
     private async Task ReadSnapshotAsync(long version, CancellationToken token)
     {
         var refresh = Volatile.Read(ref _refresh);
@@ -116,7 +125,12 @@ public sealed class WindowsMediaSessionService : IDisposable
             })) return;
             if (current is null)
             {
-                refresh.TryCommit(version, () => SetSnapshot(MediaSessionSnapshot.Empty));
+                if (!await WaitForTransitionAsync(refresh, version, Snapshot, MediaSessionSnapshot.Empty, token)) return;
+                refresh.TryCommit(version, () =>
+                {
+                    if (_manager?.GetCurrentSession() is null) SetSnapshot(MediaSessionSnapshot.Empty);
+                    else refresh.Request();
+                });
                 return;
             }
             var props = await current.TryGetMediaPropertiesAsync();
@@ -143,6 +157,7 @@ public sealed class WindowsMediaSessionService : IDisposable
                 TimeSpan.FromSeconds(Math.Clamp(position.TotalSeconds, 0, Math.Max(0, duration.TotalSeconds))),
                 duration > TimeSpan.Zero ? duration : TimeSpan.Zero, artwork)
                 { CanSeek = controls.IsPlaybackPositionEnabled, PlaybackRate = playbackRate };
+            if (!await WaitForTransitionAsync(refresh, version, Snapshot, snapshot, token)) return;
             refresh.TryCommit(version, () =>
             {
                 // A session may change before Windows delivers CurrentSessionChanged.
@@ -156,7 +171,8 @@ public sealed class WindowsMediaSessionService : IDisposable
         catch (OperationCanceledException) when (token.IsCancellationRequested) { }
         catch (Exception)
         {
-            refresh.TryCommit(version, () => SetSnapshot(MediaSessionSnapshot.Empty));
+            if (await WaitForTransitionAsync(refresh, version, Snapshot, MediaSessionSnapshot.Empty, token))
+                refresh.TryCommit(version, () => SetSnapshot(MediaSessionSnapshot.Empty));
         }
     }
 
