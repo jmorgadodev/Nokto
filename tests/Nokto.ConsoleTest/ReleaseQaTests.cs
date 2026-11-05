@@ -10,6 +10,7 @@ internal static class ReleaseQaTests
         {
             ("Persistence", () => Task.FromResult(PersistenceSafetyTests.Run())),
             ("Power dispatch (fake native backend)", PowerSafetyTests.RunAsync),
+            ("Island startup behavior", () => Task.FromResult(IslandStartupTests.Run())),
             ("Regression/configuration/quotas/updater", () => Task.FromResult(RegressionTests.Run())),
             ("Workflow schedules/pipelines", LinearWorkflowTests.RunAsync),
             ("Workflow concurrency", ConcurrentWorkflowTests.RunAsync),

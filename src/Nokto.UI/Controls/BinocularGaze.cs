@@ -3,6 +3,13 @@ namespace Nokto.UI.Controls;
 /// <summary>Dirección independiente desde cada ojo hacia un punto de pantalla.</summary>
 public static class BinocularGaze
 {
+    public static double Smooth(double current, double target, double elapsedSeconds, double timeConstantSeconds = .12)
+    {
+        double elapsed = Math.Clamp(elapsedSeconds, 0, .05);
+        double timeConstant = Math.Clamp(timeConstantSeconds, .01, 1);
+        return current + (target - current) * (1 - Math.Exp(-elapsed / timeConstant));
+    }
+
     public static (double X, double Y) Toward(double pointerX, double pointerY,
         double eyeX, double eyeY, double sensitivity)
     {

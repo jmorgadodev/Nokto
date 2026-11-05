@@ -100,15 +100,11 @@ public partial class IslandWindow
 
     private void MoveGaze(double x, double y, double rightX, double rightY)
     {
-        _gazeFromX = _gazeX;
-        _gazeFromY = _gazeY;
         _gazeTargetX = Math.Clamp(x, -1, 1);
         _gazeTargetY = Math.Clamp(y, -1, 1);
-        _gazeRightFromX = _gazeRightX;
-        _gazeRightFromY = _gazeRightY;
         _gazeRightTargetX = Math.Clamp(rightX, -1, 1);
         _gazeRightTargetY = Math.Clamp(rightY, -1, 1);
-        _gazeStart = Stopwatch.GetTimestamp();
+        if (!_gazeAnimating) _gazeLastFrame = Stopwatch.GetTimestamp();
         _sleeping = false;
         _gazeAnimating = true;
         _eyeFrameTimer?.Start();
@@ -120,7 +116,7 @@ public partial class IslandWindow
         if (!CursorPositionReader.TryGet(out int cursorX, out int cursorY)) return;
 
         bool changed = _lastCursorX == int.MinValue ||
-            Math.Abs(cursorX - _lastCursorX) > 2 || Math.Abs(cursorY - _lastCursorY) > 2;
+            Math.Abs(cursorX - _lastCursorX) > 4 || Math.Abs(cursorY - _lastCursorY) > 4;
         if (changed)
         {
             _lastCursorX = cursorX;
@@ -135,8 +131,8 @@ public partial class IslandWindow
             double sensitivity = Math.Clamp(_settings.EyeSensitivity, 0, 1);
             var left = BinocularGaze.Toward(cursorX, cursorY, leftCenter.X, leftCenter.Y, sensitivity);
             var right = BinocularGaze.Toward(cursorX, cursorY, rightCenter.X, rightCenter.Y, sensitivity);
-            if (Math.Abs(left.X - _gazeTargetX) > .03 || Math.Abs(left.Y - _gazeTargetY) > .03 ||
-                Math.Abs(right.X - _gazeRightTargetX) > .03 || Math.Abs(right.Y - _gazeRightTargetY) > .03)
+            if (Math.Abs(left.X - _gazeTargetX) > .06 || Math.Abs(left.Y - _gazeTargetY) > .06 ||
+                Math.Abs(right.X - _gazeRightTargetX) > .06 || Math.Abs(right.Y - _gazeRightTargetY) > .06)
             {
                 MoveGaze(left.X, left.Y, right.X, right.Y);
             }
@@ -180,13 +176,21 @@ public partial class IslandWindow
 
         if (_gazeAnimating)
         {
-            double t = Math.Clamp(Stopwatch.GetElapsedTime(_gazeStart).TotalSeconds / .22, 0, 1);
-            double smooth = 1 - Math.Pow(1 - t, 3);
-            _gazeX = _gazeFromX + (_gazeTargetX - _gazeFromX) * smooth;
-            _gazeY = _gazeFromY + (_gazeTargetY - _gazeFromY) * smooth;
-            _gazeRightX = _gazeRightFromX + (_gazeRightTargetX - _gazeRightFromX) * smooth;
-            _gazeRightY = _gazeRightFromY + (_gazeRightTargetY - _gazeRightFromY) * smooth;
-            if (t >= 1) _gazeAnimating = false;
+            long now = Stopwatch.GetTimestamp();
+            double elapsed = Math.Clamp(Stopwatch.GetElapsedTime(_gazeLastFrame, now).TotalSeconds, 0, .05);
+            _gazeLastFrame = now;
+            _gazeX = BinocularGaze.Smooth(_gazeX, _gazeTargetX, elapsed);
+            _gazeY = BinocularGaze.Smooth(_gazeY, _gazeTargetY, elapsed);
+            _gazeRightX = BinocularGaze.Smooth(_gazeRightX, _gazeRightTargetX, elapsed);
+            _gazeRightY = BinocularGaze.Smooth(_gazeRightY, _gazeRightTargetY, elapsed);
+            bool settled = Math.Abs(_gazeTargetX - _gazeX) < .008 && Math.Abs(_gazeTargetY - _gazeY) < .008 &&
+                Math.Abs(_gazeRightTargetX - _gazeRightX) < .008 && Math.Abs(_gazeRightTargetY - _gazeRightY) < .008;
+            if (settled)
+            {
+                _gazeX = _gazeTargetX; _gazeY = _gazeTargetY;
+                _gazeRightX = _gazeRightTargetX; _gazeRightY = _gazeRightTargetY;
+                _gazeAnimating = false;
+            }
         }
 
         double blink = 0;

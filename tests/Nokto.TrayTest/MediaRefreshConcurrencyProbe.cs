@@ -4,6 +4,14 @@ internal static class MediaRefreshConcurrencyProbe
 {
     public static async Task RunAsync()
     {
+        var playing = new MediaSessionSnapshot(true, "Tema A", "Artista", "Spotify", true,
+            true, true, true, TimeSpan.Zero, TimeSpan.FromMinutes(3), null);
+        var transitionPause = playing with { Title = "Tema B", IsPlaying = false };
+        if (MediaSnapshotTransitionPolicy.GracePeriod(playing, transitionPause) != TimeSpan.FromMilliseconds(500) ||
+            MediaSnapshotTransitionPolicy.GracePeriod(playing, playing with { IsPlaying = false }) != TimeSpan.Zero ||
+            MediaSnapshotTransitionPolicy.GracePeriod(playing, MediaSessionSnapshot.Empty) != TimeSpan.FromMilliseconds(700))
+            throw new Exception("La política de estabilidad no distingue el cambio de pista de una pausa real.");
+
         var entered = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var release = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         var completed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);

@@ -8,10 +8,10 @@ public partial class IslandWindow
     {
         if (!OperatingSystem.IsWindows() || TryGetPlatformHandle() is not { Handle: var handle } || handle == IntPtr.Zero) return;
         const int extendedStyle = -20;
-        const long toolWindow = 0x00000080, appWindow = 0x00040000;
+        const long toolWindow = 0x00000080, appWindow = 0x00040000, noActivate = 0x08000000;
         long current = GetWindowLongPtr(handle, extendedStyle).ToInt64();
-        SetWindowLongPtr(handle, extendedStyle, new IntPtr((current | toolWindow) & ~appWindow));
-        // Refresh only this island's frame; never touch the dashboard or focus.
+        SetWindowLongPtr(handle, extendedStyle, new IntPtr((current | toolWindow | noActivate) & ~appWindow));
+        // Keep clicks on the island from stealing foreground focus from fullscreen apps.
         SetWindowPos(handle, IntPtr.Zero, 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0004 | 0x0010 | 0x0020);
     }
 

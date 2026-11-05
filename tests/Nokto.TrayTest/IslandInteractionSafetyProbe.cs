@@ -29,6 +29,12 @@ internal static class IslandInteractionSafetyProbe
         Directory.CreateDirectory(root);
         var persistence = new PersistenceService(new StorageResolver(root));
         var config = new AppConfig();
+        var startupConfig = new AppConfig();
+        var startupModel = new IslandViewModel(startupConfig, persistence);
+        startupModel.StartupModeIndex = 2;
+        Check(startupModel.Enabled && startupConfig.Island.StartupModeConfigured,
+            "Elegir inicio con isla la habilita y conserva la preferencia.");
+        startupModel.Productivity.Dispose();
         var model = new IslandViewModel(config, persistence) { ReducedMotion = true };
         using var adapter = new WorkflowTestAdapter();
         var scene = new AudioScene(model, adapter);
@@ -81,6 +87,11 @@ internal static class IslandInteractionSafetyProbe
             card.RaiseEvent(new PointerWheelEventArgs(card, pointer, window, default, 6, new(), KeyModifiers.None, new Vector(0, 1)));
             Check(slider.Value == 100, "La rueda respeta el límite de volumen.");
 
+            double smoothFirst = BinocularGaze.Smooth(0, .8, .016);
+            double smoothReverse = BinocularGaze.Smooth(smoothFirst, .74, .016);
+            Check(smoothFirst is > 0 and < .8 && smoothReverse > smoothFirst && smoothReverse - smoothFirst < .08,
+                "El seguimiento ocular amortigua pequeños cambios de objetivo en lugar de dar saltos.");
+
             var settingsView = new IslandSettingsView { DataContext = scene };
             settingsHost = new Window { Content = settingsView, Width = 1100, Height = 2000 };
             settingsHost.Measure(new Size(1100, 2000)); settingsHost.Arrange(new Rect(0, 0, 1100, 2000)); Pump();
@@ -127,8 +138,9 @@ internal static class IslandInteractionSafetyProbe
             nint islandStyle = GetWindowLongPtr(window.TryGetPlatformHandle()!.Handle, -20);
             nint ordinaryStyle = GetWindowLongPtr(ordinary.TryGetPlatformHandle()!.Handle, -20);
             Check((islandStyle.ToInt64() & 0x80) != 0 && (islandStyle.ToInt64() & 0x40000) == 0 &&
+                (islandStyle.ToInt64() & 0x08000000) != 0 &&
                 (ordinaryStyle.ToInt64() & 0x80) == 0,
-                "La isla usa TOOLWINDOW sin APPWINDOW; una ventana normal conserva su presencia en Alt+Tab.");
+                "La isla no activa ni aparece en Alt+Tab; una ventana normal conserva su presencia en Alt+Tab.");
         }
         finally
         {

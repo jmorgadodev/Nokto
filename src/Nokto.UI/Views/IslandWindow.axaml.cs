@@ -39,9 +39,9 @@ public partial class IslandWindow : Window
     private DispatcherTimer? _eyeFrameTimer;
     private DispatcherTimer? _blinkTimer;
     private DispatcherTimer? _outsideTimer;
-    private long _gazeStart, _blinkStart;
-    private double _gazeX, _gazeY, _gazeFromX, _gazeFromY, _gazeTargetX, _gazeTargetY;
-    private double _gazeRightX, _gazeRightY, _gazeRightFromX, _gazeRightFromY, _gazeRightTargetX, _gazeRightTargetY;
+    private long _gazeLastFrame, _blinkStart;
+    private double _gazeX, _gazeY, _gazeTargetX, _gazeTargetY;
+    private double _gazeRightX, _gazeRightY, _gazeRightTargetX, _gazeRightTargetY;
     private int _lastCursorX = int.MinValue, _lastCursorY = int.MinValue;
     private DateTime _lastCursorMovement = DateTime.UtcNow;
     private bool _gazeAnimating, _blinking, _sleeping;
@@ -289,7 +289,7 @@ public partial class IslandWindow : Window
         if (!_expanded || !CursorPositionReader.TryGet(out int x, out int y)) return;
         if (IsPointInside(x, y)) { _pointerLeaveStarted = 0; return; }
         if (_pointerLeaveStarted == 0) _pointerLeaveStarted = Stopwatch.GetTimestamp();
-        if (Stopwatch.GetElapsedTime(_pointerLeaveStarted).TotalMilliseconds >= 180)
+        if (Stopwatch.GetElapsedTime(_pointerLeaveStarted).TotalMilliseconds >= 260)
         {
             _pinned = false;
             SetExpanded(false);

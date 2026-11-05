@@ -3,7 +3,7 @@
         xmlns:controls="clr-namespace:Nokto.UI.Controls"
         x:Class="Nokto.UI.Views.IslandWindow"
         Title="Nokto Island" Width="116" Height="48" MinWidth="0" MinHeight="0"
-        CanResize="False" SystemDecorations="None" ShowInTaskbar="False"
+        CanResize="False" SystemDecorations="None" ShowInTaskbar="False" ShowActivated="False"
         Topmost="True" Background="Transparent" TransparencyLevelHint="Transparent"
         WindowStartupLocation="Manual">
   <Grid x:Name="IslandScaleHost" ClipToBounds="True">
