@@ -1,5 +1,9 @@
 # Cambios
 
+## 2.0.4 — recuperación de isla visible
+
+- Si Windows oculta o cierra la isla, Nokto la recupera mientras siga habilitada.
+- La ventana vuelve al monitor principal si queda fuera del área visible, sin activar ni robar el foco.
 ## 2.0.3 — respuesta inmediata al cambiar de pista
 
 - El título y los controles de Spotify se actualizan antes de cargar la carátula; los títulos y artistas largos se desplazan para poder leerlos completos.

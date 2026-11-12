@@ -22,6 +22,7 @@ public partial class App : Application
     private MainViewModel? _mainViewModel;
     private MainWindow? _mainWindow;
     private IslandWindow? _islandWindow;
+    private DispatcherTimer? _islandVisibilityTimer;
     private TrayIcon? _trayIcon;
     private Nokto.UI.Services.WindowsBalloonNotifier? _notificationService;
     private bool _trayUpdateFailureLogged;
@@ -46,6 +47,8 @@ public partial class App : Application
             var engine = new WorkflowEngine(_systemAdapter, persistence);
             _mainViewModel = new MainViewModel(_systemAdapter, engine, persistence);
             _mainViewModel.IslandVm.Changed += () => Dispatcher.UIThread.Post(SyncIslandVisibility);
+            _islandVisibilityTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+            _islandVisibilityTimer.Tick += (_, _) => EnsureIslandWindowVisibility();
             _mainViewModel.IslandVm.Productivity.AlertRaised += HandleProductivityAlert;
 
             var config = persistence.LoadConfig();
@@ -58,6 +61,7 @@ public partial class App : Application
             {
                 _isExiting = true;
                 _scheduleThemeTimer?.Stop();
+                _islandVisibilityTimer?.Stop();
                 _islandWindow?.Close();
                 _islandWindow = null;
                 // Remove the shell icon before releasing services: it must not outlive its UI.
@@ -306,21 +310,59 @@ public partial class App : Application
     {
         if (_isExiting || _mainViewModel == null) return;
         if (_mainViewModel.IslandVm.Enabled)
+        {
             ShowIslandWindow();
+            _islandVisibilityTimer?.Start();
+        }
         else
         {
-            _islandWindow?.Close();
+            _islandVisibilityTimer?.Stop();
+            var oldWindow = _islandWindow;
             _islandWindow = null;
+            oldWindow?.Close();
         }
+    }
+
+    private void EnsureIslandWindowVisibility()
+    {
+        if (_isExiting || _mainViewModel?.IslandVm.Enabled != true)
+        {
+            _islandVisibilityTimer?.Stop();
+            return;
+        }
+
+        var window = _islandWindow;
+        if (window is null || window.PlatformImpl is null || !window.IsVisible)
+        {
+            ShowIslandWindow();
+            return;
+        }
+
+        window.EnsurePositionOnPrimaryScreen();
+        window.EnsureNativePresentation();
     }
 
     private void ShowIslandWindow()
     {
-        if (_isExiting || _mainViewModel == null) return;
-        _islandWindow ??= new IslandWindow(_mainViewModel.IslandVm, _mainViewModel);
+        if (_isExiting || _mainViewModel?.IslandVm.Enabled != true) return;
+        if (_islandWindow is null)
+        {
+            var window = new IslandWindow(_mainViewModel.IslandVm, _mainViewModel);
+            _islandWindow = window;
+            window.Closed += (_, _) =>
+            {
+                if (ReferenceEquals(_islandWindow, window)) _islandWindow = null;
+                if (!_isExiting && _mainViewModel?.IslandVm.Enabled == true)
+                    Dispatcher.UIThread.Post(ShowIslandWindow, DispatcherPriority.Background);
+            };
+        }
+
         _islandWindow.ApplySettings();
         if (!_islandWindow.IsVisible)
             _islandWindow.Show();
+        _islandWindow.EnsurePositionOnPrimaryScreen();
+        _islandWindow.EnsureNativePresentation();
+        _islandVisibilityTimer?.Start();
     }
 
     private void HandleProductivityAlert(Nokto.Core.Models.IslandProductivityAlert alert)
